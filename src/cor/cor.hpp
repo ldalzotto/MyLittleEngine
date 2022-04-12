@@ -14,7 +14,7 @@ using ui64_t = unsigned long long;
 
 template <typename ValueType> struct number {
   ValueType value;
-  number() {};
+  number(){};
   explicit number(ValueType p_value) : value(p_value){};
 
   number operator+(number p_value) { return number(p_value.value + value); };
@@ -39,7 +39,8 @@ template <typename ValueType> struct number {
     value /= p_value.value;
     return *this;
   };
-  operator bool() const { return value != 0; };
+
+  bool operator!=(number p_value) {return value != p_value.value;};
 };
 
 using i8 = number<i8_t>;
@@ -51,10 +52,11 @@ using ui8 = number<ui8_t>;
 using ui16 = number<ui16_t>;
 using ui32 = number<ui32_t>;
 using ui64 = number<ui64_t>;
+using uimax = ui32;
 
 template <typename T, int N> using vec = Eigen::Vector<T, N>;
 
 #define BOOST_NO_EXCEPTIONS
 #include <boost/container/vector.hpp>
-
-namespace cont = boost::container;
+#include <boost/pool/simple_segregated_storage.hpp>
+#include <boost/pool/pool.hpp>
