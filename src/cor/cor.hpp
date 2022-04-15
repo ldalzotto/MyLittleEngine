@@ -42,6 +42,7 @@ template <typename ValueType> struct number {
     return *this;
   };
 
+  bool operator==(number p_value) { return value == p_value.value; };
   bool operator!=(number p_value) { return value != p_value.value; };
 };
 
@@ -60,8 +61,3 @@ using f32 = number<f32_t>;
 
 template <typename T, int N> using vec = Eigen::Vector<T, N>;
 template <typename T, int ROW, int COL> using mat = Eigen::Matrix<T, ROW, COL>;
-
-#define BOOST_NO_EXCEPTIONS
-#include <boost/container/vector.hpp>
-#include <boost/pool/pool.hpp>
-#include <boost/pool/simple_segregated_storage.hpp>

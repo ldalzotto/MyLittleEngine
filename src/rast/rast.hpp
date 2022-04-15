@@ -6,59 +6,8 @@
 #include <boost/pool/object_pool.hpp>
 #include <boost/range/algorithm.hpp>
 #include <boost/range/algorithm_ext.hpp>
+#include <cor/container.hpp>
 #include <cor/cor.hpp>
-
-namespace boost {
-template <typename T> struct object_pool_indexed {
-private:
-  boost::container::vector<T> data;
-  boost::container::vector<i8> is_allocated;
-
-public:
-  object_pool_indexed() {
-    data = boost::container::vector<T>(0);
-    is_allocated = boost::container::vector<i8>(0);
-  };
-  object_pool_indexed(uimax p_capacity) {
-    data.reserve(p_capacity);
-    is_allocated.reserve(p_capacity.value);
-  };
-
-public:
-  uimax malloc(const T &p_element) {
-    auto l_index = uimax(-1);
-    for (auto i = uimax(0); i.value < is_allocated.size(); ++i) {
-      if (!is_allocated.at(i.value).value) {
-        l_index = i;
-        break;
-      }
-    }
-
-    if (l_index != uimax(-1)) {
-      data.at(l_index.value) = p_element;
-      is_allocated.at(l_index.value) = i8(1);
-      return l_index;
-    } else {
-      data.push_back(p_element);
-      is_allocated.push_back(i8(1));
-      return uimax(data.size() - 1);
-    }
-    //       boost::range::fin
-  };
-
-  void free(uimax p_index) {
-    BOOST_ASSERT(is_allocated.at(p_index.value).value);
-    is_allocated.at(p_index.value) = i8(0);
-  };
-
-  T &at(uimax p_index) {
-    BOOST_ASSERT(is_allocated.at(p_index.value).value);
-    return data.at(p_index.value);
-  };
-
-private:
-};
-}; // namespace boost
 
 struct bgfx_impl {
 
@@ -176,10 +125,10 @@ struct bgfx_impl {
     boost::pool<> buffers_memory;
     boost::object_pool<bgfx::Memory> buffers;
     boost::container::map<bgfx::Memory *, MemoryReference> buffer_is_reference;
-    boost::object_pool_indexed<Texture> textures;
-    boost::object_pool_indexed<FrameBuffer> framebuffers;
-    boost::object_pool_indexed<VertexBuffer> vertexbuffers;
-    boost::object_pool_indexed<IndexBuffer> indexbuffers;
+    eng::object_pool_indexed<Texture> textures;
+    eng::object_pool_indexed<FrameBuffer> framebuffers;
+    eng::object_pool_indexed<VertexBuffer> vertexbuffers;
+    eng::object_pool_indexed<IndexBuffer> indexbuffers;
     CommandsMemoryType commands_memory;
     boost::container::vector<RenderPass> renderpasses;
 
@@ -198,7 +147,6 @@ struct bgfx_impl {
 
     bgfx::Memory *allocate_ref(const void *p_ptr, ui32_t p_size) {
       bgfx::Memory *l_buffer = buffers.malloc();
-      void* l_ptr = l_buffer;
       l_buffer->data = (ui8_t *)p_ptr;
       l_buffer->size = p_size;
       buffer_is_reference.emplace(l_buffer, MemoryReference());
@@ -348,8 +296,10 @@ struct bgfx_impl {
   };
 
   void initialize() { command_temporary_stack.clear(); };
-  void terminate(){
-      // TODO
+  void terminate() {
+    sys::sassert(heap.vertexbuffers.free_elements_size() == 0);
+    sys::sassert(heap.indexbuffers.free_elements_size() == 0);
+    // TODO
   };
 
 private:
