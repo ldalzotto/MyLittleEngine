@@ -128,10 +128,10 @@ struct bgfx_impl {
     boost::pool<> buffers_memory;
     boost::object_pool<bgfx::Memory> buffers;
     boost::container::map<bgfx::Memory *, MemoryReference> buffer_is_reference;
-    eng::object_pool_indexed<Texture> textures;
-    eng::object_pool_indexed<FrameBuffer> framebuffers;
-    eng::object_pool_indexed<VertexBuffer> vertexbuffers;
-    eng::object_pool_indexed<IndexBuffer> indexbuffers;
+    container::object_pool_indexed<Texture> textures;
+    container::object_pool_indexed<FrameBuffer> framebuffers;
+    container::object_pool_indexed<VertexBuffer> vertexbuffers;
+    container::object_pool_indexed<IndexBuffer> indexbuffers;
     CommandsMemoryType commands_memory;
     container::vector<RenderPass> renderpasses;
 

@@ -132,6 +132,10 @@ struct vector {
   };
 
   void push_back(const T &p_element) { insert_at(p_element, m_count); };
+  void pop_back() {
+    assert_debug(m_count > 0);
+    m_count -= 1;
+  };
 
   void clear() { m_count = 0; };
 
@@ -165,14 +169,10 @@ private:
   };
 };
 
-}; // namespace container
-
-namespace eng {
-
 template <typename T> struct object_pool_indexed {
 private:
-  boost::container::vector<T> data;
-  boost::container::vector<uimax> free_elements;
+  vector<T> data;
+  vector<uimax> free_elements;
 
 public:
   object_pool_indexed() = default;
@@ -182,14 +182,14 @@ public:
 
 public:
   uimax malloc(const T &p_element) {
-    if (free_elements.size() > 0) {
-      auto l_index = free_elements.at(free_elements.size() - 1);
+    if (free_elements.count() > 0) {
+      auto l_index = free_elements.at(free_elements.count() - 1);
       free_elements.pop_back();
       data.at(l_index.value) = p_element;
       return l_index;
     } else {
       data.push_back(p_element);
-      return uimax(data.size() - 1);
+      return uimax(data.count() - 1);
     }
   };
 
@@ -203,15 +203,19 @@ public:
     return data.at(p_index.value);
   };
 
-  ui32_t free_elements_size() { return free_elements.size(); };
+  ui32_t free_elements_size() { return free_elements.count(); };
 
 private:
-  bool is_element_allocated(uimax p_index) {
-    auto l_found = boost::range::find_if(free_elements, [&](auto l_free_index) {
-      return l_free_index == p_index;
-    });
-    return l_found == free_elements.end();
+  i8_t is_element_allocated(uimax p_index) {
+    for (auto i = 0; i < free_elements.count(); ++i) {
+      auto &l_free_index = free_elements.at(i);
+      if (l_free_index == p_index) {
+        return 0;
+      }
+    }
+
+    return 1;
   };
 };
 
-} // namespace eng
+}; // namespace container
