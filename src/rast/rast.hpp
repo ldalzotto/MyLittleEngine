@@ -90,16 +90,19 @@ struct bgfx_impl {
     mat<f32, 4, 4> view;
     mat<f32, 4, 4> proj;
 
-    boost::container::vector<CommandHeader *> commands;
+    container::vector<CommandHeader *> commands;
+
+    void allocate() { commands.allocate(0); };
+    void free() { commands.free(); };
 
     static RenderPass get_default() {
       RenderPass l_render_pass;
+      l_render_pass.allocate();
       l_render_pass.framebuffer.idx = 0;
       l_render_pass.rect.setZero();
       l_render_pass.scissor.setZero();
       l_render_pass.view.setZero();
       l_render_pass.proj.setZero();
-      l_render_pass.commands.clear();
       return l_render_pass;
     };
 
@@ -113,9 +116,9 @@ struct bgfx_impl {
     };
 
     void clear_commands(CommandsMemoryType &p_commands_memory) {
-      boost::range::for_each(commands, [&](CommandHeader *p_command) {
-        p_commands_memory.free(p_command);
-      });
+      for (auto l_it = commands.iter(0); l_it; ++l_it) {
+        p_commands_memory.free(*l_it);
+      }
       commands.clear();
     };
   };
@@ -130,11 +133,23 @@ struct bgfx_impl {
     eng::object_pool_indexed<VertexBuffer> vertexbuffers;
     eng::object_pool_indexed<IndexBuffer> indexbuffers;
     CommandsMemoryType commands_memory;
-    boost::container::vector<RenderPass> renderpasses;
+    container::vector<RenderPass> renderpasses;
 
     heap() : buffers_memory(1000), commands_memory(1000) {
+      renderpasses.allocate(0);
       renderpasses.push_back(
           RenderPass::get_default()); // at least one renderpass
+    };
+
+    void free() {
+      assert_debug(vertexbuffers.free_elements_size() == 0);
+      assert_debug(indexbuffers.free_elements_size() == 0);
+      assert_debug(renderpasses.count() == 1);
+      for (auto l_render_pass = renderpasses.iter(0); l_render_pass;
+           ++l_render_pass) {
+        (*l_render_pass).free();
+      }
+      renderpasses.free();
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
@@ -290,15 +305,16 @@ struct bgfx_impl {
 
     // TOOD -> do stuffs
 
-    boost::range::for_each(heap.renderpasses, [&](RenderPass &p_render_pass) {
-      p_render_pass.clear_commands(heap.commands_memory);
-    });
+    for (auto l_it = heap.renderpasses.iter(0); l_it; ++l_it) {
+      RenderPass &l_render_pass = *l_it;
+      l_render_pass.clear_commands(heap.commands_memory);
+    }
   };
 
   void initialize() { command_temporary_stack.clear(); };
   void terminate() {
-    sys::sassert(heap.vertexbuffers.free_elements_size() == 0);
-    sys::sassert(heap.indexbuffers.free_elements_size() == 0);
+
+    heap.free();
     // TODO
   };
 

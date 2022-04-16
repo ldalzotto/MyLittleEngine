@@ -1,7 +1,38 @@
 #include <bgfx/bgfx.h>
-#include <cor/cor.hpp>
 #include <cor/container.hpp>
+#include <cor/cor.hpp>
 #include <sys/sys.hpp>
+
+void container_tests() {
+
+  struct entry {
+    i32_t m_v0, m_v1, m_v2;
+    entry(i32_t p_value) {
+      m_v0 = p_value;
+      m_v1 = p_value;
+      m_v2 = p_value;
+    };
+
+    ui8_t operator==(i32_t p_value) {
+      return m_v0 == p_value && m_v1 == p_value && m_v2 == p_value;
+    };
+  };
+
+  container::vector<entry> l_vector;
+  l_vector.allocate(0);
+  for (uimax_t i = 0; i < 10; ++i) {
+    l_vector.push_back(entry(i));
+  }
+  for (uimax_t i = 0; i < 10; ++i) {
+      sys::sassert(l_vector.at(i) == i);
+  }
+
+container::span<entry> l_span;
+l_span.allocate(1);
+
+  l_vector.insert_at(l_span.range(), 0);
+  l_vector.free();
+};
 
 struct PosColorVertex {
   float m_x;
@@ -59,6 +90,8 @@ static constexpr ui8_t s_ptState_count =
     sizeof(s_ptState) / sizeof(s_ptState[0]);
 
 int main() {
+
+  container_tests();
 
   bgfx::init();
 

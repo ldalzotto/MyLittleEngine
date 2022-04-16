@@ -1,5 +1,8 @@
 #pragma once
 
+#define assert_debug(p_condition) sys::sassert(p_condition)
+#define block_debug(p_code) p_code
+
 #include <Eigen/Eigen>
 
 using i8_t = char;
@@ -11,6 +14,8 @@ using ui8_t = unsigned char;
 using ui16_t = unsigned short;
 using ui32_t = unsigned long;
 using ui64_t = unsigned long long;
+
+using uimax_t = ui32_t;
 
 using f32_t = float;
 
@@ -55,7 +60,7 @@ using ui8 = number<ui8_t>;
 using ui16 = number<ui16_t>;
 using ui32 = number<ui32_t>;
 using ui64 = number<ui64_t>;
-using uimax = ui32;
+using uimax = number<uimax_t>;
 
 using f32 = number<f32_t>;
 
