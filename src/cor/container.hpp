@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cor/cor.hpp>
+#include <cor/hash.hpp>
 #include <sys/sys.hpp>
 
 #define BOOST_NO_EXCEPTIONS
@@ -27,6 +28,8 @@ template <typename T> struct range {
   void copy_to(const range &p_to) const {
     sys::memcpy(p_to.m_begin, m_begin, m_count * sizeof(T));
   };
+
+  uimax_t size_bytes() const { return sizeof(T) * m_count; };
 };
 
 template <typename T, typename AllocFunctions = malloc_free_functions>
@@ -171,44 +174,49 @@ private:
 
 template <typename T> struct object_pool_indexed {
 private:
-  vector<T> data;
-  vector<uimax> free_elements;
+  vector<T> m_data;
+  vector<uimax> m_free_elements;
 
 public:
-  object_pool_indexed() = default;
-  object_pool_indexed(const object_pool_indexed &) = default;
+  void allocate(uimax_t p_capacity) {
+    m_data.allocate(p_capacity);
+    m_free_elements.allocate(0);
+  };
 
-  object_pool_indexed(uimax p_capacity) { data.reserve(p_capacity); };
+  void free() {
+    m_data.free();
+    m_free_elements.free();
+  };
 
 public:
   uimax malloc(const T &p_element) {
-    if (free_elements.count() > 0) {
-      auto l_index = free_elements.at(free_elements.count() - 1);
-      free_elements.pop_back();
-      data.at(l_index.value) = p_element;
+    if (m_free_elements.count() > 0) {
+      auto l_index = m_free_elements.at(m_free_elements.count() - 1);
+      m_free_elements.pop_back();
+      m_data.at(l_index.value) = p_element;
       return l_index;
     } else {
-      data.push_back(p_element);
-      return uimax(data.count() - 1);
+      m_data.push_back(p_element);
+      return uimax(m_data.count() - 1);
     }
   };
 
   void free(uimax p_index) {
-    sys::sassert(is_element_allocated(p_index)); // TODO add debug for this
-    free_elements.push_back(p_index);
+    assert_debug(__is_element_allocated(p_index));
+    m_free_elements.push_back(p_index);
   };
 
   T &at(uimax p_index) {
-    sys::sassert(is_element_allocated(p_index)); // TODO add debug for this
-    return data.at(p_index.value);
+    assert_debug(__is_element_allocated(p_index));
+    return m_data.at(p_index.value);
   };
 
-  ui32_t free_elements_size() { return free_elements.count(); };
+  ui32_t free_elements_size() { return m_free_elements.count(); };
 
 private:
-  i8_t is_element_allocated(uimax p_index) {
-    for (auto i = 0; i < free_elements.count(); ++i) {
-      auto &l_free_index = free_elements.at(i);
+  i8_t __is_element_allocated(uimax p_index) {
+    for (auto i = 0; i < m_free_elements.count(); ++i) {
+      auto &l_free_index = m_free_elements.at(i);
       if (l_free_index == p_index) {
         return 0;
       }
@@ -218,4 +226,40 @@ private:
   };
 };
 
+template <typename Key, typename Mapped, typename Hash = hash::hash<Key>>
+struct unordered_map {
+private:
+  static const uimax_t s_invalid_hash = -1;
+  vector<Key> m_keys;
+  vector<Mapped> m_values;
+  vector<ui8_t> m_has_value;
+  uimax_t m_scale_factor;
+
+public:
+  void allocate(uimax_t p_capacity) {
+    m_keys.allocate(p_capacity);
+    m_values.allocate(p_capacity);
+    m_has_value.allocate(p_capacity);
+    m_scale_factor = 1;
+  };
+
+  void free() {
+    m_keys.free();
+    m_values.free();
+    m_has_value.free();
+  };
+
+private:
+};
+
 }; // namespace container
+
+// hash specifications
+namespace hash {
+template <typename T> struct hash<container::range<T>> {
+  hash() = delete;
+  uimax_t operator()(const container::range<T> &p_range) {
+    return hash_function(p_range.m_begin, p_range.size_bytes());
+  };
+};
+}; // namespace hash

@@ -2,6 +2,32 @@ project(MyLittleEngine)
 cmake_minimum_required(VERSION 3.16)
 enable_language(CXX)
 
+
+# set(ENABLE_SAFETY_CHECKS true)
+# set(ENABLE_ADDRESS true)
+# set(ENABLE_UNDEFINED true)
+
+if(ENABLE_SAFETY_CHECKS)
+    add_compile_definitions(DEBUG_PREPROCESS=1)
+    add_compile_definitions(MEMLEAK_PREPROCESS=1)
+    add_compile_definitions(MEMSHADOW_PREPROCESS=1)
+else()
+    add_compile_definitions(DEBUG_PREPROCESS=0)
+    add_compile_definitions(MEMLEAK_PREPROCESS=0)
+    add_compile_definitions(MEMSHADOW_PREPROCESS=0)
+endif()
+
+if(ENABLE_ADDRESS)
+    add_compile_options(-fsanitize=address)
+    add_link_options(-fsanitize=address)
+endif()
+
+if(ENABLE_UNDEFINED)
+    add_compile_options(-fsanitize=undefined)
+    add_link_options(-fsanitize=undefined)
+endif()
+
+
 add_library(BOOST INTERFACE)
 target_include_directories(BOOST INTERFACE ./tp/boost_1_78_0/)
 

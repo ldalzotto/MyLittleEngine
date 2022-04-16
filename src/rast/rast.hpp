@@ -139,6 +139,10 @@ struct bgfx_impl {
       renderpasses.allocate(0);
       renderpasses.push_back(
           RenderPass::get_default()); // at least one renderpass
+      textures.allocate(0);
+      framebuffers.allocate(0);
+      vertexbuffers.allocate(0);
+      indexbuffers.allocate(0);
     };
 
     void free() {
@@ -150,6 +154,10 @@ struct bgfx_impl {
         (*l_render_pass).free();
       }
       renderpasses.free();
+      framebuffers.free();
+      vertexbuffers.free();
+      indexbuffers.free();
+      textures.free();
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
