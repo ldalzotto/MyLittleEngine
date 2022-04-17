@@ -34,9 +34,8 @@ void container_tests() {
   l_vector.insert_at(l_span.range(), 0);
   l_vector.free();
 
-  orm::db<orm::table<i32_t, f32_t>> l_db;
-  l_db.allocate(0);
-  auto &l_table = l_db.table<0>();
+  orm::table<i32_t, f32_t, orm::no_hooks> l_table;
+  l_table.allocate(0);
   auto l_index_0 = l_table.push_back(2, 10.0f);
   auto l_index_1 = l_table.push_back(3, 10.0f);
 
@@ -44,7 +43,11 @@ void container_tests() {
   for (auto i = 0; i < l_range.m_count; ++i) {
     i32_t &l_value = l_range.m_begin[i];
   }
-  l_db.free();
+
+  l_table.remove_at(l_index_0);
+  l_table.remove_at(l_index_0);
+
+  l_table.free();
 };
 
 struct PosColorVertex {

@@ -50,6 +50,22 @@ struct table_meta {
     }
     return 0;
   };
+
+  void remove_at(uimax_t p_index) {
+    assert_debug(__is_element_allocated(p_index));
+    m_free_elements.push_back(p_index);
+    m_count -= 1;
+  };
+
+private:
+  ui8_t __is_element_allocated(uimax_t p_index) const {
+    for (auto i = 0; i < m_free_elements.count(); ++i) {
+      if (m_free_elements.at(i) == p_index) {
+        return 0;
+      }
+    }
+    return 1;
+  };
 };
 
 template <typename TableType> struct table_allocate {
@@ -143,6 +159,24 @@ private:
   };
 };
 
+template <typename TableType> struct table_remove_at {
+  table_remove_at(TableType &p_table, uimax_t p_index) {
+    p_table.m_meta.remove_at(p_index);
+    __table_remove_at<0>{}(p_table, p_index);
+  };
+
+private:
+  template <int Col> struct __table_remove_at {
+    void operator()(TableType &p_table, uimax_t p_index) {
+      p_table.m_hooks.template before_remove<TableType, Col>(
+          p_table, p_index, p_table.template col<Col>()[p_index]);
+      if constexpr (Col < TableType::COL_COUNT - 1) {
+        __table_remove_at<Col + 1>{}(p_table, p_index);
+      }
+    };
+  };
+};
+
 }; // namespace details
 
 template <typename... Types> struct table;
@@ -162,15 +196,26 @@ template <typename Type0> struct table<Type0> {
   template <int N> auto &col();
   template <> auto &col<0>() { return m_col0; };
 
-  template <int N> auto col_type();
-  template <> auto col_type<0>() { return Type0{}; };
+  template <int N> static auto col_type();
+  template <> static auto col_type<0>() { return Type0{}; };
 };
 
-template <typename Type0, typename Type1> struct table<Type0, Type1> {
+struct no_hooks {
+  template <typename TableType, int Col>
+  void
+  before_remove(TableType &p_table, uimax_t p_index,
+                decltype(TableType::template col_type<Col>()) &p_element){};
+};
+
+template <typename Type0, typename Type1, typename Hooks>
+struct table<Type0, Type1, Hooks> {
   static constexpr ui8_t COL_COUNT = 2;
   details::table_meta m_meta;
+  Hooks m_hooks;
   Type0 *m_col0;
   Type1 *m_col1;
+
+  void register_hooks(const Hooks &p_hooks) { m_hooks = p_hooks; };
 
   void allocate(uimax_t p_capacity) {
     details::table_allocate<table>(*this, p_capacity);
@@ -183,13 +228,17 @@ template <typename Type0, typename Type1> struct table<Type0, Type1> {
         .m_index;
   };
 
+  void remove_at(uimax_t p_index) {
+    details::table_remove_at<table>(*this, p_index);
+  };
+
   template <int N> auto &col();
   template <> auto &col<0>() { return m_col0; };
   template <> auto &col<1>() { return m_col1; };
 
-  template <int N> auto col_type();
-  template <> auto col_type<0>() { return Type0{}; };
-  template <> auto col_type<1>() { return Type1{}; };
+  template <int N> static auto col_type();
+  template <> static auto col_type<0>() { return Type0{}; };
+  template <> static auto col_type<1>() { return Type1{}; };
 
   template <int N> auto range() {
     return container::range_ref<decltype(col_type<N>())>(col<N>(),

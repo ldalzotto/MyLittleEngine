@@ -121,6 +121,8 @@ struct vector {
     return m_span.m_data[p_index];
   };
 
+  const T &at(uimax_t p_index) const { return ((vector *)this)->at(p_index); };
+
   void insert_at(const range<T> &p_range, uimax_t p_index) {
     assert_debug(p_index + p_range.m_count <= capacity());
     uimax_t l_new_count = m_count + p_range.m_count;
