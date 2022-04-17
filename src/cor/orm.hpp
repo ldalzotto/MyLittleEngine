@@ -125,6 +125,11 @@ template <> struct table_meta<table_memory_layout::VECTOR> {
 template <> struct table_meta<table_memory_layout::POOL_FIXED> {
   static const table_memory_layout MEMORY_LAYOUT =
       table_memory_layout::POOL_FIXED;
+
+  struct chunk {
+    container::vector<uimax_t> m_free_elements;
+    container::vector<uimax_t> m_allocated_elements;
+  };
 };
 
 template <typename TableType> struct table_allocate {
@@ -142,7 +147,7 @@ private:
   template <int N> struct __allocate_recursive {
     void operator()(TableType &p_table) {
       using element_type = decltype(p_table.template col_type<N>());
-      p_table.template col<N>() = (element_type *)sys::malloc(
+      p_table.template col<N>().data() = (element_type *)sys::malloc(
           p_table.meta().m_capacity * sizeof(element_type));
       if constexpr (N < TableType::COL_COUNT - 1) {
         __allocate_recursive<N + 1>{}(p_table);
@@ -165,7 +170,7 @@ private:
   template <int N> struct __free_recursive {
     void operator()(TableType &p_table) {
       using element_type = decltype(p_table.template col_type<N>());
-      sys::free(p_table.template col<N>());
+      sys::free(p_table.template col<N>().data());
       if constexpr (N < TableType::COL_COUNT - 1) {
         __free_recursive<N + 1>{}(p_table);
       }
@@ -181,7 +186,7 @@ private:
     void operator()(TableType &p_table) {
       using element_type = decltype(p_table.template col_type<Col>());
       auto l_new_byte_size = p_table.meta().m_capacity * sizeof(element_type);
-      auto *&l_col_ptr = p_table.template col<Col>();
+      auto *&l_col_ptr = p_table.template col<Col>().data();
       l_col_ptr = (element_type *)sys::realloc(l_col_ptr, l_new_byte_size);
       if constexpr (Col < TableType::COL_COUNT - 1) {
         __table_resize<Col + 1>{}(p_table);
@@ -209,7 +214,7 @@ private:
   struct __table_push_back_col {
     void operator()(TableType &p_table, uimax_t p_index, const Type &p_element,
                     const LocalTypes &... p_next) {
-      p_table.template col<Col>()[p_index] = p_element;
+      p_table.template col<Col>().at(p_index) = p_element;
       if constexpr (Col < TableType::COL_COUNT - 1) {
         __table_push_back_col<Col + 1, LocalTypes...>{}(p_table, p_index,
                                                         p_next...);
@@ -230,7 +235,7 @@ private:
   template <int Col> struct __table_before_remove {
     void operator()(TableType &p_table, uimax_t p_index) {
       p_table.m_hooks.template before_remove<TableType, Col>(
-          p_table, p_index, p_table.template col<Col>()[p_index]);
+          p_table, p_index, p_table.template col<Col>().at(p_index));
       if constexpr (Col < TableType::COL_COUNT - 1) {
         __table_before_remove<Col + 1>{}(p_table, p_index);
       }
@@ -252,8 +257,8 @@ private:
   struct __table_remove_at<Col, table_memory_layout::VECTOR> {
     void operator()(TableType &p_table, uimax_t p_index) {
       if (p_index < p_table.meta().m_capacity) {
-        auto *l_col_ptr = p_table.template col<Col>();
-        sys::memmove_up(l_col_ptr, p_index + 1, 1, 1);
+        auto &l_col = p_table.template col<Col>();
+        sys::memmove_up(l_col.data(), p_index + 1, 1, 1);
       }
 
       if constexpr (Col < TableType::COL_COUNT - 1) {
@@ -280,8 +285,8 @@ template <typename T> struct __table_iterator<T, table_memory_layout::VECTOR> {
 
   template <typename TableType, int Col>
   static __table_iterator make(TableType &p_table) {
-    return __table_iterator(p_table.template col<Col>(), p_table.meta().count(),
-                            -1);
+    return __table_iterator(p_table.template col<Col>().data(),
+                            p_table.meta().count(), -1);
   };
 
   uimax_t &count() { return m_count; };
@@ -323,28 +328,44 @@ template <typename TableType, int Col> struct table_iterator {
 template <typename... Types> struct table_col_types;
 template <typename Type0> struct table_col_types<Type0> {
   static constexpr ui8_t COL_COUNT = 1;
-  template <int N> static auto col_type();
-  template <> static auto col_type<0>() { return Type0{}; };
+  template <int N> static auto col_element_type();
+  template <> static auto col_element_type<0>() { return Type0{}; };
+};
+
+template <typename T, table_memory_layout MemoryLayout> struct col;
+template <typename T> struct col<T, table_memory_layout::POOL> {
+  T *m_data;
+  T *&data() { return m_data; };
+  T &at(uimax_t p_index) { return m_data[p_index]; };
+};
+template <typename T> struct col<T, table_memory_layout::VECTOR> {
+  T *m_data;
+  T *&data() { return m_data; };
+  T &at(uimax_t p_index) { return m_data[p_index]; };
 };
 
 template <typename Type0, typename Type1> struct table_col_types<Type0, Type1> {
   static constexpr ui8_t COL_COUNT = 2;
-  template <int N> static auto col_type();
-  template <> static auto col_type<0>() { return Type0{}; };
-  template <> static auto col_type<1>() { return Type1{}; };
+  template <int N> static auto col_element_type();
+  template <> static auto col_element_type<0>() { return Type0{}; };
+  template <> static auto col_element_type<1>() { return Type1{}; };
 };
 
-template <typename ColTypes, int Col = ColTypes::COL_COUNT>
-struct table_col_ptrs;
-template <typename ColTypes> struct table_col_ptrs<ColTypes, 1> {
-  decltype(ColTypes::template col_type<0>()) *m_col_0;
+template <typename ColTypes, table_memory_layout MemoryLayout,
+          int Col = ColTypes::COL_COUNT>
+struct table_cols;
+template <typename ColTypes, table_memory_layout MemoryLayout>
+struct table_cols<ColTypes, MemoryLayout, 1> {
+  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
 
   template <int N> auto &col();
   template <> auto &col<0>() { return m_col_0; };
 };
-template <typename ColTypes> struct table_col_ptrs<ColTypes, 2> {
-  decltype(ColTypes::template col_type<0>()) *m_col_0;
-  decltype(ColTypes::template col_type<1>()) *m_col_1;
+
+template <typename ColTypes, table_memory_layout MemoryLayout>
+struct table_cols<ColTypes, MemoryLayout, 2> {
+  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
+  col<decltype(ColTypes::template col_element_type<1>()), MemoryLayout> m_col_1;
 
   template <int N> auto &col();
   template <> auto &col<0>() { return m_col_0; };
@@ -359,7 +380,7 @@ struct table {
   static constexpr ui8_t COL_COUNT = ColTypes::COL_COUNT;
   meta_type m_meta;
   Hooks m_hooks;
-  table_col_ptrs<ColTypes> m_cols;
+  table_cols<ColTypes, MemoryLayout> m_cols;
 
   meta_type &meta() { return m_meta; };
 
@@ -381,54 +402,11 @@ struct table {
   };
 
   template <int N> static auto col_type() {
-    return ColTypes::template col_type<N>();
+    return ColTypes::template col_element_type<N>();
   };
   template <int N> auto &col() { return m_cols.template col<N>(); };
 
   template <int N> auto iter() { return table_iterator<table, N>(*this); };
 };
-
-#if 0
-
-template <typename Type0, typename Type1, typename Hooks>
-struct table<Type0, Type1, Hooks> {
-  using meta_type = details::table_meta<table_memory_layout::VECTOR>;
-  static constexpr ui8_t COL_COUNT = 2;
-  meta_type m_meta;
-  Hooks m_hooks;
-  Type0 *m_col0;
-  Type1 *m_col1;
-
-  meta_type &meta() { return m_meta; };
-
-  void register_hooks(const Hooks &p_hooks) { m_hooks = p_hooks; };
-
-  void allocate(uimax_t p_capacity) {
-    details::table_allocate<table>(*this, p_capacity);
-  };
-
-  void free() { details::table_free<table>(*this); };
-
-  uimax_t push_back(const Type0 &p_0, const Type1 &p_1) {
-    return details::table_push_back<table, Type0, Type1>(*this, p_0, p_1)
-        .m_index;
-  };
-
-  void remove_at(uimax_t p_index) {
-    details::table_remove_at<table>(*this, p_index);
-  };
-
-  template <int N> auto &col();
-  template <> auto &col<0>() { return m_col0; };
-  template <> auto &col<1>() { return m_col1; };
-
-  template <int N> static auto col_type();
-  template <> static auto col_type<0>() { return Type0{}; };
-  template <> static auto col_type<1>() { return Type1{}; };
-
-  template <int N> auto iter() { return table_iterator<table, N>(*this); };
-};
-
-#endif
 
 }; // namespace orm
