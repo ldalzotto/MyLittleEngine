@@ -17,121 +17,6 @@ namespace details {
 
 template <table_memory_layout MemoryLayout> struct table_meta {};
 
-template <> struct table_meta<table_memory_layout::POOL> {
-
-  static const table_memory_layout MEMORY_LAYOUT = table_memory_layout::POOL;
-
-  uimax_t m_capacity;
-  uimax_t m_count;
-
-  container::vector<uimax_t> m_free_elements;
-
-  void allocate(uimax_t p_capacity) {
-    m_capacity = p_capacity;
-    m_count = 0;
-    m_free_elements.allocate(0);
-  };
-
-  void free() { m_free_elements.free(); };
-
-  uimax_t next_free_element() {
-    if (m_free_elements.count() > 0) {
-      auto l_index = m_free_elements.at(m_free_elements.count() - 1);
-      m_free_elements.pop_back();
-      return l_index;
-    }
-    if (m_count < m_capacity) {
-      m_count += 1;
-      return m_count - 1;
-    }
-    return -1;
-  };
-
-  ui8_t try_resize(uimax_t p_new_capacity) {
-    if (m_capacity < p_new_capacity) {
-      auto l_calculated_new_capacity = m_capacity;
-      if (l_calculated_new_capacity == 0) {
-        l_calculated_new_capacity = 1;
-      };
-      while (l_calculated_new_capacity < p_new_capacity) {
-        l_calculated_new_capacity *= 2;
-      }
-      m_capacity = l_calculated_new_capacity;
-      return 1;
-    }
-    return 0;
-  };
-
-  void remove_at(uimax_t p_index) {
-    assert_debug(__is_element_allocated(p_index));
-    m_free_elements.push_back(p_index);
-    m_count -= 1;
-  };
-
-private:
-  ui8_t __is_element_allocated(uimax_t p_index) const {
-    for (auto i = 0; i < m_free_elements.count(); ++i) {
-      if (m_free_elements.at(i) == p_index) {
-        return 0;
-      }
-    }
-    return 1;
-  };
-};
-
-template <> struct table_meta<table_memory_layout::VECTOR> {
-
-  static const table_memory_layout MEMORY_LAYOUT = table_memory_layout::VECTOR;
-
-  uimax_t m_capacity;
-  uimax_t m_count;
-
-  uimax_t &count() { return m_count; };
-
-  void allocate(uimax_t p_capacity) {
-    m_capacity = p_capacity;
-    m_count = 0;
-  };
-
-  void free(){};
-
-  uimax_t next_free_element() {
-    if (m_count < m_capacity) {
-      m_count += 1;
-      return m_count - 1;
-    }
-    return -1;
-  };
-
-  ui8_t try_resize(uimax_t p_new_capacity) {
-    if (m_capacity < p_new_capacity) {
-      auto l_calculated_new_capacity = m_capacity;
-      if (l_calculated_new_capacity == 0) {
-        l_calculated_new_capacity = 1;
-      };
-      while (l_calculated_new_capacity < p_new_capacity) {
-        l_calculated_new_capacity *= 2;
-      }
-      m_capacity = l_calculated_new_capacity;
-      return 1;
-    }
-    return 0;
-  };
-
-  void remove_at(uimax_t p_index) { m_count -= 1; };
-};
-
-// TODO
-template <> struct table_meta<table_memory_layout::POOL_FIXED> {
-  static const table_memory_layout MEMORY_LAYOUT =
-      table_memory_layout::POOL_FIXED;
-
-  struct chunk {
-    container::vector<uimax_t> m_free_elements;
-    container::vector<uimax_t> m_allocated_elements;
-  };
-};
-
 template <typename TableType> struct table_allocate {
 
 private:
@@ -223,12 +108,15 @@ private:
   };
 };
 
+template <int Col, table_memory_layout MemoryLayout>
+struct table_remove_at_specialized;
+
 template <typename TableType> struct table_remove_at {
   table_remove_at(TableType &p_table, uimax_t p_index) {
     p_table.meta().remove_at(p_index);
     __table_before_remove<0>{}(p_table, p_index);
-    __table_remove_at<0, TableType::meta_type::MEMORY_LAYOUT>{}(p_table,
-                                                                p_index);
+    table_remove_at_specialized<0, TableType::meta_type::MEMORY_LAYOUT>{}(
+        p_table, p_index);
   };
 
 private:
@@ -241,32 +129,6 @@ private:
       }
     };
   };
-
-  template <int Col, table_memory_layout MemoryLayout> struct __table_remove_at;
-
-  template <int Col> struct __table_remove_at<Col, table_memory_layout::POOL> {
-    void operator()(TableType &p_table, uimax_t p_index) {
-      if constexpr (Col < TableType::COL_COUNT - 1) {
-        __table_remove_at<Col + 1, table_memory_layout::POOL>{}(p_table,
-                                                                p_index);
-      }
-    };
-  };
-
-  template <int Col>
-  struct __table_remove_at<Col, table_memory_layout::VECTOR> {
-    void operator()(TableType &p_table, uimax_t p_index) {
-      if (p_index < p_table.meta().m_capacity) {
-        auto &l_col = p_table.template col<Col>();
-        sys::memmove_up(l_col.data(), p_index + 1, 1, 1);
-      }
-
-      if constexpr (Col < TableType::COL_COUNT - 1) {
-        __table_remove_at<Col + 1, table_memory_layout::VECTOR>{}(p_table,
-                                                                  p_index);
-      }
-    };
-  };
 };
 
 }; // namespace details
@@ -274,32 +136,6 @@ private:
 namespace details {
 
 template <typename T, table_memory_layout MemoryLayout> struct __table_iterator;
-
-template <typename T> struct __table_iterator<T, table_memory_layout::VECTOR> {
-  T *&m_begin;
-  uimax_t &m_count;
-  uimax_t m_index;
-
-  __table_iterator(T *&p_begin, uimax_t &p_count, uimax_t p_index)
-      : m_begin(p_begin), m_count(p_count), m_index(p_index){};
-
-  template <typename TableType, int Col>
-  static __table_iterator make(TableType &p_table) {
-    return __table_iterator(p_table.template col<Col>().data(),
-                            p_table.meta().count(), -1);
-  };
-
-  uimax_t &count() { return m_count; };
-
-  ui8_t next() {
-    m_index += 1;
-    return m_index < m_count;
-  };
-
-  T &value() { return m_begin[m_index]; };
-};
-
-// TODO -> have a pool iterator
 
 }; // namespace details
 
@@ -408,5 +244,174 @@ struct table {
 
   template <int N> auto iter() { return table_iterator<table, N>(*this); };
 };
+
+namespace details {
+template <> struct table_meta<table_memory_layout::POOL> {
+
+  static const table_memory_layout MEMORY_LAYOUT = table_memory_layout::POOL;
+
+  uimax_t m_capacity;
+  uimax_t m_count;
+
+  container::vector<uimax_t> m_free_elements;
+
+  void allocate(uimax_t p_capacity) {
+    m_capacity = p_capacity;
+    m_count = 0;
+    m_free_elements.allocate(0);
+  };
+
+  void free() { m_free_elements.free(); };
+
+  uimax_t next_free_element() {
+    if (m_free_elements.count() > 0) {
+      auto l_index = m_free_elements.at(m_free_elements.count() - 1);
+      m_free_elements.pop_back();
+      return l_index;
+    }
+    if (m_count < m_capacity) {
+      m_count += 1;
+      return m_count - 1;
+    }
+    return -1;
+  };
+
+  ui8_t try_resize(uimax_t p_new_capacity) {
+    if (m_capacity < p_new_capacity) {
+      auto l_calculated_new_capacity = m_capacity;
+      if (l_calculated_new_capacity == 0) {
+        l_calculated_new_capacity = 1;
+      };
+      while (l_calculated_new_capacity < p_new_capacity) {
+        l_calculated_new_capacity *= 2;
+      }
+      m_capacity = l_calculated_new_capacity;
+      return 1;
+    }
+    return 0;
+  };
+
+  void remove_at(uimax_t p_index) {
+    assert_debug(__is_element_allocated(p_index));
+    m_free_elements.push_back(p_index);
+    m_count -= 1;
+  };
+
+private:
+  ui8_t __is_element_allocated(uimax_t p_index) const {
+    for (auto i = 0; i < m_free_elements.count(); ++i) {
+      if (m_free_elements.at(i) == p_index) {
+        return 0;
+      }
+    }
+    return 1;
+  };
+};
+
+template <int Col>
+struct table_remove_at_specialized<Col, table_memory_layout::POOL> {
+  template <typename TableType>
+  void operator()(TableType &p_table, uimax_t p_index) {
+    if constexpr (Col < TableType::COL_COUNT - 1) {
+      table_remove_at_specialized<Col + 1, table_memory_layout::POOL>{}(
+          p_table, p_index);
+    }
+  };
+};
+
+template <> struct table_meta<table_memory_layout::VECTOR> {
+
+  static const table_memory_layout MEMORY_LAYOUT = table_memory_layout::VECTOR;
+
+  uimax_t m_capacity;
+  uimax_t m_count;
+
+  uimax_t &count() { return m_count; };
+
+  void allocate(uimax_t p_capacity) {
+    m_capacity = p_capacity;
+    m_count = 0;
+  };
+
+  void free(){};
+
+  uimax_t next_free_element() {
+    if (m_count < m_capacity) {
+      m_count += 1;
+      return m_count - 1;
+    }
+    return -1;
+  };
+
+  ui8_t try_resize(uimax_t p_new_capacity) {
+    if (m_capacity < p_new_capacity) {
+      auto l_calculated_new_capacity = m_capacity;
+      if (l_calculated_new_capacity == 0) {
+        l_calculated_new_capacity = 1;
+      };
+      while (l_calculated_new_capacity < p_new_capacity) {
+        l_calculated_new_capacity *= 2;
+      }
+      m_capacity = l_calculated_new_capacity;
+      return 1;
+    }
+    return 0;
+  };
+
+  void remove_at(uimax_t p_index) { m_count -= 1; };
+};
+
+template <int Col>
+struct table_remove_at_specialized<Col, table_memory_layout::VECTOR> {
+  template <typename TableType>
+  void operator()(TableType &p_table, uimax_t p_index) {
+    if (p_index < p_table.meta().m_capacity) {
+      auto &l_col = p_table.template col<Col>();
+      sys::memmove_up(l_col.data(), p_index + 1, 1, 1);
+    }
+
+    if constexpr (Col < TableType::COL_COUNT - 1) {
+      table_remove_at_specialized<Col + 1, table_memory_layout::VECTOR>{}(
+          p_table, p_index);
+    }
+  };
+};
+
+template <typename T> struct __table_iterator<T, table_memory_layout::VECTOR> {
+  T *&m_begin;
+  uimax_t &m_count;
+  uimax_t m_index;
+
+  __table_iterator(T *&p_begin, uimax_t &p_count, uimax_t p_index)
+      : m_begin(p_begin), m_count(p_count), m_index(p_index){};
+
+  template <typename TableType, int Col>
+  static __table_iterator make(TableType &p_table) {
+    return __table_iterator(p_table.template col<Col>().data(),
+                            p_table.meta().count(), -1);
+  };
+
+  uimax_t &count() { return m_count; };
+
+  ui8_t next() {
+    m_index += 1;
+    return m_index < m_count;
+  };
+
+  T &value() { return m_begin[m_index]; };
+};
+
+// TODO
+template <> struct table_meta<table_memory_layout::POOL_FIXED> {
+  static const table_memory_layout MEMORY_LAYOUT =
+      table_memory_layout::POOL_FIXED;
+
+  struct chunk {
+    container::vector<uimax_t> m_free_elements;
+    container::vector<uimax_t> m_allocated_elements;
+  };
+};
+
+}; // namespace details
 
 }; // namespace orm
