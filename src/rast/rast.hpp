@@ -116,8 +116,8 @@ struct bgfx_impl {
     };
 
     void clear_commands(CommandsMemoryType &p_commands_memory) {
-      for (auto l_it = commands.iter(0); l_it; ++l_it) {
-        p_commands_memory.free(*l_it);
+      for (auto l_it = 0; l_it < commands.count(); ++l_it) {
+        p_commands_memory.free(commands.at(l_it));
       }
       commands.clear();
     };
@@ -146,12 +146,12 @@ struct bgfx_impl {
     };
 
     void free() {
-      assert_debug(vertexbuffers.free_elements_size() == 0);
-      assert_debug(indexbuffers.free_elements_size() == 0);
+      assert_debug(!vertexbuffers.has_free_elements());
+      assert_debug(!indexbuffers.has_free_elements());
       assert_debug(renderpasses.count() == 1);
-      for (auto l_render_pass = renderpasses.iter(0); l_render_pass;
-           ++l_render_pass) {
-        (*l_render_pass).free();
+      for (auto l_render_pass_it = 0; l_render_pass_it < renderpasses.count();
+           ++l_render_pass_it) {
+        renderpasses.at(l_render_pass_it).free();
       }
       renderpasses.free();
       framebuffers.free();
@@ -191,14 +191,14 @@ struct bgfx_impl {
       l_texture.info = p_texture_info;
       l_texture.buffer = allocate_buffer(l_image_size);
       bgfx::TextureHandle l_texture_handle;
-      l_texture_handle.idx = uint16_t(textures.malloc(l_texture).value);
+      l_texture_handle.idx = textures.malloc(l_texture);
 
       return l_texture_handle;
     };
 
     void free_texture(bgfx::TextureHandle p_texture) {
-      free_buffer(textures.at(uimax(p_texture.idx)).buffer);
-      textures.free(uimax(p_texture.idx));
+      free_buffer(textures.at(p_texture.idx).buffer);
+      textures.free(p_texture.idx);
     };
 
     bgfx::FrameBufferHandle
@@ -206,14 +206,14 @@ struct bgfx_impl {
       FrameBuffer l_frame_buffer;
       l_frame_buffer.texture = p_texture;
       bgfx::FrameBufferHandle l_handle;
-      l_handle.idx = framebuffers.malloc(l_frame_buffer).value;
+      l_handle.idx = framebuffers.malloc(l_frame_buffer);
       return l_handle;
     };
 
     void free_frame_buffer(bgfx::FrameBufferHandle p_frame_buffer) {
-      auto &l_frame_buffer = framebuffers.at(uimax(p_frame_buffer.idx));
+      auto &l_frame_buffer = framebuffers.at(p_frame_buffer.idx);
       free_texture(l_frame_buffer.texture);
-      framebuffers.free(uimax(p_frame_buffer.idx));
+      framebuffers.free(p_frame_buffer.idx);
     };
 
     bgfx::VertexBufferHandle
@@ -223,12 +223,12 @@ struct bgfx_impl {
       l_vertex_buffer.layout = p_layout;
       l_vertex_buffer.memory = p_memory;
       bgfx::VertexBufferHandle l_handle;
-      l_handle.idx = vertexbuffers.malloc(l_vertex_buffer).value;
+      l_handle.idx = vertexbuffers.malloc(l_vertex_buffer);
       return l_handle;
     };
 
     void free_vertex_buffer(bgfx::VertexBufferHandle p_handle) {
-      auto &l_vertex_buffer = vertexbuffers.at(uimax(p_handle.idx));
+      auto &l_vertex_buffer = vertexbuffers.at(p_handle.idx);
       free_buffer(l_vertex_buffer.memory);
     };
 
@@ -237,12 +237,12 @@ struct bgfx_impl {
       IndexBuffer l_index_buffer;
       l_index_buffer.memory = p_memory;
       bgfx::IndexBufferHandle l_handle;
-      l_handle.idx = indexbuffers.malloc(l_index_buffer).value;
+      l_handle.idx = indexbuffers.malloc(l_index_buffer);
       return l_handle;
     };
 
     void free_index_buffer(bgfx::IndexBufferHandle p_handle) {
-      auto &l_index_buffer = indexbuffers.at(uimax(p_handle.idx));
+      auto &l_index_buffer = indexbuffers.at(p_handle.idx);
       free_buffer(l_index_buffer.memory);
     };
 
@@ -313,8 +313,8 @@ struct bgfx_impl {
 
     // TOOD -> do stuffs
 
-    for (auto l_it = heap.renderpasses.iter(0); l_it; ++l_it) {
-      RenderPass &l_render_pass = *l_it;
+    for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
+      RenderPass &l_render_pass = heap.renderpasses.at(l_it);
       l_render_pass.clear_commands(heap.commands_memory);
     }
   };

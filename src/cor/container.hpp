@@ -32,6 +32,16 @@ template <typename T> struct range {
   uimax_t size_bytes() const { return sizeof(T) * m_count; };
 };
 
+template <typename T> struct range_ref {
+  T *&m_begin;
+  uimax_t &m_count;
+
+  range_ref(T *&p_begin, uimax_t &p_count)
+      : m_begin(p_begin), m_count(p_count){
+
+                          };
+};
+
 template <typename T, typename AllocFunctions = malloc_free_functions>
 struct span {
   T *m_data;
@@ -149,25 +159,18 @@ struct vector {
     return l_range;
   };
 
-  struct iterator {
-    vector &m_vector;
-    uimax_t m_index;
-
-    iterator(vector &p_vector, uimax_t p_index)
-        : m_vector(p_vector), m_index(p_index){};
-
-    uimax_t &index() { return m_index; }
-    T &operator*() { return m_vector.at(m_index); };
-    operator bool() { return m_index < m_vector.m_count; };
-    void operator++() { m_index += 1; };
-  };
-
-  iterator iter(uimax_t p_begin) { return iterator(*this, p_begin); };
-
 private:
   void __resize_if_necessary(uimax_t p_new_capacity) {
     if (capacity() < p_new_capacity) {
-      m_span.realloc(p_new_capacity);
+      auto l_calculated_new_capacity = capacity();
+      if (l_calculated_new_capacity == 0) {
+        l_calculated_new_capacity = 1;
+      };
+      while (l_calculated_new_capacity < p_new_capacity) {
+        l_calculated_new_capacity *= 2;
+      }
+
+      m_span.realloc(l_calculated_new_capacity);
     }
   };
 };
@@ -175,7 +178,7 @@ private:
 template <typename T> struct object_pool_indexed {
 private:
   vector<T> m_data;
-  vector<uimax> m_free_elements;
+  vector<uimax_t> m_free_elements;
 
 public:
   void allocate(uimax_t p_capacity) {
@@ -189,32 +192,36 @@ public:
   };
 
 public:
-  uimax malloc(const T &p_element) {
-    if (m_free_elements.count() > 0) {
+  uimax_t malloc(const T &p_element) {
+    if (has_free_elements()) {
       auto l_index = m_free_elements.at(m_free_elements.count() - 1);
       m_free_elements.pop_back();
-      m_data.at(l_index.value) = p_element;
+      m_data.at(l_index) = p_element;
       return l_index;
     } else {
       m_data.push_back(p_element);
-      return uimax(m_data.count() - 1);
+      return m_data.count() - 1;
     }
   };
 
-  void free(uimax p_index) {
+  void free(uimax_t p_index) {
     assert_debug(__is_element_allocated(p_index));
     m_free_elements.push_back(p_index);
   };
 
-  T &at(uimax p_index) {
+  T &at(uimax_t p_index) {
     assert_debug(__is_element_allocated(p_index));
-    return m_data.at(p_index.value);
+    return m_data.at(p_index);
   };
 
-  ui32_t free_elements_size() { return m_free_elements.count(); };
+  ui8_t is_element_allocated(uimax_t p_index) const {
+    return __is_element_allocated(p_index);
+  };
+
+  ui8_t has_free_elements() const { return m_free_elements.count() > 0; };
 
 private:
-  i8_t __is_element_allocated(uimax p_index) {
+  ui8_t __is_element_allocated(uimax_t p_index) {
     for (auto i = 0; i < m_free_elements.count(); ++i) {
       auto &l_free_index = m_free_elements.at(i);
       if (l_free_index == p_index) {
@@ -226,6 +233,7 @@ private:
   };
 };
 
+// TODO
 template <typename Key, typename Mapped, typename Hash = hash::hash<Key>>
 struct unordered_map {
 private:
