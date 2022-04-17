@@ -34,21 +34,73 @@ void container_tests() {
   l_vector.insert_at(l_span.range(), 0);
   l_vector.free();
 
-  orm::table<orm::table_col_types<i32_t, f32_t>,
-             orm::table_memory_layout::VECTOR>
-      l_table;
-  l_table.allocate(0);
-  auto l_index_0 = l_table.push_back(2, 10.0f);
-  auto l_index_1 = l_table.push_back(3, 10.0f);
-  l_table.push_back(4, 10.0f);
+  {
+    orm::table<orm::table_col_types<i32_t, f32_t>,
+               orm::table_memory_layout::VECTOR>
+        l_table;
+    l_table.allocate(0);
+    auto l_index_0 = l_table.push_back(2, 10);
+    auto l_index_1 = l_table.push_back(3, 11);
+    auto l_index_2 = l_table.push_back(4, 12);
 
-  l_table.remove_at(l_index_1);
+    sys::sassert(l_table.at<0>(l_index_0) == 2);
+    sys::sassert(l_table.at<1>(l_index_0) == 10);
+    sys::sassert(l_table.at<0>(l_index_1) == 3);
+    sys::sassert(l_table.at<1>(l_index_1) == 11);
+    sys::sassert(l_table.at<0>(l_index_2) == 4);
+    sys::sassert(l_table.at<1>(l_index_2) == 12);
 
-  for (auto l_iter = l_table.iter<0>(); l_iter.next();) {
-    l_iter.value() = 10;
+
+    l_table.remove_at(l_index_1);
+
+    for (auto l_iter = l_table.iter<0>(); l_iter.next();) {
+      l_iter.value() = 10;
+    }
+
+    l_table.free();
   }
 
-  l_table.free();
+  {
+    orm::table<orm::table_col_types<i32_t, i32_t>,
+               orm::table_memory_layout::POOL>
+        l_table;
+    l_table.allocate(0);
+    auto l_index_0 = l_table.push_back(2, 10);
+    auto l_index_1 = l_table.push_back(3, 11);
+    auto l_index_2 = l_table.push_back(4, 12);
+
+    sys::sassert(l_table.at<0>(l_index_0) == 2);
+    sys::sassert(l_table.at<1>(l_index_0) == 10);
+    sys::sassert(l_table.at<0>(l_index_1) == 3);
+    sys::sassert(l_table.at<1>(l_index_1) == 11);
+    sys::sassert(l_table.at<0>(l_index_2) == 4);
+    sys::sassert(l_table.at<1>(l_index_2) == 12);
+
+    l_table.remove_at(l_index_1);
+
+    l_table.free();
+  }
+
+  {
+    orm::table<orm::table_col_types<i32_t, i32_t>,
+               orm::table_memory_layout::POOL_FIXED>
+        l_table;
+    l_table.allocate(1000);
+    auto l_index_0 = l_table.push_back(2, 10);
+    auto l_index_1 = l_table.push_back(3, 11);
+    auto l_index_2 = l_table.push_back(4, 12);
+
+    sys::sassert(l_table.at<0>(l_index_0) == 2);
+    sys::sassert(l_table.at<1>(l_index_0) == 10);
+    sys::sassert(l_table.at<0>(l_index_1) == 3);
+    sys::sassert(l_table.at<1>(l_index_1) == 11);
+    sys::sassert(l_table.at<0>(l_index_2) == 4);
+    sys::sassert(l_table.at<1>(l_index_2) == 12);
+
+    l_table.remove_at(l_index_1);
+
+    l_table.free();
+  }
 };
 
 struct PosColorVertex {

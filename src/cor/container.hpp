@@ -54,6 +54,10 @@ struct span {
 
   void free() { AllocFunctions::free(m_data); };
 
+  uimax_t& count(){
+    return m_count;
+  };
+
   void realloc(uimax_t p_new_count) {
     m_count = p_new_count;
     m_data = (T *)AllocFunctions::realloc(m_data, m_count * sizeof(T));
@@ -80,6 +84,11 @@ struct span {
 
     sys::memmove(l_dst, l_src, l_byte_size);
   };
+
+  T& at(uimax_t p_index){
+    assert_debug(p_index < m_count);
+    return m_data[p_index];
+  }
 
   range<T> range() {
     container::range<T> l_range;
