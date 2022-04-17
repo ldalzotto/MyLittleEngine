@@ -34,7 +34,9 @@ void container_tests() {
   l_vector.insert_at(l_span.range(), 0);
   l_vector.free();
 
-  orm::table<i32_t, f32_t, orm::no_hooks> l_table;
+  orm::table<orm::table_col_types<i32_t, f32_t>,
+             orm::table_memory_layout::VECTOR>
+      l_table;
   l_table.allocate(0);
   auto l_index_0 = l_table.push_back(2, 10.0f);
   auto l_index_1 = l_table.push_back(3, 10.0f);

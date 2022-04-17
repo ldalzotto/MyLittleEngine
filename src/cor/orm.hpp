@@ -298,6 +298,13 @@ template <typename T> struct __table_iterator<T, table_memory_layout::VECTOR> {
 
 }; // namespace details
 
+struct no_hooks {
+  template <typename TableType, int Col>
+  void
+  before_remove(TableType &p_table, uimax_t p_index,
+                decltype(TableType::template col_type<Col>()) &p_element){};
+};
+
 template <typename TableType, int Col> struct table_iterator {
   using element_type = decltype(TableType::template col_type<Col>());
   using iternal_it_type =
@@ -313,16 +320,50 @@ template <typename TableType, int Col> struct table_iterator {
   element_type &value() { return m_internal_it.value(); };
 };
 
-template <typename... Types> struct table;
-template <typename... Tables> struct db;
-
-template <typename Type0> struct table<Type0> {
-  using meta_type = details::table_meta<table_memory_layout::POOL>;
+template <typename... Types> struct table_col_types;
+template <typename Type0> struct table_col_types<Type0> {
   static constexpr ui8_t COL_COUNT = 1;
+  template <int N> static auto col_type();
+  template <> static auto col_type<0>() { return Type0{}; };
+};
+
+template <typename Type0, typename Type1> struct table_col_types<Type0, Type1> {
+  static constexpr ui8_t COL_COUNT = 2;
+  template <int N> static auto col_type();
+  template <> static auto col_type<0>() { return Type0{}; };
+  template <> static auto col_type<1>() { return Type1{}; };
+};
+
+template <typename ColTypes, int Col = ColTypes::COL_COUNT>
+struct table_col_ptrs;
+template <typename ColTypes> struct table_col_ptrs<ColTypes, 1> {
+  decltype(ColTypes::template col_type<0>()) *m_col_0;
+
+  template <int N> auto &col();
+  template <> auto &col<0>() { return m_col_0; };
+};
+template <typename ColTypes> struct table_col_ptrs<ColTypes, 2> {
+  decltype(ColTypes::template col_type<0>()) *m_col_0;
+  decltype(ColTypes::template col_type<1>()) *m_col_1;
+
+  template <int N> auto &col();
+  template <> auto &col<0>() { return m_col_0; };
+  template <> auto &col<1>() { return m_col_1; };
+};
+
+template <typename ColTypes,
+          table_memory_layout MemoryLayout = table_memory_layout::POOL,
+          typename Hooks = no_hooks>
+struct table {
+  using meta_type = details::table_meta<MemoryLayout>;
+  static constexpr ui8_t COL_COUNT = ColTypes::COL_COUNT;
   meta_type m_meta;
-  Type0 *m_col0;
+  Hooks m_hooks;
+  table_col_ptrs<ColTypes> m_cols;
 
   meta_type &meta() { return m_meta; };
+
+  void register_hooks(const Hooks &p_hooks) { m_hooks = p_hooks; };
 
   void allocate(uimax_t p_capacity) {
     details::table_allocate<table>(*this, p_capacity);
@@ -330,19 +371,24 @@ template <typename Type0> struct table<Type0> {
 
   void free() { details::table_free<table>(*this); };
 
-  template <int N> auto &col();
-  template <> auto &col<0>() { return m_col0; };
+  template <typename... Types> uimax_t push_back(const Types &... p_elements) {
+    return details::table_push_back<table, Types...>(*this, p_elements...)
+        .m_index;
+  };
 
-  template <int N> static auto col_type();
-  template <> static auto col_type<0>() { return Type0{}; };
+  void remove_at(uimax_t p_index) {
+    details::table_remove_at<table>(*this, p_index);
+  };
+
+  template <int N> static auto col_type() {
+    return ColTypes::template col_type<N>();
+  };
+  template <int N> auto &col() { return m_cols.template col<N>(); };
+
+  template <int N> auto iter() { return table_iterator<table, N>(*this); };
 };
 
-struct no_hooks {
-  template <typename TableType, int Col>
-  void
-  before_remove(TableType &p_table, uimax_t p_index,
-                decltype(TableType::template col_type<Col>()) &p_element){};
-};
+#if 0
 
 template <typename Type0, typename Type1, typename Hooks>
 struct table<Type0, Type1, Hooks> {
@@ -383,19 +429,6 @@ struct table<Type0, Type1, Hooks> {
   template <int N> auto iter() { return table_iterator<table, N>(*this); };
 };
 
-namespace details {};
-
-template <typename Table0> struct db<Table0> {
-  static constexpr ui8_t TABLE_COUNT = 1;
-
-  Table0 m_table_0;
-
-  void allocate(uimax_t p_capacity) { m_table_0.allocate(p_capacity); };
-
-  void free() { m_table_0.free(); };
-
-  template <int T> auto &table();
-  template <> auto &table<0>() { return m_table_0; };
-};
+#endif
 
 }; // namespace orm
