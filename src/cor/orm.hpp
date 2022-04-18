@@ -161,42 +161,12 @@ template <typename TableType, int Col> struct table_iterator {
   element_type &value() { return m_internal_it.value(); };
 };
 
-template <typename... Types> struct table_col_types;
-template <typename Type0> struct table_col_types<Type0> {
-  static constexpr ui8_t COL_COUNT = 1;
-  template <int N> static auto col_element_type();
-  template <> static auto col_element_type<0>() { return Type0{}; };
-};
-
 template <typename T, table_memory_layout MemoryLayout> struct col;
-
-template <typename Type0, typename Type1> struct table_col_types<Type0, Type1> {
-  static constexpr ui8_t COL_COUNT = 2;
-  template <int N> static auto col_element_type();
-  template <> static auto col_element_type<0>() { return Type0{}; };
-  template <> static auto col_element_type<1>() { return Type1{}; };
-};
+template <typename... Types> struct table_col_types;
 
 template <typename ColTypes, table_memory_layout MemoryLayout,
           int Col = ColTypes::COL_COUNT>
 struct table_cols;
-template <typename ColTypes, table_memory_layout MemoryLayout>
-struct table_cols<ColTypes, MemoryLayout, 1> {
-  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
-
-  template <int N> auto &col();
-  template <> auto &col<0>() { return m_col_0; };
-};
-
-template <typename ColTypes, table_memory_layout MemoryLayout>
-struct table_cols<ColTypes, MemoryLayout, 2> {
-  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
-  col<decltype(ColTypes::template col_element_type<1>()), MemoryLayout> m_col_1;
-
-  template <int N> auto &col();
-  template <> auto &col<0>() { return m_col_0; };
-  template <> auto &col<1>() { return m_col_1; };
-};
 
 template <typename ColTypes,
           table_memory_layout MemoryLayout = table_memory_layout::POOL,
@@ -239,13 +209,15 @@ struct table {
   };
 };
 
+//////////////////// POOL SPECIALIZATION ////////////////////
+
 template <typename T> struct col<T, table_memory_layout::POOL> {
   T *m_data;
   T *&data() { return m_data; };
   T &at(uimax_t p_index) { return m_data[p_index]; };
 
   template <typename TableType> void allocate(TableType &p_table) {
-    m_data = (T*)sys::malloc(p_table.meta().m_capacity * sizeof(T));
+    m_data = (T *)sys::malloc(p_table.meta().m_capacity * sizeof(T));
   };
 
   template <typename TableType> void free(TableType &p_table) {
@@ -538,5 +510,91 @@ template <> struct table_meta<table_memory_layout::POOL_FIXED> {
 };
 
 }; // namespace details
+
+#pragma region TRIVIAL SPECIALIZATIONS
+
+#define table_col_types_col_element_type(p_number)                             \
+  template <> static auto col_element_type<p_number>() {                       \
+    return Type##p_number{};                                                   \
+  };
+
+template <typename Type0> struct table_col_types<Type0> {
+  static constexpr ui8_t COL_COUNT = 1;
+  template <int N> static auto col_element_type();
+  table_col_types_col_element_type(0);
+};
+
+template <typename Type0, typename Type1> struct table_col_types<Type0, Type1> {
+  static constexpr ui8_t COL_COUNT = 2;
+  template <int N> static auto col_element_type();
+  table_col_types_col_element_type(0);
+  table_col_types_col_element_type(1);
+};
+
+template <typename Type0, typename Type1, typename Type2>
+struct table_col_types<Type0, Type1, Type2> {
+  static constexpr ui8_t COL_COUNT = 3;
+  template <int N> static auto col_element_type();
+  table_col_types_col_element_type(0);
+  table_col_types_col_element_type(1);
+  table_col_types_col_element_type(2);
+};
+
+template <typename Type0, typename Type1, typename Type2, typename Type3>
+struct table_col_types<Type0, Type1, Type2, Type3> {
+  static constexpr ui8_t COL_COUNT = 4;
+  template <int N> static auto col_element_type();
+  table_col_types_col_element_type(0);
+  table_col_types_col_element_type(1);
+  table_col_types_col_element_type(2);
+  table_col_types_col_element_type(3);
+};
+
+#undef table_col_types_col_element_type
+
+template <typename ColTypes, table_memory_layout MemoryLayout>
+struct table_cols<ColTypes, MemoryLayout, 1> {
+  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
+
+  template <int N> auto &col();
+  template <> auto &col<0>() { return m_col_0; };
+};
+
+template <typename ColTypes, table_memory_layout MemoryLayout>
+struct table_cols<ColTypes, MemoryLayout, 2> {
+  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
+  col<decltype(ColTypes::template col_element_type<1>()), MemoryLayout> m_col_1;
+
+  template <int N> auto &col();
+  template <> auto &col<0>() { return m_col_0; };
+  template <> auto &col<1>() { return m_col_1; };
+};
+
+template <typename ColTypes, table_memory_layout MemoryLayout>
+struct table_cols<ColTypes, MemoryLayout, 3> {
+  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
+  col<decltype(ColTypes::template col_element_type<1>()), MemoryLayout> m_col_1;
+  col<decltype(ColTypes::template col_element_type<2>()), MemoryLayout> m_col_2;
+
+  template <int N> auto &col();
+  template <> auto &col<0>() { return m_col_0; };
+  template <> auto &col<1>() { return m_col_1; };
+  template <> auto &col<2>() { return m_col_2; };
+};
+template <typename ColTypes, table_memory_layout MemoryLayout>
+struct table_cols<ColTypes, MemoryLayout, 4> {
+  col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
+  col<decltype(ColTypes::template col_element_type<1>()), MemoryLayout> m_col_1;
+  col<decltype(ColTypes::template col_element_type<2>()), MemoryLayout> m_col_2;
+  col<decltype(ColTypes::template col_element_type<3>()), MemoryLayout> m_col_3;
+
+  template <int N> auto &col();
+  template <> auto &col<0>() { return m_col_0; };
+  template <> auto &col<1>() { return m_col_1; };
+  template <> auto &col<2>() { return m_col_2; };
+  template <> auto &col<3>() { return m_col_3; };
+};
+
+#pragma endregion TRIVIAL SPECIALIZATIONS
 
 }; // namespace orm
