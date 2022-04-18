@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cor/algorithm.hpp>
 #include <cor/cor.hpp>
 #include <cor/hash.hpp>
 #include <sys/sys.hpp>
@@ -22,8 +23,19 @@ struct malloc_free_functions {
 
 template <typename T> struct range {
 
+  using element_type = T;
+
   T *m_begin;
   uimax_t m_count;
+
+  const uimax_t &count() const { return m_count; };
+
+  T &at(uimax_t p_index) {
+    assert_debug(p_index < m_count);
+    return m_begin[p_index];
+  };
+
+  const T &at(uimax_t p_index) const { return ((range *)this)->at(p_index); };
 
   void copy_to(const range &p_to) const {
     sys::memcpy(p_to.m_begin, m_begin, m_count * sizeof(T));
@@ -54,9 +66,7 @@ struct span {
 
   void free() { AllocFunctions::free(m_data); };
 
-  uimax_t& count(){
-    return m_count;
-  };
+  uimax_t &count() { return m_count; };
 
   void realloc(uimax_t p_new_count) {
     m_count = p_new_count;
@@ -85,7 +95,7 @@ struct span {
     sys::memmove(l_dst, l_src, l_byte_size);
   };
 
-  T& at(uimax_t p_index){
+  T &at(uimax_t p_index) {
     assert_debug(p_index < m_count);
     return m_data[p_index];
   }
@@ -158,6 +168,12 @@ struct vector {
   void push_back(const T &p_element) { insert_at(p_element, m_count); };
   void pop_back() {
     assert_debug(m_count > 0);
+    m_count -= 1;
+  };
+
+  void remove_at(uimax_t p_index) {
+    assert_debug(p_index < m_count);
+    m_span.memmove_up(p_index, 1, 1);
     m_count -= 1;
   };
 
@@ -241,6 +257,96 @@ private:
     }
 
     return 1;
+  };
+};
+
+struct heap_chunk {
+  uimax_t m_begin;
+  uimax_t m_size;
+};
+
+namespace heap_chunks {
+static inline ui8_t find_next_block(const range<heap_chunk> &p_chunks,
+                                    uimax_t p_size, uimax_t *out_chunk_index) {
+  assert_debug(p_size > 0);
+  for (auto l_chunk_it = 0; l_chunk_it < p_chunks.count(); ++l_chunk_it) {
+    const heap_chunk &l_chunk = p_chunks.at(l_chunk_it);
+    if (l_chunk.m_size >= p_size) {
+      *out_chunk_index = l_chunk_it;
+      return 1;
+    }
+  }
+  return 0;
+};
+
+static inline void defragment(vector<heap_chunk> &p_chunks) {
+  auto l_range = p_chunks.range();
+  algorithm::sort(l_range, [&](heap_chunk &p_left, heap_chunk &p_right) {
+    return p_left.m_begin < p_right.m_begin;
+  });
+
+  for (auto l_range_reverse = p_chunks.count() - 1; l_range_reverse >= 1;
+       l_range_reverse--) {
+    auto &l_next = p_chunks.at(l_range_reverse);
+    auto &l_previous = p_chunks.at(l_range_reverse - 1);
+    if (l_previous.m_begin + l_previous.m_size == l_next.m_begin) {
+      l_previous.m_size += l_next.m_size;
+      p_chunks.pop_back();
+      l_range_reverse -= 1;
+    }
+  }
+};
+
+}; // namespace heap_chunks
+
+struct heap {
+  uimax_t m_chunk_size;
+  span<ui8_t> m_buffer;
+  vector<heap_chunk> m_free_chunks;
+  vector<heap_chunk> m_allocated_chunk;
+
+  void allocate(uimax_t p_chunk_size) {
+    m_chunk_size = p_chunk_size;
+    m_buffer.allocate(0);
+    m_free_chunks.allocate(0);
+    m_allocated_chunk.allocate(0);
+  };
+
+  void free() {
+    m_buffer.free();
+    m_free_chunks.free();
+    m_allocated_chunk.free();
+  };
+
+  uimax_t malloc(uimax_t p_size) {
+    uimax_t l_chunk_index = -1;
+    if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
+                                      &l_chunk_index)) {
+      heap_chunks::defragment(m_free_chunks);
+      if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
+                                        &l_chunk_index)) {
+        __push_new_chunk();
+        heap_chunks::find_next_block(m_free_chunks.range(), p_size,
+                                     &l_chunk_index);
+      }
+    }
+
+    assert_debug(l_chunk_index != -1);
+  };
+
+  void free(uimax_t p_index) {
+    auto &l_chunk = m_allocated_chunk.at(p_index);
+    m_free_chunks.push_back(l_chunk);
+    m_allocated_chunk.remove_at(p_index);
+  };
+
+private:
+  void __push_new_chunk() {
+    heap_chunk l_chunk;
+    l_chunk.m_begin = m_buffer.count();
+    l_chunk.m_size = m_chunk_size;
+    m_free_chunks.push_back(l_chunk);
+    m_buffer.realloc(m_buffer.count() + l_chunk.m_size);
   };
 };
 
