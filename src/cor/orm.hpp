@@ -110,7 +110,6 @@ template <typename TableType> struct table_remove_at {
   };
 
 private:
-
   template <int Col> struct __table_remove_at {
     void operator()(TableType &p_table, uimax_t p_index) {
       p_table.template col<Col>().remove_at(p_table, p_index);
@@ -128,7 +127,6 @@ namespace details {
 template <typename T, table_memory_layout MemoryLayout> struct __table_iterator;
 
 }; // namespace details
-
 
 template <typename TableType, int Col> struct table_iterator {
   using element_type = decltype(TableType::template col_type<Col>());
@@ -186,6 +184,73 @@ struct table {
 
   template <int N> auto at(uimax_t p_index) -> decltype(col_type<N>()) & {
     return m_cols.template col<N>().at(p_index);
+  };
+};
+
+namespace details {
+
+template <typename DbType> struct db_allocate {
+  template <typename... Capacities>
+  db_allocate(DbType &p_db, const Capacities &... p_capacities) {
+    __db_allocate<0, Capacities...>{}(p_db, p_capacities...);
+  };
+
+private:
+  template <int Tab, typename Capacity, typename... NextCapacities>
+  struct __db_allocate {
+    void operator()(DbType &p_db, const Capacity &p_capacity,
+                    const NextCapacities &... p_next_capacities) {
+      auto &l_table = p_db.template table<Tab>();
+      l_table.allocate(p_capacity);
+      if constexpr (Tab < DbType::TABLE_COUNT - 1) {
+        __db_allocate<Tab + 1, NextCapacities...>{}(p_db, p_next_capacities...);
+      }
+    };
+  };
+};
+
+template <typename DbType> struct db_free {
+  db_free(DbType &p_db) { __db_free<0>{}(p_db); };
+
+private:
+  template <int Tab> struct __db_free {
+    void operator()(DbType &p_db) {
+      auto &l_table = p_db.template table<Tab>();
+      l_table.free();
+      if constexpr (Tab < DbType::TABLE_COUNT - 1) {
+        __db_free<Tab + 1>{}(p_db);
+      }
+    };
+  };
+};
+
+}; // namespace details
+
+template <typename... DbTableTypes> struct db_table_types;
+template <typename DbTableTypes, int TableCount = DbTableTypes::TABLE_COUNT>
+struct db_tables;
+
+template <typename DbTableTypes> struct db {
+  static constexpr int TABLE_COUNT = DbTableTypes::TABLE_COUNT;
+  db_tables<DbTableTypes> m_tables;
+  template <int Tab> auto &table() { return m_tables.template table<Tab>(); };
+  template <int Tab> static auto table_type() {
+    return DbTableTypes::template table_type<Tab>();
+  };
+
+  template <typename... Capacities> void allocate(Capacities... p_capacities) {
+    details::db_allocate<db>(*this, p_capacities...);
+  };
+  void free() { details::db_free<db>(*this); };
+
+  template <int Tab, typename... Types>
+  uimax_t push_back(const Types &... p_types) {
+    return table<Tab>().push_back(p_types...);
+  };
+
+  template<int Tab, int Col>
+  auto& at(uimax_t p_index){
+    return table<Tab>().template at<Col>(p_index);
   };
 };
 
@@ -573,6 +638,36 @@ struct table_cols<ColTypes, MemoryLayout, 4> {
   template <> auto &col<1>() { return m_col_1; };
   template <> auto &col<2>() { return m_col_2; };
   template <> auto &col<3>() { return m_col_3; };
+};
+
+template <typename Table0> struct db_table_types<Table0> {
+  static constexpr int TABLE_COUNT = 1;
+  template <int N> static auto table_type();
+  template <> static auto table_type<0>() { return Table0{}; };
+};
+
+template <typename Table0, typename Table1>
+struct db_table_types<Table0, Table1> {
+  static constexpr int TABLE_COUNT = 2;
+  template <int N> static auto table_type();
+  template <> static auto table_type<0>() { return Table0{}; };
+  template <> static auto table_type<1>() { return Table1{}; };
+};
+
+template <typename DbTableTypes> struct db_tables<DbTableTypes, 1> {
+  decltype(DbTableTypes::template table_type<0>()) m_table_0;
+
+  template <int N> auto &table();
+  template <> auto &table<0>() { return m_table_0; };
+};
+
+template <typename DbTableTypes> struct db_tables<DbTableTypes, 2> {
+  decltype(DbTableTypes::template table_type<0>()) m_table_0;
+  decltype(DbTableTypes::template table_type<1>()) m_table_1;
+
+  template <int N> auto &table();
+  template <> auto &table<0>() { return m_table_0; };
+  template <> auto &table<1>() { return m_table_1; };
 };
 
 #pragma endregion TRIVIAL SPECIALIZATIONS

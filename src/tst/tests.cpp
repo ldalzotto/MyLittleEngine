@@ -104,6 +104,22 @@ void container_tests() {
 
     l_table.free();
   }
+
+  {
+    using table_0 = orm::table<orm::table_col_types<i32_t, i32_t, ui8_t>,
+                               orm::table_memory_layout::POOL_FIXED>;
+    using table_1 = orm::table<orm::table_col_types<i32_t, i32_t>,
+                               orm::table_memory_layout::VECTOR>;
+    orm::db<orm::db_table_types<table_0, table_1>> l_db;
+    l_db.allocate(100, 0);
+    auto l_index = l_db.push_back<1>(1, 2);
+    l_db.push_back<0>(1, 2, 3);
+
+    sys::sassert(l_db.at<1, 0>(l_index) == 1);
+    sys::sassert(l_db.at<1, 1>(l_index) == 2);
+
+    l_db.free();
+  }
 };
 
 struct PosColorVertex {
