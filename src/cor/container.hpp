@@ -299,26 +299,28 @@ static inline void defragment(vector<heap_chunk> &p_chunks) {
 
 }; // namespace heap_chunks
 
-struct heap {
+struct heap_intrusive {
   uimax_t m_chunk_size;
-  span<ui8_t> m_buffer;
+  uimax_t m_current_size;
   vector<heap_chunk> m_free_chunks;
   vector<heap_chunk> m_allocated_chunk;
 
+  enum class state { UNDEFINED = 0, NEW_CHUNK_PUSHED = 1 } m_state;
+
   void allocate(uimax_t p_chunk_size) {
     m_chunk_size = p_chunk_size;
-    m_buffer.allocate(0);
     m_free_chunks.allocate(0);
     m_allocated_chunk.allocate(0);
+    m_current_size = 0;
+    m_state = state::UNDEFINED;
   };
 
   void free() {
-    m_buffer.free();
     m_free_chunks.free();
     m_allocated_chunk.free();
   };
 
-  uimax_t malloc(uimax_t p_size) {
+  uimax_t find_next_chunk(uimax_t p_size) {
     uimax_t l_chunk_index = -1;
     if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                       &l_chunk_index)) {
@@ -326,12 +328,24 @@ struct heap {
       if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                         &l_chunk_index)) {
         __push_new_chunk();
+        m_state = state::NEW_CHUNK_PUSHED;
         heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                      &l_chunk_index);
       }
     }
-
     assert_debug(l_chunk_index != -1);
+    return l_chunk_index;
+  };
+
+  void push_found_chunk(uimax_t p_size, uimax_t p_free_chunk_indexs) {
+
+    heap_chunk l_chunk;
+    l_chunk.m_begin = m_free_chunks.at(p_free_chunk_indexs).m_begin;
+    l_chunk.m_size = p_size;
+    m_allocated_chunk.push_back(l_chunk);
+    if (m_free_chunks.at(p_free_chunk_indexs).m_size > p_size) {
+      m_free_chunks.at(p_free_chunk_indexs).m_size -= p_size;
+    }
   };
 
   void free(uimax_t p_index) {
@@ -343,10 +357,48 @@ struct heap {
 private:
   void __push_new_chunk() {
     heap_chunk l_chunk;
-    l_chunk.m_begin = m_buffer.count();
+    l_chunk.m_begin = m_current_size;
     l_chunk.m_size = m_chunk_size;
     m_free_chunks.push_back(l_chunk);
-    m_buffer.realloc(m_buffer.count() + l_chunk.m_size);
+    m_current_size += l_chunk.m_size;
+  };
+};
+
+struct heap {
+  heap_intrusive m_intrusive;
+  span<ui8_t> m_buffer;
+
+  void allocate(uimax_t p_chunk_size) {
+    m_intrusive.allocate(p_chunk_size);
+    m_buffer.allocate(0);
+  };
+
+  void free() {
+    m_buffer.free();
+    m_intrusive.free();
+  };
+
+  uimax_t malloc(uimax_t p_size) {
+    uimax_t l_chunk_index = m_intrusive.find_next_chunk(p_size);
+    if (m_intrusive.m_state == heap_intrusive::state::NEW_CHUNK_PUSHED) {
+      __push_new_chunk();
+      m_intrusive.m_state = heap_intrusive::state::UNDEFINED;
+    }
+    m_intrusive.push_found_chunk(p_size, l_chunk_index);
+  };
+
+  ui8_t *at(uimax_t p_index) {
+    return m_buffer.m_data + m_intrusive.m_allocated_chunk.at(p_index).m_begin;
+  };
+
+  void free(uimax_t p_index) { m_intrusive.free(p_index); };
+
+private:
+  void __push_new_chunk() {
+    m_buffer.realloc(m_buffer.count() +
+                     m_intrusive.m_allocated_chunk
+                         .at(m_intrusive.m_allocated_chunk.count() - 1)
+                         .m_size);
   };
 };
 
