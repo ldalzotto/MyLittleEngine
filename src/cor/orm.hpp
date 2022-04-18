@@ -248,9 +248,12 @@ template <typename DbTableTypes> struct db {
     return table<Tab>().push_back(p_types...);
   };
 
-  template<int Tab, int Col>
-  auto& at(uimax_t p_index){
+  template <int Tab, int Col> auto &at(uimax_t p_index) {
     return table<Tab>().template at<Col>(p_index);
+  };
+
+  template <int Tab> void remove_at(uimax_t p_index) {
+    table<Tab>().remove_at(p_index);
   };
 };
 
@@ -654,6 +657,25 @@ struct db_table_types<Table0, Table1> {
   template <> static auto table_type<1>() { return Table1{}; };
 };
 
+template <typename Table0, typename Table1, typename Table2>
+struct db_table_types<Table0, Table1, Table2> {
+  static constexpr int TABLE_COUNT = 3;
+  template <int N> static auto table_type();
+  template <> static auto table_type<0>() { return Table0{}; };
+  template <> static auto table_type<1>() { return Table1{}; };
+  template <> static auto table_type<2>() { return Table2{}; };
+};
+
+template <typename Table0, typename Table1, typename Table2, typename Table3>
+struct db_table_types<Table0, Table1, Table2, Table3> {
+  static constexpr int TABLE_COUNT = 4;
+  template <int N> static auto table_type();
+  template <> static auto table_type<0>() { return Table0{}; };
+  template <> static auto table_type<1>() { return Table1{}; };
+  template <> static auto table_type<2>() { return Table2{}; };
+  template <> static auto table_type<3>() { return Table3{}; };
+};
+
 template <typename DbTableTypes> struct db_tables<DbTableTypes, 1> {
   decltype(DbTableTypes::template table_type<0>()) m_table_0;
 
@@ -668,6 +690,30 @@ template <typename DbTableTypes> struct db_tables<DbTableTypes, 2> {
   template <int N> auto &table();
   template <> auto &table<0>() { return m_table_0; };
   template <> auto &table<1>() { return m_table_1; };
+};
+
+template <typename DbTableTypes> struct db_tables<DbTableTypes, 3> {
+  decltype(DbTableTypes::template table_type<0>()) m_table_0;
+  decltype(DbTableTypes::template table_type<1>()) m_table_1;
+  decltype(DbTableTypes::template table_type<2>()) m_table_2;
+
+  template <int N> auto &table();
+  template <> auto &table<0>() { return m_table_0; };
+  template <> auto &table<1>() { return m_table_1; };
+  template <> auto &table<2>() { return m_table_2; };
+};
+
+template <typename DbTableTypes> struct db_tables<DbTableTypes, 4> {
+  decltype(DbTableTypes::template table_type<0>()) m_table_0;
+  decltype(DbTableTypes::template table_type<1>()) m_table_1;
+  decltype(DbTableTypes::template table_type<2>()) m_table_2;
+  decltype(DbTableTypes::template table_type<3>()) m_table_3;
+
+  template <int N> auto &table();
+  template <> auto &table<0>() { return m_table_0; };
+  template <> auto &table<1>() { return m_table_1; };
+  template <> auto &table<2>() { return m_table_2; };
+  template <> auto &table<3>() { return m_table_3; };
 };
 
 #pragma endregion TRIVIAL SPECIALIZATIONS
