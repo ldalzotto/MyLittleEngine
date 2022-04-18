@@ -106,26 +106,16 @@ private:
 template <typename TableType> struct table_remove_at {
   table_remove_at(TableType &p_table, uimax_t p_index) {
     p_table.meta().remove_at(p_index);
-    __table_before_remove<0>{}(p_table, p_index);
     __table_remove_at<0>{}(p_table, p_index);
   };
 
 private:
-  template <int Col> struct __table_before_remove {
-    void operator()(TableType &p_table, uimax_t p_index) {
-      p_table.m_hooks.template before_remove<TableType, Col>(
-          p_table, p_index, p_table.template col<Col>().at(p_index));
-      if constexpr (Col < TableType::COL_COUNT - 1) {
-        __table_before_remove<Col + 1>{}(p_table, p_index);
-      }
-    };
-  };
 
   template <int Col> struct __table_remove_at {
     void operator()(TableType &p_table, uimax_t p_index) {
       p_table.template col<Col>().remove_at(p_table, p_index);
       if constexpr (Col < TableType::COL_COUNT - 1) {
-        __table_before_remove<Col + 1>{}(p_table, p_index);
+        __table_remove_at<Col + 1>{}(p_table, p_index);
       }
     };
   };
@@ -139,12 +129,6 @@ template <typename T, table_memory_layout MemoryLayout> struct __table_iterator;
 
 }; // namespace details
 
-struct no_hooks {
-  template <typename TableType, int Col>
-  void
-  before_remove(TableType &p_table, uimax_t p_index,
-                decltype(TableType::template col_type<Col>()) &p_element){};
-};
 
 template <typename TableType, int Col> struct table_iterator {
   using element_type = decltype(TableType::template col_type<Col>());
@@ -169,18 +153,14 @@ template <typename ColTypes, table_memory_layout MemoryLayout,
 struct table_cols;
 
 template <typename ColTypes,
-          table_memory_layout MemoryLayout = table_memory_layout::POOL,
-          typename Hooks = no_hooks>
+          table_memory_layout MemoryLayout = table_memory_layout::POOL>
 struct table {
   using meta_type = details::table_meta<MemoryLayout>;
   static constexpr ui8_t COL_COUNT = ColTypes::COL_COUNT;
   meta_type m_meta;
-  Hooks m_hooks;
   table_cols<ColTypes, MemoryLayout> m_cols;
 
   meta_type &meta() { return m_meta; };
-
-  void register_hooks(const Hooks &p_hooks) { m_hooks = p_hooks; };
 
   void allocate(uimax_t p_capacity) {
     details::table_allocate<table>(*this, p_capacity);
