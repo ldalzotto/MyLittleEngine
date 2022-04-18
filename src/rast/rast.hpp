@@ -12,7 +12,11 @@
 
 struct bgfx_impl {
 
-  struct MemoryReference {};
+  struct MemoryReference {
+    ui8_t m_is_ref;
+    MemoryReference() = default;
+    MemoryReference(ui8_t p_is_ref) : m_is_ref(p_is_ref){};
+  };
 
   struct Texture {
     bgfx::TextureInfo info;
@@ -127,17 +131,19 @@ struct bgfx_impl {
   struct heap {
 
     boost::pool<> buffers_memory;
-    boost::object_pool<bgfx::Memory> buffers;
-    boost::container::map<bgfx::Memory *, MemoryReference> buffer_is_reference;
-    orm::db<orm::db_table_types<orm::table<orm::table_col_types<Texture>>,
-                                orm::table<orm::table_col_types<FrameBuffer>>,
-                                orm::table<orm::table_col_types<VertexBuffer>>,
-                                orm::table<orm::table_col_types<IndexBuffer>>>>
+    orm::db<orm::db_table_types<
+        orm::table<orm::table_col_types<bgfx::Memory, MemoryReference>,
+                   orm::table_memory_layout::POOL_FIXED>,
+        orm::table<orm::table_col_types<Texture>>,
+        orm::table<orm::table_col_types<FrameBuffer>>,
+        orm::table<orm::table_col_types<VertexBuffer>>,
+        orm::table<orm::table_col_types<IndexBuffer>>>>
         m_db;
-    static const int texture_table = 0;
-    static const int framebuffer_table = 1;
-    static const int vertexbuffer_table = 2;
-    static const int indexbuffer_table = 3;
+    static const int buffers_table = 0;
+    static const int texture_table = 1;
+    static const int framebuffer_table = 2;
+    static const int vertexbuffer_table = 3;
+    static const int indexbuffer_table = 4;
     CommandsMemoryType commands_memory;
     container::vector<RenderPass> renderpasses;
 
@@ -145,12 +151,12 @@ struct bgfx_impl {
       renderpasses.allocate(0);
       renderpasses.push_back(
           RenderPass::get_default()); // at least one renderpass
-      m_db.allocate(0, 0, 0, 0);
+      m_db.allocate(1024, 0, 0, 0, 0);
     };
 
     void free() {
-      // assert_debug(!vertexbuffers.has_free_elements());
-      // assert_debug(!indexbuffers.has_free_elements());
+      assert_debug(!m_db.table<vertexbuffer_table>().has_allocated_elements());
+      assert_debug(!m_db.table<indexbuffer_table>().has_allocated_elements());
       assert_debug(renderpasses.count() == 1);
       for (auto l_render_pass_it = 0; l_render_pass_it < renderpasses.count();
            ++l_render_pass_it) {
@@ -161,26 +167,33 @@ struct bgfx_impl {
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
-      buffers_memory.set_next_size(p_size.value);
-      bgfx::Memory *l_buffer = buffers.malloc();
-      l_buffer->data = (uint8_t *)buffers_memory.malloc();
-      l_buffer->size = uint32_t(p_size.value);
-      return l_buffer;
+      bgfx::Memory l_buffer{};
+      l_buffer.data = (uint8_t *)buffers_memory.malloc();
+      l_buffer.size = uint32_t(p_size.value);
+
+      auto l_index =
+          m_db.push_back<buffers_table>(l_buffer, MemoryReference(0));
+      return &m_db.at<buffers_table, 0>(l_index);
     };
 
     bgfx::Memory *allocate_ref(const void *p_ptr, ui32_t p_size) {
-      bgfx::Memory *l_buffer = buffers.malloc();
-      l_buffer->data = (ui8_t *)p_ptr;
-      l_buffer->size = p_size;
-      buffer_is_reference.emplace(l_buffer, MemoryReference());
-      return l_buffer;
+      bgfx::Memory l_buffer{};
+      l_buffer.data = (ui8_t *)p_ptr;
+      l_buffer.size = p_size;
+
+      auto l_index =
+          m_db.push_back<buffers_table>(l_buffer, MemoryReference(1));
+      return &m_db.at<buffers_table, 0>(l_index);
     };
 
     void free_buffer(const bgfx::Memory *p_buffer) {
-      if (!buffer_is_reference.contains((bgfx::Memory *)p_buffer)) {
+      auto l_index = m_db.get_fixed_index<buffers_table, 0>(p_buffer);
+
+      if (!m_db.at<buffers_table, 1>(l_index).m_is_ref) {
         buffers_memory.free(p_buffer->data);
       }
-      buffers.free((bgfx::Memory *)p_buffer);
+
+      m_db.remove_at<buffers_table>(l_index);
     };
 
     bgfx::TextureHandle
@@ -230,6 +243,7 @@ struct bgfx_impl {
     void free_vertex_buffer(bgfx::VertexBufferHandle p_handle) {
       auto &l_vertex_buffer = m_db.at<vertexbuffer_table, 0>(p_handle.idx);
       free_buffer(l_vertex_buffer.memory);
+      m_db.remove_at<vertexbuffer_table>(p_handle.idx);
     };
 
     bgfx::IndexBufferHandle
@@ -244,6 +258,7 @@ struct bgfx_impl {
     void free_index_buffer(bgfx::IndexBufferHandle p_handle) {
       auto &l_index_buffer = m_db.at<indexbuffer_table, 0>(p_handle.idx);
       free_buffer(l_index_buffer.memory);
+      m_db.remove_at<indexbuffer_table>(p_handle.idx);
     };
 
   } heap;

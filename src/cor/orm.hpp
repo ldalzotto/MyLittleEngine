@@ -159,6 +159,7 @@ struct table {
   table_cols<ColTypes, MemoryLayout> m_cols;
 
   meta_type &meta() { return m_meta; };
+  const meta_type &meta() const { return m_meta; };
 
   void allocate(uimax_t p_capacity) {
     details::table_allocate<table>(*this, p_capacity);
@@ -184,6 +185,16 @@ struct table {
 
   template <int N> auto at(uimax_t p_index) -> decltype(col_type<N>()) & {
     return m_cols.template col<N>().at(p_index);
+  };
+
+  template <int N>
+  uimax_t get_fixed_index(const decltype(col_type<N>()) *p_ptr) {
+    static_assert(MemoryLayout == table_memory_layout::POOL_FIXED, "");
+    return m_cols.template col<N>().get_fixed_index(p_ptr);
+  };
+
+  ui8_t has_allocated_elements() const {
+    return meta().has_allocated_elements();
   };
 };
 
@@ -254,6 +265,11 @@ template <typename DbTableTypes> struct db {
 
   template <int Tab> void remove_at(uimax_t p_index) {
     table<Tab>().remove_at(p_index);
+  };
+
+  template <int Tab, int N, typename Ptr>
+  uimax_t get_fixed_index(const Ptr *p_ptr) {
+    return table<Tab>().template get_fixed_index<N>(p_ptr);
   };
 };
 
@@ -331,7 +347,10 @@ template <> struct table_meta<table_memory_layout::POOL> {
   void remove_at(uimax_t p_index) {
     assert_debug(__is_element_allocated(p_index));
     m_free_elements.push_back(p_index);
-    m_count -= 1;
+  };
+
+  ui8_t has_allocated_elements() const {
+    return m_free_elements.count() != m_count;
   };
 
 private:
@@ -415,6 +434,8 @@ template <> struct table_meta<table_memory_layout::VECTOR> {
     }
     return 0;
   };
+
+  ui8_t has_allocated_elements() const { return m_count > 0; };
 };
 
 template <typename T> struct __table_iterator<T, table_memory_layout::VECTOR> {
@@ -476,10 +497,25 @@ template <typename T> struct col<T, table_memory_layout::POOL_FIXED> {
     uimax_t l_index = p_index - l_chunk_index;
     return m_data.at(l_chunk_index)[l_index];
   };
+
+  uimax_t get_fixed_index(const T *p_ptr) {
+    uimax_t l_index = 0;
+    for (auto i = 0; i < m_data.count(); ++i) {
+      const T *l_begin = m_data.at(i);
+      const T *l_end = l_begin + m_chunk_count;
+      if (p_ptr >= l_begin && p_ptr < l_end) {
+        l_index += p_ptr - l_begin;
+        return l_index;
+      }
+      l_index += m_chunk_count;
+    }
+    return -1;
+  };
 };
 
 namespace details {
 
+// TODO -> move logic to the container ?
 template <> struct table_meta<table_memory_layout::POOL_FIXED> {
   static const table_memory_layout MEMORY_LAYOUT =
       table_memory_layout::POOL_FIXED;
@@ -555,6 +591,15 @@ template <> struct table_meta<table_memory_layout::POOL_FIXED> {
     out_chunk_index = p_index / m_chunk_count;
     out_index = p_index - out_chunk_index;
   };
+
+  ui8_t has_allocated_elements() const {
+    for (auto i = 0; i < m_chunks.count(); ++i) {
+      if (m_chunks.at(i).m_free_elements.count() != m_chunk_count) {
+        return 1;
+      }
+    }
+    return 0;
+  };
 };
 
 }; // namespace details
@@ -562,7 +607,7 @@ template <> struct table_meta<table_memory_layout::POOL_FIXED> {
 #pragma region TRIVIAL SPECIALIZATIONS
 
 #define table_col_types_col_element_type(p_number)                             \
-  template <> static auto col_element_type<p_number>() {                       \
+  template <> static FORCE_INLINE auto col_element_type<p_number>() {          \
     return Type##p_number{};                                                   \
   };
 
@@ -605,7 +650,7 @@ struct table_cols<ColTypes, MemoryLayout, 1> {
   col<decltype(ColTypes::template col_element_type<0>()), MemoryLayout> m_col_0;
 
   template <int N> auto &col();
-  template <> auto &col<0>() { return m_col_0; };
+  template <> FORCE_INLINE auto &col<0>() { return m_col_0; };
 };
 
 template <typename ColTypes, table_memory_layout MemoryLayout>
@@ -614,8 +659,8 @@ struct table_cols<ColTypes, MemoryLayout, 2> {
   col<decltype(ColTypes::template col_element_type<1>()), MemoryLayout> m_col_1;
 
   template <int N> auto &col();
-  template <> auto &col<0>() { return m_col_0; };
-  template <> auto &col<1>() { return m_col_1; };
+  template <> FORCE_INLINE auto &col<0>() { return m_col_0; };
+  template <> FORCE_INLINE auto &col<1>() { return m_col_1; };
 };
 
 template <typename ColTypes, table_memory_layout MemoryLayout>
@@ -625,9 +670,9 @@ struct table_cols<ColTypes, MemoryLayout, 3> {
   col<decltype(ColTypes::template col_element_type<2>()), MemoryLayout> m_col_2;
 
   template <int N> auto &col();
-  template <> auto &col<0>() { return m_col_0; };
-  template <> auto &col<1>() { return m_col_1; };
-  template <> auto &col<2>() { return m_col_2; };
+  template <> FORCE_INLINE auto &col<0>() { return m_col_0; };
+  template <> FORCE_INLINE auto &col<1>() { return m_col_1; };
+  template <> FORCE_INLINE auto &col<2>() { return m_col_2; };
 };
 template <typename ColTypes, table_memory_layout MemoryLayout>
 struct table_cols<ColTypes, MemoryLayout, 4> {
@@ -637,50 +682,62 @@ struct table_cols<ColTypes, MemoryLayout, 4> {
   col<decltype(ColTypes::template col_element_type<3>()), MemoryLayout> m_col_3;
 
   template <int N> auto &col();
-  template <> auto &col<0>() { return m_col_0; };
-  template <> auto &col<1>() { return m_col_1; };
-  template <> auto &col<2>() { return m_col_2; };
-  template <> auto &col<3>() { return m_col_3; };
+  template <> FORCE_INLINE auto &col<0>() { return m_col_0; };
+  template <> FORCE_INLINE auto &col<1>() { return m_col_1; };
+  template <> FORCE_INLINE auto &col<2>() { return m_col_2; };
+  template <> FORCE_INLINE auto &col<3>() { return m_col_3; };
 };
 
 template <typename Table0> struct db_table_types<Table0> {
   static constexpr int TABLE_COUNT = 1;
   template <int N> static auto table_type();
-  template <> static auto table_type<0>() { return Table0{}; };
+  template <> FORCE_INLINE static auto table_type<0>() { return Table0{}; };
 };
 
 template <typename Table0, typename Table1>
 struct db_table_types<Table0, Table1> {
   static constexpr int TABLE_COUNT = 2;
   template <int N> static auto table_type();
-  template <> static auto table_type<0>() { return Table0{}; };
-  template <> static auto table_type<1>() { return Table1{}; };
+  template <> FORCE_INLINE static auto table_type<0>() { return Table0{}; };
+  template <> FORCE_INLINE static auto table_type<1>() { return Table1{}; };
 };
 
 template <typename Table0, typename Table1, typename Table2>
 struct db_table_types<Table0, Table1, Table2> {
   static constexpr int TABLE_COUNT = 3;
   template <int N> static auto table_type();
-  template <> static auto table_type<0>() { return Table0{}; };
-  template <> static auto table_type<1>() { return Table1{}; };
-  template <> static auto table_type<2>() { return Table2{}; };
+  template <> FORCE_INLINE static auto table_type<0>() { return Table0{}; };
+  template <> FORCE_INLINE static auto table_type<1>() { return Table1{}; };
+  template <> FORCE_INLINE static auto table_type<2>() { return Table2{}; };
 };
 
 template <typename Table0, typename Table1, typename Table2, typename Table3>
 struct db_table_types<Table0, Table1, Table2, Table3> {
   static constexpr int TABLE_COUNT = 4;
   template <int N> static auto table_type();
-  template <> static auto table_type<0>() { return Table0{}; };
-  template <> static auto table_type<1>() { return Table1{}; };
-  template <> static auto table_type<2>() { return Table2{}; };
-  template <> static auto table_type<3>() { return Table3{}; };
+  template <> FORCE_INLINE static auto table_type<0>() { return Table0{}; };
+  template <> FORCE_INLINE static auto table_type<1>() { return Table1{}; };
+  template <> FORCE_INLINE static auto table_type<2>() { return Table2{}; };
+  template <> FORCE_INLINE static auto table_type<3>() { return Table3{}; };
+};
+
+template <typename Table0, typename Table1, typename Table2, typename Table3,
+          typename Table4>
+struct db_table_types<Table0, Table1, Table2, Table3, Table4> {
+  static constexpr int TABLE_COUNT = 5;
+  template <int N> static auto table_type();
+  template <> FORCE_INLINE static auto table_type<0>() { return Table0{}; };
+  template <> FORCE_INLINE static auto table_type<1>() { return Table1{}; };
+  template <> FORCE_INLINE static auto table_type<2>() { return Table2{}; };
+  template <> FORCE_INLINE static auto table_type<3>() { return Table3{}; };
+  template <> FORCE_INLINE static auto table_type<4>() { return Table4{}; };
 };
 
 template <typename DbTableTypes> struct db_tables<DbTableTypes, 1> {
   decltype(DbTableTypes::template table_type<0>()) m_table_0;
 
   template <int N> auto &table();
-  template <> auto &table<0>() { return m_table_0; };
+  template <> FORCE_INLINE auto &table<0>() { return m_table_0; };
 };
 
 template <typename DbTableTypes> struct db_tables<DbTableTypes, 2> {
@@ -688,8 +745,8 @@ template <typename DbTableTypes> struct db_tables<DbTableTypes, 2> {
   decltype(DbTableTypes::template table_type<1>()) m_table_1;
 
   template <int N> auto &table();
-  template <> auto &table<0>() { return m_table_0; };
-  template <> auto &table<1>() { return m_table_1; };
+  template <> FORCE_INLINE auto &table<0>() { return m_table_0; };
+  template <> FORCE_INLINE auto &table<1>() { return m_table_1; };
 };
 
 template <typename DbTableTypes> struct db_tables<DbTableTypes, 3> {
@@ -698,9 +755,9 @@ template <typename DbTableTypes> struct db_tables<DbTableTypes, 3> {
   decltype(DbTableTypes::template table_type<2>()) m_table_2;
 
   template <int N> auto &table();
-  template <> auto &table<0>() { return m_table_0; };
-  template <> auto &table<1>() { return m_table_1; };
-  template <> auto &table<2>() { return m_table_2; };
+  template <> FORCE_INLINE auto &table<0>() { return m_table_0; };
+  template <> FORCE_INLINE auto &table<1>() { return m_table_1; };
+  template <> FORCE_INLINE auto &table<2>() { return m_table_2; };
 };
 
 template <typename DbTableTypes> struct db_tables<DbTableTypes, 4> {
@@ -710,12 +767,26 @@ template <typename DbTableTypes> struct db_tables<DbTableTypes, 4> {
   decltype(DbTableTypes::template table_type<3>()) m_table_3;
 
   template <int N> auto &table();
-  template <> auto &table<0>() { return m_table_0; };
-  template <> auto &table<1>() { return m_table_1; };
-  template <> auto &table<2>() { return m_table_2; };
-  template <> auto &table<3>() { return m_table_3; };
+  template <> FORCE_INLINE auto &table<0>() { return m_table_0; };
+  template <> FORCE_INLINE auto &table<1>() { return m_table_1; };
+  template <> FORCE_INLINE auto &table<2>() { return m_table_2; };
+  template <> FORCE_INLINE auto &table<3>() { return m_table_3; };
 };
 
+template <typename DbTableTypes> struct db_tables<DbTableTypes, 5> {
+  decltype(DbTableTypes::template table_type<0>()) m_table_0;
+  decltype(DbTableTypes::template table_type<1>()) m_table_1;
+  decltype(DbTableTypes::template table_type<2>()) m_table_2;
+  decltype(DbTableTypes::template table_type<3>()) m_table_3;
+  decltype(DbTableTypes::template table_type<4>()) m_table_4;
+
+  template <int N> auto &table();
+  template <> FORCE_INLINE auto &table<0>() { return m_table_0; };
+  template <> FORCE_INLINE auto &table<1>() { return m_table_1; };
+  template <> FORCE_INLINE auto &table<2>() { return m_table_2; };
+  template <> FORCE_INLINE auto &table<3>() { return m_table_3; };
+  template <> FORCE_INLINE auto &table<4>() { return m_table_4; };
+};
 #pragma endregion TRIVIAL SPECIALIZATIONS
 
 }; // namespace orm

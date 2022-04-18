@@ -21,3 +21,5 @@ struct sys {
   static void sassert(bool p_condition);
   static void abort();
 };
+
+#define FORCE_INLINE __attribute__((always_inline))
