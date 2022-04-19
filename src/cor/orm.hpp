@@ -18,6 +18,25 @@ namespace details {
 
 template <table_memory_layout MemoryLayout> struct table_meta {};
 
+template <typename TableType> struct table_foreach {
+
+  template <typename CallbackFunc>
+  void operator()(TableType &p_table, const CallbackFunc &p_callback) {
+    __table_foreach_recursive<0, CallbackFunc>{}(p_table, p_callback);
+  };
+
+private:
+  template <int N, typename CallbackFunc> struct __table_foreach_recursive {
+    void operator()(TableType &p_table, const CallbackFunc &p_callback) {
+      p_callback.template call<N>(p_table);
+      // p_callback<N>(p_table);
+      if constexpr (N < TableType::COL_COUNT - 1) {
+        __table_foreach_recursive<N + 1, CallbackFunc>{}(p_table, p_callback);
+      }
+    };
+  };
+};
+
 template <typename TableType> struct table_allocate {
 
 private:
@@ -25,17 +44,13 @@ private:
 
 public:
   table_allocate(TableType &p_table, uimax_t p_capacity) {
-    p_table.m_meta.allocate(p_capacity);
-    __allocate_recursive<0>{}(p_table);
+    table_foreach<TableType>{}(p_table, __allocate{});
   };
 
 private:
-  template <int N> struct __allocate_recursive {
-    void operator()(TableType &p_table) {
+  struct __allocate {
+    template <int N> void call(TableType &p_table) const {
       p_table.template col<N>().allocate(p_table);
-      if constexpr (N < TableType::COL_COUNT - 1) {
-        __allocate_recursive<N + 1>{}(p_table);
-      }
     };
   };
 };
@@ -47,31 +62,27 @@ private:
 public:
   table_free(TableType &p_table) {
     p_table.meta().free();
-    __free_recursive<0>{}(p_table);
+    table_foreach<TableType>{}(p_table, __free{});
   };
 
 private:
-  template <int N> struct __free_recursive {
-    void operator()(TableType &p_table) {
+  struct __free {
+    template <int N> void call(TableType &p_table) const {
       using element_type = decltype(p_table.template col_type<N>());
       p_table.template col<N>().free(p_table);
-      if constexpr (N < TableType::COL_COUNT - 1) {
-        __free_recursive<N + 1>{}(p_table);
-      }
     };
   };
 };
 
 template <typename TableType> struct table_realloc_cols {
-  void operator()(TableType &p_table) { __table_resize<0>{}(p_table); };
+  void operator()(TableType &p_table) {
+    table_foreach<TableType>{}(p_table, __table_resize{});
+  };
 
 private:
-  template <int Col> struct __table_resize {
-    void operator()(TableType &p_table) {
-      p_table.template col<Col>().realloc(p_table);
-      if constexpr (Col < TableType::COL_COUNT - 1) {
-        __table_resize<Col + 1>{}(p_table);
-      }
+  struct __table_resize {
+    template <int N> void call(TableType &p_table) const {
+      p_table.template col<N>().realloc(p_table);
     };
   };
 };
@@ -107,16 +118,14 @@ private:
 template <typename TableType> struct table_remove_at {
   table_remove_at(TableType &p_table, uimax_t p_index) {
     p_table.meta().remove_at(p_index);
-    __table_remove_at<0>{}(p_table, p_index);
+    table_foreach<TableType>{}(p_table, __table_remove_at{p_index});
   };
 
 private:
-  template <int Col> struct __table_remove_at {
-    void operator()(TableType &p_table, uimax_t p_index) {
-      p_table.template col<Col>().remove_at(p_table, p_index);
-      if constexpr (Col < TableType::COL_COUNT - 1) {
-        __table_remove_at<Col + 1>{}(p_table, p_index);
-      }
+  struct __table_remove_at {
+    uimax_t l_index;
+    template <int N> void call(TableType &p_table) const {
+      p_table.template col<N>().remove_at(p_table, l_index);
     };
   };
 };
@@ -605,10 +614,7 @@ template <> struct table_meta<table_memory_layout::POOL_FIXED> {
 
 }; // namespace details
 
-
-template <typename T> struct col<T, table_memory_layout::HEAP> {
-
-};
+template <typename T> struct col<T, table_memory_layout::HEAP> {};
 
 namespace details {
 template <> struct table_meta<table_memory_layout::HEAP> {
@@ -617,9 +623,7 @@ template <> struct table_meta<table_memory_layout::HEAP> {
 
   container::heap_intrusive m_heap_intrusive;
 
-  void allocate(uimax_t p_capacity) {
-    m_heap_intrusive.allocate(p_capacity);
-  };
+  void allocate(uimax_t p_capacity) { m_heap_intrusive.allocate(p_capacity); };
 
   void free() { m_heap_intrusive.free(); };
 };
