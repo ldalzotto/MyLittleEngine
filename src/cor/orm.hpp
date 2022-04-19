@@ -10,7 +10,8 @@ enum class table_memory_layout {
   UNDEFINED = 0,
   POOL = 1,
   POOL_FIXED = 2,
-  VECTOR = 3
+  VECTOR = 3,
+  HEAP = 4
 };
 
 namespace details {
@@ -600,6 +601,27 @@ template <> struct table_meta<table_memory_layout::POOL_FIXED> {
     }
     return 0;
   };
+};
+
+}; // namespace details
+
+
+template <typename T> struct col<T, table_memory_layout::HEAP> {
+
+};
+
+namespace details {
+template <> struct table_meta<table_memory_layout::HEAP> {
+
+  static const table_memory_layout MEMORY_LAYOUT = table_memory_layout::HEAP;
+
+  container::heap_intrusive m_heap_intrusive;
+
+  void allocate(uimax_t p_capacity) {
+    m_heap_intrusive.allocate(p_capacity);
+  };
+
+  void free() { m_heap_intrusive.free(); };
 };
 
 }; // namespace details
