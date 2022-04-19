@@ -81,7 +81,10 @@ private:
   };
 };
 
-template <typename TableType, typename... Types> struct table_push_back {
+// TODO -> have specialization ?
+template <typename TableType, table_memory_layout MemoryLayout,
+          typename... Types>
+struct table_push_back {
   uimax_t m_index;
   table_push_back(TableType &p_table, const Types &... p_elements) {
     m_index = p_table.meta().next_free_element();
@@ -125,7 +128,9 @@ private:
     };
   };
 };
-
+// orm::details::table_push_back<orm::table<orm::table_col_types<int, int>,
+// orm::table_memory_layout::HEAP>, orm::table_memory_layout::HEAP, int,
+// int>::table_push_back
 }; // namespace details
 
 namespace details {
@@ -174,7 +179,8 @@ struct table {
   void free() { details::table_free<table>(*this); };
 
   template <typename... Types> uimax_t push_back(const Types &... p_elements) {
-    return details::table_push_back<table, Types...>(*this, p_elements...)
+    return details::table_push_back<table, MemoryLayout, Types...>(
+               *this, p_elements...)
         .m_index;
   };
 
@@ -610,7 +616,28 @@ template <> struct table_meta<table_memory_layout::POOL_FIXED> {
 
 }; // namespace details
 
-template <typename T> struct col<T, table_memory_layout::HEAP> {};
+template <typename T> struct col<T, table_memory_layout::HEAP> {
+  T *m_data;
+
+  template <typename TableType> void allocate(TableType &p_table) {
+    m_data =
+        (T *)sys::malloc(sizeof(T) * p_table.meta().m_heap_intrusive.count());
+  };
+
+  template <typename TableType> void free(TableType &p_table) {
+    sys::free(m_data);
+  };
+
+  template <typename TableType> void realloc(TableType &p_table) {
+    auto l_new_byte_size = p_table.meta().m_heap_intrusive.count() * sizeof(T);
+    m_data = (T *)sys::realloc(m_data, l_new_byte_size);
+  };
+
+  T &at(uimax_t p_index) { return m_data[p_index]; };
+
+  template <typename TableType>
+  void remove_at(TableType &p_table, uimax_t p_index){};
+};
 
 namespace details {
 template <> struct table_meta<table_memory_layout::HEAP> {
@@ -622,6 +649,43 @@ template <> struct table_meta<table_memory_layout::HEAP> {
   void allocate(uimax_t p_capacity) { m_heap_intrusive.allocate(p_capacity); };
 
   void free() { m_heap_intrusive.free(); };
+
+  uimax_t next_free_element(uimax_t p_size) {
+    return m_heap_intrusive.find_next_chunk(p_size);
+  };
+
+  void remove_at(uimax_t p_index) { m_heap_intrusive.free(p_index); };
+};
+
+template <typename TableType, typename... Types>
+struct table_push_back<TableType, table_memory_layout::HEAP, Types...> {
+  uimax_t m_index;
+  table_push_back(TableType &p_table, const Types &... p_elements) {
+    table_meta<table_memory_layout::HEAP> &l_meta = p_table.meta();
+    uimax_t l_free_chunk = l_meta.next_free_element(1);
+    assert_debug(l_free_chunk != -1);
+    m_index = l_meta.m_heap_intrusive.push_found_chunk(1, l_free_chunk);
+    container::heap_chunk &l_chunk =
+        l_meta.m_heap_intrusive.m_allocated_chunk.at(m_index);
+    __table_push_back_col<0>{}(p_table, l_chunk, p_elements...);
+    l_meta.m_heap_intrusive.clear_state();
+  };
+
+private:
+  template <int Col> struct __table_push_back_col {
+    template <typename Type, typename... LocalTypes>
+    void operator()(TableType &p_table, const container::heap_chunk &p_chunk,
+                    const Type &p_element, const LocalTypes &... p_next) const {
+      if (p_table.meta().m_heap_intrusive.m_state ==
+          container::heap_intrusive::state::NEW_CHUNK_PUSHED) {
+        p_table.template col<Col>().realloc(p_table);
+      }
+      p_table.template col<Col>().at(p_chunk.m_begin) = p_element;
+      if constexpr (table_loop_next<TableType, Col>()) {
+        __table_push_back_col<Col + 1>{}(p_table, p_chunk, p_next...);
+      }
+    };
+  };
 };
 
 }; // namespace details

@@ -106,6 +106,28 @@ void container_tests() {
   }
 
   {
+    orm::table<orm::table_col_types<i32_t, i32_t>,
+               orm::table_memory_layout::HEAP>
+        l_table;
+    l_table.allocate(1024);
+    auto l_index_0 = l_table.push_back(2, 10);
+    auto l_index_1 = l_table.push_back(3, 11);
+    auto l_index_2 = l_table.push_back(4, 12);
+
+    sys::sassert(l_table.at<0>(l_index_0) == 2);
+    sys::sassert(l_table.at<1>(l_index_0) == 10);
+    sys::sassert(l_table.at<0>(l_index_1) == 3);
+    sys::sassert(l_table.at<1>(l_index_1) == 11);
+    sys::sassert(l_table.at<0>(l_index_2) == 4);
+    sys::sassert(l_table.at<1>(l_index_2) == 12);
+
+    l_table.remove_at(l_index_1);
+    l_index_1 = l_table.push_back(3, 11);
+
+    l_table.free();
+  }
+
+  {
     using table_0 = orm::table<orm::table_col_types<i32_t, i32_t, ui8_t>,
                                orm::table_memory_layout::POOL_FIXED>;
     using table_1 = orm::table<orm::table_col_types<i32_t, i32_t>,

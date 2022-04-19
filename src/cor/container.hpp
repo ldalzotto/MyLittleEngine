@@ -280,19 +280,21 @@ static inline ui8_t find_next_block(const range<heap_chunk> &p_chunks,
 };
 
 static inline void defragment(vector<heap_chunk> &p_chunks) {
-  auto l_range = p_chunks.range();
-  algorithm::sort(l_range, [&](heap_chunk &p_left, heap_chunk &p_right) {
-    return p_left.m_begin < p_right.m_begin;
-  });
+  if (p_chunks.count() > 0) {
+    auto l_range = p_chunks.range();
+    algorithm::sort(l_range, [&](heap_chunk &p_left, heap_chunk &p_right) {
+      return p_left.m_begin < p_right.m_begin;
+    });
 
-  for (auto l_range_reverse = p_chunks.count() - 1; l_range_reverse >= 1;
-       l_range_reverse--) {
-    auto &l_next = p_chunks.at(l_range_reverse);
-    auto &l_previous = p_chunks.at(l_range_reverse - 1);
-    if (l_previous.m_begin + l_previous.m_size == l_next.m_begin) {
-      l_previous.m_size += l_next.m_size;
-      p_chunks.pop_back();
-      l_range_reverse -= 1;
+    for (auto l_range_reverse = p_chunks.count() - 1; l_range_reverse >= 1;
+         l_range_reverse--) {
+      auto &l_next = p_chunks.at(l_range_reverse);
+      auto &l_previous = p_chunks.at(l_range_reverse - 1);
+      if (l_previous.m_begin + l_previous.m_size == l_next.m_begin) {
+        l_previous.m_size += l_next.m_size;
+        p_chunks.pop_back();
+        l_range_reverse -= 1;
+      }
     }
   }
 };
@@ -300,18 +302,20 @@ static inline void defragment(vector<heap_chunk> &p_chunks) {
 }; // namespace heap_chunks
 
 struct heap_intrusive {
-  uimax_t m_chunk_size;
-  uimax_t m_current_size;
+  uimax_t m_chunk_count;
+  uimax_t m_current_count;
   vector<heap_chunk> m_free_chunks;
   vector<heap_chunk> m_allocated_chunk;
 
   enum class state { UNDEFINED = 0, NEW_CHUNK_PUSHED = 1 } m_state;
 
+  uimax_t &count() { return m_current_count; };
+
   void allocate(uimax_t p_chunk_size) {
-    m_chunk_size = p_chunk_size;
+    m_chunk_count = p_chunk_size;
     m_free_chunks.allocate(0);
     m_allocated_chunk.allocate(0);
-    m_current_size = 0;
+    m_current_count = 0;
     m_state = state::UNDEFINED;
   };
 
@@ -319,6 +323,8 @@ struct heap_intrusive {
     m_free_chunks.free();
     m_allocated_chunk.free();
   };
+
+  void clear_state() { m_state = state::UNDEFINED; };
 
   uimax_t find_next_chunk(uimax_t p_size) {
     uimax_t l_chunk_index = -1;
@@ -337,15 +343,19 @@ struct heap_intrusive {
     return l_chunk_index;
   };
 
-  void push_found_chunk(uimax_t p_size, uimax_t p_free_chunk_indexs) {
-
+  uimax_t push_found_chunk(uimax_t p_size, uimax_t p_free_chunk_indexs) {
+    heap_chunk &l_free_chunk = m_free_chunks.at(p_free_chunk_indexs);
     heap_chunk l_chunk;
-    l_chunk.m_begin = m_free_chunks.at(p_free_chunk_indexs).m_begin;
+    l_chunk.m_begin = l_free_chunk.m_begin;
     l_chunk.m_size = p_size;
     m_allocated_chunk.push_back(l_chunk);
-    if (m_free_chunks.at(p_free_chunk_indexs).m_size > p_size) {
-      m_free_chunks.at(p_free_chunk_indexs).m_size -= p_size;
+    if (l_free_chunk.m_size > p_size) {
+      l_free_chunk.m_size -= p_size;
+      l_free_chunk.m_begin += p_size;
+    } else {
+      m_free_chunks.remove_at(p_free_chunk_indexs);
     }
+    return m_allocated_chunk.count() - 1;
   };
 
   void free(uimax_t p_index) {
@@ -357,10 +367,10 @@ struct heap_intrusive {
 private:
   void __push_new_chunk() {
     heap_chunk l_chunk;
-    l_chunk.m_begin = m_current_size;
-    l_chunk.m_size = m_chunk_size;
+    l_chunk.m_begin = m_current_count;
+    l_chunk.m_size = m_chunk_count;
     m_free_chunks.push_back(l_chunk);
-    m_current_size += l_chunk.m_size;
+    m_current_count += l_chunk.m_size;
   };
 };
 
@@ -382,7 +392,7 @@ struct heap {
     uimax_t l_chunk_index = m_intrusive.find_next_chunk(p_size);
     if (m_intrusive.m_state == heap_intrusive::state::NEW_CHUNK_PUSHED) {
       __push_new_chunk();
-      m_intrusive.m_state = heap_intrusive::state::UNDEFINED;
+      m_intrusive.clear_state();
     }
     m_intrusive.push_found_chunk(p_size, l_chunk_index);
   };
