@@ -103,7 +103,7 @@ private:
   struct __table_push_back_col {
     void operator()(TableType &p_table, uimax_t p_index, const Type &p_element,
                     const LocalTypes &... p_next) {
-      p_table.template col<Col>().at(p_index) = p_element;
+      p_table.template col<Col>().at(p_table, p_index) = p_element;
       if constexpr (table_loop_next<TableType, Col>()) {
         __table_push_back_col<Col + 1, LocalTypes...>{}(p_table, p_index,
                                                         p_next...);
@@ -196,13 +196,13 @@ struct table {
   template <int N> auto iter() { return table_iterator<table, N>(*this); };
 
   template <int N> auto at(uimax_t p_index) -> decltype(col_type<N>()) & {
-    return m_cols.template col<N>().at(p_index);
+    return m_cols.template col<N>().at(*this, p_index);
   };
 
   template <int N>
   uimax_t get_fixed_index(const decltype(col_type<N>()) *p_ptr) {
     static_assert(MemoryLayout == table_memory_layout::POOL_FIXED, "");
-    return m_cols.template col<N>().get_fixed_index(p_ptr);
+    return m_cols.template col<N>().get_fixed_index(*this, p_ptr);
   };
 
   ui8_t has_allocated_elements() const {
@@ -290,7 +290,10 @@ template <typename DbTableTypes> struct db {
 template <typename T> struct col<T, table_memory_layout::POOL> {
   T *m_data;
   T *&data() { return m_data; };
-  T &at(uimax_t p_index) { return m_data[p_index]; };
+
+  template <typename TableType> T &at(TableType &p_table, uimax_t p_index) {
+    return m_data[p_index];
+  };
 
   template <typename TableType> void allocate(TableType &p_table) {
     m_data = (T *)sys::malloc(p_table.meta().m_capacity * sizeof(T));
@@ -381,7 +384,10 @@ private:
 template <typename T> struct col<T, table_memory_layout::VECTOR> {
   T *m_data;
   T *&data() { return m_data; };
-  T &at(uimax_t p_index) { return m_data[p_index]; };
+
+  template <typename TableType> T &at(TableType &p_table, uimax_t p_index) {
+    return m_data[p_index];
+  };
 
   template <typename TableType> void allocate(TableType &p_table) {
     m_data = (T *)sys::malloc(p_table.meta().m_capacity * sizeof(T));
@@ -478,12 +484,10 @@ template <typename T> struct __table_iterator<T, table_memory_layout::VECTOR> {
 
 template <typename T> struct col<T, table_memory_layout::POOL_FIXED> {
   container::vector<T *> m_data;
-  uimax_t m_chunk_count;
   details::table_meta<table_memory_layout::POOL_FIXED> *m_meta;
 
   template <typename TableType> void allocate(TableType &p_table) {
     m_data.allocate(0);
-    m_chunk_count = p_table.meta().m_chunk_count;
   };
 
   template <typename TableType> void free(TableType &p_table) {
@@ -504,22 +508,23 @@ template <typename T> struct col<T, table_memory_layout::POOL_FIXED> {
   template <typename TableType>
   void remove_at(TableType &p_table_type, uimax_t p_index){};
 
-  T &at(uimax_t p_index) {
-    uimax_t l_chunk_index = p_index / m_chunk_count;
+  template <typename TableType> T &at(TableType &p_table, uimax_t p_index) {
+    uimax_t l_chunk_index = p_index / p_table.meta().m_chunk_count;
     uimax_t l_index = p_index - l_chunk_index;
     return m_data.at(l_chunk_index)[l_index];
   };
 
-  uimax_t get_fixed_index(const T *p_ptr) {
+  template <typename TableType>
+  uimax_t get_fixed_index(TableType &p_table, const T *p_ptr) {
     uimax_t l_index = 0;
     for (auto i = 0; i < m_data.count(); ++i) {
       const T *l_begin = m_data.at(i);
-      const T *l_end = l_begin + m_chunk_count;
+      const T *l_end = l_begin + p_table.meta().m_chunk_count;
       if (p_ptr >= l_begin && p_ptr < l_end) {
         l_index += p_ptr - l_begin;
         return l_index;
       }
-      l_index += m_chunk_count;
+      l_index += p_table.meta().m_chunk_count;
     }
     return -1;
   };
@@ -633,7 +638,15 @@ template <typename T> struct col<T, table_memory_layout::HEAP> {
     m_data = (T *)sys::realloc(m_data, l_new_byte_size);
   };
 
-  T &at(uimax_t p_index) { return m_data[p_index]; };
+  T &at(const container::heap_chunk &p_chunk) {
+    return m_data[p_chunk.m_begin];
+  };
+
+  template <typename TableType> T &at(TableType &p_table, uimax_t p_index) {
+    container::heap_chunk &l_chunk =
+        p_table.meta().m_heap_intrusive.m_allocated_chunk.at(p_index);
+    return at(l_chunk);
+  };
 
   template <typename TableType>
   void remove_at(TableType &p_table, uimax_t p_index){};
@@ -680,7 +693,7 @@ private:
           container::heap_intrusive::state::NEW_CHUNK_PUSHED) {
         p_table.template col<Col>().realloc(p_table);
       }
-      p_table.template col<Col>().at(p_chunk.m_begin) = p_element;
+      p_table.template col<Col>().at(p_chunk) = p_element;
       if constexpr (table_loop_next<TableType, Col>()) {
         __table_push_back_col<Col + 1>{}(p_table, p_chunk, p_next...);
       }

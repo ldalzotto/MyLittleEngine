@@ -305,7 +305,7 @@ struct heap_intrusive {
   uimax_t m_chunk_count;
   uimax_t m_current_count;
   vector<heap_chunk> m_free_chunks;
-  vector<heap_chunk> m_allocated_chunk;
+  object_pool_indexed<heap_chunk> m_allocated_chunk;
 
   enum class state { UNDEFINED = 0, NEW_CHUNK_PUSHED = 1 } m_state;
 
@@ -348,20 +348,20 @@ struct heap_intrusive {
     heap_chunk l_chunk;
     l_chunk.m_begin = l_free_chunk.m_begin;
     l_chunk.m_size = p_size;
-    m_allocated_chunk.push_back(l_chunk);
+    uimax_t l_allocated_chunk_index = m_allocated_chunk.malloc(l_chunk);
     if (l_free_chunk.m_size > p_size) {
       l_free_chunk.m_size -= p_size;
       l_free_chunk.m_begin += p_size;
     } else {
       m_free_chunks.remove_at(p_free_chunk_indexs);
     }
-    return m_allocated_chunk.count() - 1;
+    return l_allocated_chunk_index;
   };
 
   void free(uimax_t p_index) {
     auto &l_chunk = m_allocated_chunk.at(p_index);
     m_free_chunks.push_back(l_chunk);
-    m_allocated_chunk.remove_at(p_index);
+    m_allocated_chunk.free(p_index);
   };
 
 private:
@@ -405,10 +405,7 @@ struct heap {
 
 private:
   void __push_new_chunk() {
-    m_buffer.realloc(m_buffer.count() +
-                     m_intrusive.m_allocated_chunk
-                         .at(m_intrusive.m_allocated_chunk.count() - 1)
-                         .m_size);
+    m_buffer.realloc(m_buffer.count() + m_intrusive.m_chunk_count);
   };
 };
 

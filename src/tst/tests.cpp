@@ -121,9 +121,10 @@ void container_tests() {
     sys::sassert(l_table.at<0>(l_index_2) == 4);
     sys::sassert(l_table.at<1>(l_index_2) == 12);
 
+    auto l_old_index_1 = l_index_1;
     l_table.remove_at(l_index_1);
     l_index_1 = l_table.push_back(3, 11);
-
+    sys::sassert(l_old_index_1 == l_index_1); // Index is the same
     l_table.free();
   }
 
