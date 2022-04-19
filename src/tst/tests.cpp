@@ -129,6 +129,33 @@ void container_tests() {
   }
 
   {
+    orm::table<orm::table_col_types<ui8_t>,
+               orm::table_memory_layout::HEAP_BYTES>
+        l_table;
+    l_table.allocate(1024);
+    auto l_index_0 = l_table.push_back(2);
+    auto l_index_1 = l_table.push_back(3);
+    auto l_index_2 = l_table.push_back(4);
+
+    container::range<ui8_t> l_0 = l_table.range<0>(l_index_0);
+    container::range<ui8_t> l_1 = l_table.range<0>(l_index_1);
+    container::range<ui8_t> l_2 = l_table.range<0>(l_index_2);
+
+    sys::sassert(l_0.m_count == 2);
+    sys::sassert(l_1.m_count == 3);
+    sys::sassert(l_2.m_count == 4);
+
+    sys::sassert((int)(l_1.m_begin - l_0.m_begin) == 2);
+    sys::sassert((int)(l_2.m_begin - l_0.m_begin) == 5);
+
+    auto l_old_index_1 = l_index_1;
+    l_table.remove_at(l_index_1);
+    l_index_1 = l_table.push_back(3);
+    sys::sassert(l_old_index_1 == l_index_1); // Index is the same
+    l_table.free();
+  }
+
+  {
     using table_0 = orm::table<orm::table_col_types<i32_t, i32_t, ui8_t>,
                                orm::table_memory_layout::POOL_FIXED>;
     using table_1 = orm::table<orm::table_col_types<i32_t, i32_t>,
