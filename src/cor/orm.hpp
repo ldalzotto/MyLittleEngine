@@ -11,8 +11,8 @@ enum class table_memory_layout {
   POOL = 1,
   POOL_FIXED = 2,
   VECTOR = 3,
-  HEAP = 4,
-  HEAP_BYTES = 5
+  HEAP_FIXED = 4,
+  HEAP_FIXED_BYTES = 5
 };
 
 namespace details {
@@ -208,8 +208,8 @@ struct table {
   template <int N>
   uimax_t get_fixed_index(const decltype(col_type<N>()) *p_ptr) {
     static_assert(MemoryLayout == table_memory_layout::POOL_FIXED ||
-                      MemoryLayout == table_memory_layout::HEAP ||
-                      MemoryLayout == table_memory_layout::HEAP_BYTES,
+                      MemoryLayout == table_memory_layout::HEAP_FIXED ||
+                      MemoryLayout == table_memory_layout::HEAP_FIXED_BYTES,
                   "");
     return m_cols.template col<N>().get_fixed_index(*this, p_ptr);
   };
@@ -634,7 +634,7 @@ template <> struct table_meta<table_memory_layout::POOL_FIXED> {
 
 }; // namespace details
 
-template <typename T> struct col<T, table_memory_layout::HEAP> {
+template <typename T> struct col<T, table_memory_layout::HEAP_FIXED> {
   T *m_data;
 
   template <typename TableType> void allocate(TableType &p_table) {
@@ -666,9 +666,10 @@ template <typename T> struct col<T, table_memory_layout::HEAP> {
 };
 
 namespace details {
-template <> struct table_meta<table_memory_layout::HEAP> {
+template <> struct table_meta<table_memory_layout::HEAP_FIXED> {
 
-  static const table_memory_layout MEMORY_LAYOUT = table_memory_layout::HEAP;
+  static const table_memory_layout MEMORY_LAYOUT =
+      table_memory_layout::HEAP_FIXED;
 
   container::heap_intrusive m_heap_intrusive;
 
@@ -684,10 +685,10 @@ template <> struct table_meta<table_memory_layout::HEAP> {
 };
 
 template <typename TableType, typename... Types>
-struct table_push_back<TableType, table_memory_layout::HEAP, Types...> {
+struct table_push_back<TableType, table_memory_layout::HEAP_FIXED, Types...> {
   uimax_t m_index;
   table_push_back(TableType &p_table, const Types &... p_elements) {
-    table_meta<table_memory_layout::HEAP> &l_meta = p_table.meta();
+    table_meta<table_memory_layout::HEAP_FIXED> &l_meta = p_table.meta();
     uimax_t l_free_chunk = l_meta.next_free_element(1);
     assert_debug(l_free_chunk != -1);
     m_index = l_meta.m_heap_intrusive.push_found_chunk(1, l_free_chunk);
@@ -716,7 +717,7 @@ private:
 
 }; // namespace details
 
-template <> struct col<ui8_t, table_memory_layout::HEAP_BYTES> {
+template <> struct col<ui8_t, table_memory_layout::HEAP_FIXED_BYTES> {
   ui8_t *m_data;
 
   template <typename TableType> void allocate(TableType &p_table) {
@@ -767,10 +768,10 @@ template <> struct col<ui8_t, table_memory_layout::HEAP_BYTES> {
 };
 
 namespace details {
-template <> struct table_meta<table_memory_layout::HEAP_BYTES> {
+template <> struct table_meta<table_memory_layout::HEAP_FIXED_BYTES> {
 
   static const table_memory_layout MEMORY_LAYOUT =
-      table_memory_layout::HEAP_BYTES;
+      table_memory_layout::HEAP_FIXED_BYTES;
 
   container::heap_intrusive m_heap_intrusive;
 
@@ -787,13 +788,14 @@ template <> struct table_meta<table_memory_layout::HEAP_BYTES> {
 
 #define table_push_back_heap_bytes_specialization(p_integer_type)              \
   template <typename TableType>                                                \
-  struct table_push_back<TableType, table_memory_layout::HEAP_BYTES,           \
+  struct table_push_back<TableType, table_memory_layout::HEAP_FIXED_BYTES,     \
                          p_integer_type> {                                     \
     uimax_t m_index;                                                           \
     table_push_back(TableType &p_table, const int &p_size) {                   \
-      m_index = table_push_back<TableType, table_memory_layout::HEAP_BYTES,    \
-                                uimax_t>(p_table, (uimax_t)p_size)             \
-                    .m_index;                                                  \
+      m_index =                                                                \
+          table_push_back<TableType, table_memory_layout::HEAP_FIXED_BYTES,    \
+                          uimax_t>(p_table, (uimax_t)p_size)                   \
+              .m_index;                                                        \
     };                                                                         \
   }
 
@@ -803,10 +805,11 @@ table_push_back_heap_bytes_specialization(unsigned long);
 #undef table_push_back_heap_bytes_specialization
 
 template <typename TableType>
-struct table_push_back<TableType, table_memory_layout::HEAP_BYTES, uimax_t> {
+struct table_push_back<TableType, table_memory_layout::HEAP_FIXED_BYTES,
+                       uimax_t> {
   uimax_t m_index;
   table_push_back(TableType &p_table, const uimax_t &p_size) {
-    table_meta<table_memory_layout::HEAP_BYTES> &l_meta = p_table.meta();
+    table_meta<table_memory_layout::HEAP_FIXED_BYTES> &l_meta = p_table.meta();
     uimax_t l_free_chunk = l_meta.next_free_element(p_size);
     assert_debug(l_free_chunk != -1);
     m_index = l_meta.m_heap_intrusive.push_found_chunk(p_size, l_free_chunk);

@@ -107,7 +107,7 @@ void container_tests() {
 
   {
     orm::table<orm::table_col_types<i32_t, i32_t>,
-               orm::table_memory_layout::HEAP>
+               orm::table_memory_layout::HEAP_FIXED>
         l_table;
     l_table.allocate(1024);
     auto l_index_0 = l_table.push_back(2, 10);
@@ -130,7 +130,7 @@ void container_tests() {
 
   {
     orm::table<orm::table_col_types<ui8_t>,
-               orm::table_memory_layout::HEAP_BYTES>
+               orm::table_memory_layout::HEAP_FIXED_BYTES>
         l_table;
     l_table.allocate(1024);
     auto l_index_0 = l_table.push_back(2);
