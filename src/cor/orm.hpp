@@ -292,6 +292,10 @@ template <typename DbTableTypes> struct db {
   uimax_t get_fixed_index(const Ptr *p_ptr) {
     return table<Tab>().template get_fixed_index<N>(p_ptr);
   };
+
+  template <int Tab, int N> auto range(uimax_t p_index) {
+    return table<Tab>().template range<N>(p_index);
+  };
 };
 
 //////////////////// POOL SPECIALIZATION ////////////////////
@@ -773,10 +777,27 @@ template <> struct table_meta<table_memory_layout::HEAP_BYTES> {
   void remove_at(uimax_t p_index) { m_heap_intrusive.free(p_index); };
 };
 
+#define table_push_back_heap_bytes_specialization(p_integer_type)              \
+  template <typename TableType>                                                \
+  struct table_push_back<TableType, table_memory_layout::HEAP_BYTES,           \
+                         p_integer_type> {                                     \
+    uimax_t m_index;                                                           \
+    table_push_back(TableType &p_table, const int &p_size) {                   \
+      m_index = table_push_back<TableType, table_memory_layout::HEAP_BYTES,    \
+                                uimax_t>(p_table, (uimax_t)p_size)             \
+                    .m_index;                                                  \
+    };                                                                         \
+  }
+
+table_push_back_heap_bytes_specialization(int);
+table_push_back_heap_bytes_specialization(unsigned long);
+
+#undef table_push_back_heap_bytes_specialization
+
 template <typename TableType>
-struct table_push_back<TableType, table_memory_layout::HEAP_BYTES, int> {
+struct table_push_back<TableType, table_memory_layout::HEAP_BYTES, uimax_t> {
   uimax_t m_index;
-  table_push_back(TableType &p_table, const int &p_size) {
+  table_push_back(TableType &p_table, const uimax_t &p_size) {
     table_meta<table_memory_layout::HEAP_BYTES> &l_meta = p_table.meta();
     uimax_t l_free_chunk = l_meta.next_free_element(p_size);
     assert_debug(l_free_chunk != -1);
@@ -923,6 +944,19 @@ struct db_table_types<Table0, Table1, Table2, Table3, Table4> {
   template <> FORCE_INLINE static auto table_type<4>() { return Table4{}; };
 };
 
+template <typename Table0, typename Table1, typename Table2, typename Table3,
+          typename Table4, typename Table5>
+struct db_table_types<Table0, Table1, Table2, Table3, Table4, Table5> {
+  static constexpr int TABLE_COUNT = 6;
+  template <int N> static auto table_type();
+  template <> FORCE_INLINE static auto table_type<0>() { return Table0{}; };
+  template <> FORCE_INLINE static auto table_type<1>() { return Table1{}; };
+  template <> FORCE_INLINE static auto table_type<2>() { return Table2{}; };
+  template <> FORCE_INLINE static auto table_type<3>() { return Table3{}; };
+  template <> FORCE_INLINE static auto table_type<4>() { return Table4{}; };
+  template <> FORCE_INLINE static auto table_type<5>() { return Table5{}; };
+};
+
 template <typename DbTableTypes> struct db_tables<DbTableTypes, 1> {
   decltype(DbTableTypes::template table_type<0>()) m_table_0;
 
@@ -977,6 +1011,24 @@ template <typename DbTableTypes> struct db_tables<DbTableTypes, 5> {
   template <> FORCE_INLINE auto &table<3>() { return m_table_3; };
   template <> FORCE_INLINE auto &table<4>() { return m_table_4; };
 };
+
+template <typename DbTableTypes> struct db_tables<DbTableTypes, 6> {
+  decltype(DbTableTypes::template table_type<0>()) m_table_0;
+  decltype(DbTableTypes::template table_type<1>()) m_table_1;
+  decltype(DbTableTypes::template table_type<2>()) m_table_2;
+  decltype(DbTableTypes::template table_type<3>()) m_table_3;
+  decltype(DbTableTypes::template table_type<4>()) m_table_4;
+  decltype(DbTableTypes::template table_type<5>()) m_table_5;
+
+  template <int N> auto &table();
+  template <> FORCE_INLINE auto &table<0>() { return m_table_0; };
+  template <> FORCE_INLINE auto &table<1>() { return m_table_1; };
+  template <> FORCE_INLINE auto &table<2>() { return m_table_2; };
+  template <> FORCE_INLINE auto &table<3>() { return m_table_3; };
+  template <> FORCE_INLINE auto &table<4>() { return m_table_4; };
+  template <> FORCE_INLINE auto &table<5>() { return m_table_5; };
+};
+
 #pragma endregion TRIVIAL SPECIALIZATIONS
 
 }; // namespace orm

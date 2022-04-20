@@ -95,7 +95,7 @@ struct bgfx_impl {
     mat<f32, 4, 4> view;
     mat<f32, 4, 4> proj;
 
-    container::vector<CommandHeader *> commands;
+    container::vector<uimax_t> commands;
 
     void allocate() { commands.allocate(0); };
     void free() { commands.free(); };
@@ -110,22 +110,6 @@ struct bgfx_impl {
       l_render_pass.proj.setZero();
       return l_render_pass;
     };
-
-    template <typename CommandType>
-    void push_command(const CommandType &p_command,
-                      CommandsMemoryType &p_commands_memory) {
-      p_commands_memory.set_next_size(sizeof(p_command));
-      CommandType *l_buffer = (CommandType *)p_commands_memory.malloc();
-      *l_buffer = p_command;
-      commands.push_back(&l_buffer->header);
-    };
-
-    void clear_commands(CommandsMemoryType &p_commands_memory) {
-      for (auto l_it = 0; l_it < commands.count(); ++l_it) {
-        p_commands_memory.free(commands.at(l_it));
-      }
-      commands.clear();
-    };
   };
 
   struct heap {
@@ -137,21 +121,23 @@ struct bgfx_impl {
         orm::table<orm::table_col_types<Texture>>,
         orm::table<orm::table_col_types<FrameBuffer>>,
         orm::table<orm::table_col_types<VertexBuffer>>,
-        orm::table<orm::table_col_types<IndexBuffer>>>>
+        orm::table<orm::table_col_types<IndexBuffer>>,
+        orm::table<orm::table_col_types<ui8_t>,
+                   orm::table_memory_layout::HEAP_BYTES>>>
         m_db;
     static const int buffers_table = 0;
     static const int texture_table = 1;
     static const int framebuffer_table = 2;
     static const int vertexbuffer_table = 3;
     static const int indexbuffer_table = 4;
-    CommandsMemoryType commands_memory;
+    static constexpr int commands_memory_table = 5;
     container::vector<RenderPass> renderpasses;
 
-    heap() : buffers_memory(1000), commands_memory(1000) {
+    heap() : buffers_memory(1000) {
       renderpasses.allocate(0);
       renderpasses.push_back(
           RenderPass::get_default()); // at least one renderpass
-      m_db.allocate(1024, 0, 0, 0, 0);
+      m_db.allocate(1024, 0, 0, 0, 0, 1024);
     };
 
     void free() {
@@ -309,7 +295,13 @@ struct bgfx_impl {
     Command_DrawCall l_draw_call;
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
-    l_render_pass.push_command(l_draw_call, heap.commands_memory);
+
+    auto l_command_index = heap.m_db.push_back<heap::commands_memory_table>(sizeof(l_draw_call));
+    container::range<ui8_t> l_command =
+        heap.m_db.range<heap::commands_memory_table, 0>(l_command_index);
+    l_command.copy_from(container::range<ui8_t>::make((ui8_t *)&l_draw_call,
+                                                      sizeof(l_draw_call)));
+    l_render_pass.commands.push_back(l_command_index);
   };
 
   void set_transform(const mat<f32, 4, 4> &p_transform) {
@@ -330,7 +322,12 @@ struct bgfx_impl {
 
     for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
       RenderPass &l_render_pass = heap.renderpasses.at(l_it);
-      l_render_pass.clear_commands(heap.commands_memory);
+      for (auto l_command_it = 0; l_command_it < l_render_pass.commands.count();
+           ++l_command_it) {
+        heap.m_db.remove_at<heap::commands_memory_table>(
+            l_render_pass.commands.at(l_command_it));
+      }
+      l_render_pass.commands.clear();
     }
   };
 

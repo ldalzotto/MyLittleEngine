@@ -28,6 +28,13 @@ template <typename T> struct range {
   T *m_begin;
   uimax_t m_count;
 
+  static range make(T *p_begin, uimax_t p_count) {
+    range l_range;
+    l_range.m_begin = p_begin;
+    l_range.m_count = p_count;
+    return l_range;
+  };
+
   const uimax_t &count() const { return m_count; };
 
   T &at(uimax_t p_index) {
@@ -38,7 +45,13 @@ template <typename T> struct range {
   const T &at(uimax_t p_index) const { return ((range *)this)->at(p_index); };
 
   void copy_to(const range &p_to) const {
+    assert_debug(m_count <= p_to.m_count);
     sys::memcpy(p_to.m_begin, m_begin, m_count * sizeof(T));
+  };
+
+  void copy_from(const range &p_from) const {
+    assert_debug(p_from.m_count <= m_count);
+    sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
   };
 
   uimax_t size_bytes() const { return sizeof(T) * m_count; };
