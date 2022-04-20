@@ -755,6 +755,14 @@ template <> struct col<ui8_t, table_memory_layout::HEAP_BYTES> {
   };
 
   template <typename TableType>
+  uimax_t get_fixed_index(TableType &p_table, const ui8_t *p_ptr) {
+    assert_debug(p_ptr >= m_data);
+    container::heap_intrusive &l_heap_intrusive =
+        p_table.meta().m_heap_intrusive;
+    return l_heap_intrusive.get_chunk_index_from_begin(p_ptr - m_data);
+  };
+
+  template <typename TableType>
   void remove_at(TableType &p_table, uimax_t p_index){};
 };
 
@@ -957,6 +965,20 @@ struct db_table_types<Table0, Table1, Table2, Table3, Table4, Table5> {
   template <> FORCE_INLINE static auto table_type<5>() { return Table5{}; };
 };
 
+template <typename Table0, typename Table1, typename Table2, typename Table3,
+          typename Table4, typename Table5, typename Table6>
+struct db_table_types<Table0, Table1, Table2, Table3, Table4, Table5, Table6> {
+  static constexpr int TABLE_COUNT = 7;
+  template <int N> static auto table_type();
+  template <> FORCE_INLINE static auto table_type<0>() { return Table0{}; };
+  template <> FORCE_INLINE static auto table_type<1>() { return Table1{}; };
+  template <> FORCE_INLINE static auto table_type<2>() { return Table2{}; };
+  template <> FORCE_INLINE static auto table_type<3>() { return Table3{}; };
+  template <> FORCE_INLINE static auto table_type<4>() { return Table4{}; };
+  template <> FORCE_INLINE static auto table_type<5>() { return Table5{}; };
+  template <> FORCE_INLINE static auto table_type<6>() { return Table6{}; };
+};
+
 template <typename DbTableTypes> struct db_tables<DbTableTypes, 1> {
   decltype(DbTableTypes::template table_type<0>()) m_table_0;
 
@@ -1027,6 +1049,25 @@ template <typename DbTableTypes> struct db_tables<DbTableTypes, 6> {
   template <> FORCE_INLINE auto &table<3>() { return m_table_3; };
   template <> FORCE_INLINE auto &table<4>() { return m_table_4; };
   template <> FORCE_INLINE auto &table<5>() { return m_table_5; };
+};
+
+template <typename DbTableTypes> struct db_tables<DbTableTypes, 7> {
+  decltype(DbTableTypes::template table_type<0>()) m_table_0;
+  decltype(DbTableTypes::template table_type<1>()) m_table_1;
+  decltype(DbTableTypes::template table_type<2>()) m_table_2;
+  decltype(DbTableTypes::template table_type<3>()) m_table_3;
+  decltype(DbTableTypes::template table_type<4>()) m_table_4;
+  decltype(DbTableTypes::template table_type<5>()) m_table_5;
+  decltype(DbTableTypes::template table_type<6>()) m_table_6;
+
+  template <int N> auto &table();
+  template <> FORCE_INLINE auto &table<0>() { return m_table_0; };
+  template <> FORCE_INLINE auto &table<1>() { return m_table_1; };
+  template <> FORCE_INLINE auto &table<2>() { return m_table_2; };
+  template <> FORCE_INLINE auto &table<3>() { return m_table_3; };
+  template <> FORCE_INLINE auto &table<4>() { return m_table_4; };
+  template <> FORCE_INLINE auto &table<5>() { return m_table_5; };
+  template <> FORCE_INLINE auto &table<6>() { return m_table_6; };
 };
 
 #pragma endregion TRIVIAL SPECIALIZATIONS

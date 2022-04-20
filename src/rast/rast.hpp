@@ -113,9 +113,9 @@ struct bgfx_impl {
   };
 
   struct heap {
-
-    boost::pool<> buffers_memory;
     orm::db<orm::db_table_types<
+        orm::table<orm::table_col_types<ui8_t>,
+                   orm::table_memory_layout::HEAP_BYTES>,
         orm::table<orm::table_col_types<bgfx::Memory, MemoryReference>,
                    orm::table_memory_layout::POOL_FIXED>,
         orm::table<orm::table_col_types<Texture>>,
@@ -125,19 +125,20 @@ struct bgfx_impl {
         orm::table<orm::table_col_types<ui8_t>,
                    orm::table_memory_layout::HEAP_BYTES>>>
         m_db;
-    static const int buffers_table = 0;
-    static const int texture_table = 1;
-    static const int framebuffer_table = 2;
-    static const int vertexbuffer_table = 3;
-    static const int indexbuffer_table = 4;
-    static constexpr int commands_memory_table = 5;
+    static const int buffer_memory_table = 0;
+    static const int buffers_table = 1;
+    static const int texture_table = 2;
+    static const int framebuffer_table = 3;
+    static const int vertexbuffer_table = 4;
+    static const int indexbuffer_table = 5;
+    static constexpr int commands_memory_table = 6;
     container::vector<RenderPass> renderpasses;
 
-    heap() : buffers_memory(1000) {
+    heap() {
       renderpasses.allocate(0);
       renderpasses.push_back(
           RenderPass::get_default()); // at least one renderpass
-      m_db.allocate(1024, 0, 0, 0, 0, 1024);
+      m_db.allocate(4096 * 4096, 1024, 0, 0, 0, 0, 1024);
     };
 
     void free() {
@@ -153,9 +154,12 @@ struct bgfx_impl {
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
+      auto l_buffer_index = m_db.push_back<buffer_memory_table>(p_size.value);
+      container::range<ui8_t> l_buffer_range =
+          m_db.range<buffer_memory_table, 0>(l_buffer_index);
       bgfx::Memory l_buffer{};
-      l_buffer.data = (uint8_t *)buffers_memory.malloc();
-      l_buffer.size = uint32_t(p_size.value);
+      l_buffer.data = (uint8_t *)l_buffer_range.m_begin;
+      l_buffer.size = l_buffer_range.m_count;
 
       auto l_index =
           m_db.push_back<buffers_table>(l_buffer, MemoryReference(0));
@@ -176,7 +180,8 @@ struct bgfx_impl {
       auto l_index = m_db.get_fixed_index<buffers_table, 0>(p_buffer);
 
       if (!m_db.at<buffers_table, 1>(l_index).m_is_ref) {
-        buffers_memory.free(p_buffer->data);
+        m_db.remove_at<buffer_memory_table>(
+            m_db.get_fixed_index<buffer_memory_table, 0>(p_buffer->data));
       }
 
       m_db.remove_at<buffers_table>(l_index);
@@ -296,7 +301,8 @@ struct bgfx_impl {
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
 
-    auto l_command_index = heap.m_db.push_back<heap::commands_memory_table>(sizeof(l_draw_call));
+    auto l_command_index =
+        heap.m_db.push_back<heap::commands_memory_table>(sizeof(l_draw_call));
     container::range<ui8_t> l_command =
         heap.m_db.range<heap::commands_memory_table, 0>(l_command_index);
     l_command.copy_from(container::range<ui8_t>::make((ui8_t *)&l_draw_call,

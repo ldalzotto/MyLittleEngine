@@ -254,6 +254,8 @@ public:
     return m_data.at(p_index);
   };
 
+  uimax_t count() const { return m_data.count(); };
+
   ui8_t is_element_allocated(uimax_t p_index) const {
     return __is_element_allocated(p_index);
   };
@@ -261,7 +263,7 @@ public:
   ui8_t has_free_elements() const { return m_free_elements.count() > 0; };
 
 private:
-  ui8_t __is_element_allocated(uimax_t p_index) {
+  ui8_t __is_element_allocated(uimax_t p_index) const {
     for (auto i = 0; i < m_free_elements.count(); ++i) {
       auto &l_free_index = m_free_elements.at(i);
       if (l_free_index == p_index) {
@@ -375,6 +377,17 @@ struct heap_intrusive {
     auto &l_chunk = m_allocated_chunk.at(p_index);
     m_free_chunks.push_back(l_chunk);
     m_allocated_chunk.free(p_index);
+  };
+
+  uimax_t get_chunk_index_from_begin(uimax_t p_begin) {
+    for (auto l_chunk_it = 0; m_allocated_chunk.count(); ++l_chunk_it) {
+      if (m_allocated_chunk.is_element_allocated(l_chunk_it)) {
+        if (m_allocated_chunk.at(l_chunk_it).m_begin == p_begin) {
+          return l_chunk_it;
+        }
+      }
+    }
+    return -1;
   };
 
 private:
