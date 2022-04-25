@@ -1,7 +1,5 @@
 #pragma once
 
-#include <cor/cor.hpp>
-
 namespace algorithm {
 
 template <typename RangeType, typename SortFunc>
