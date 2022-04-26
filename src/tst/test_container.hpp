@@ -59,11 +59,18 @@ struct tests {
       table_define_pool_1;
     } int_pool_table;
 
+    struct entry_heap_table {
+      table_heap_paged_meta;
+      table_heap_paged_cols_1(entry);
+      table_define_heap_paged_1;
+    } entry_heap_table;
+
     orm::table_one_to_many entry_to_int;
 
     entry_table.allocate(0);
     int_table.allocate(0);
     int_pool_table.allocate(0);
+    entry_heap_table.allocate(148);
     entry_to_int.allocate(0);
 
     for (auto i = 0; i < 10; ++i) {
@@ -92,9 +99,15 @@ struct tests {
     int_pool_table.push_back(10);
     int_pool_table.remove_at(0);
 
+    uimax l_chunk = entry_heap_table.push_back(3);
+    container::range<entry> l_entries;
+    entry_heap_table.at(l_chunk, &l_entries);
+    sys::sassert(l_entries.m_count == 3);
+
     entry_table.free();
     int_table.free();
     int_pool_table.free();
+    entry_heap_table.free();
   };
 };
 } // namespace
