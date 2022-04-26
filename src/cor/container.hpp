@@ -462,6 +462,8 @@ struct heap_paged_intrusive {
     NewChunkPushed = 2
   } m_state;
 
+  void clear_state() { m_state = state::Undefined; };
+
   void allocate(uimax p_page_capacity) {
     m_state = state::Undefined;
     m_single_page_capacity = p_page_capacity;
@@ -525,11 +527,28 @@ struct heap_paged_intrusive {
   uimax push_found_chunk(uimax p_size, uimax p_page_index,
                          uimax p_chunk_index) {
     auto &l_free_chunks = m_free_chunks_by_page[p_page_index];
+    auto &l_free_chunk = l_free_chunks.at(p_chunk_index);
+    heap_chunk l_chunk;
+    l_chunk.m_begin = l_free_chunk.m_begin;
+    l_chunk.m_size = p_size;
+    heap_paged_chunk l_paged_chunk;
+    l_paged_chunk.m_chunk = l_chunk;
+    l_paged_chunk.m_page_index = p_page_index;
+    uimax l_allocated_chunk_index = m_allocated_chunks.push_back(l_paged_chunk);
+    if (l_free_chunk.m_size > p_size) {
+      l_free_chunk.m_size -= p_size;
+      l_free_chunk.m_begin += p_size;
+    } else {
+      l_free_chunks.remove_at(p_chunk_index);
+    }
+    return l_allocated_chunk_index;
+  };
 
-    // TODO -> split
-
-    // l_free_chunks.remove_at(p_page_index);
-    // m_free_chunks_by_page[p_page_index].at(p_chunk_index);
+  void remove_chunk(uimax p_chunk_index) {
+    heap_paged_chunk &l_paged_chunk = m_allocated_chunks.at(p_chunk_index);
+    m_free_chunks_by_page[l_paged_chunk.m_page_index].push_back(
+        l_paged_chunk.m_chunk);
+    m_allocated_chunks.remove_at(p_chunk_index);
   };
 
 private:
@@ -541,6 +560,15 @@ private:
           m_free_chunks_by_page,
           sizeof(*m_free_chunks_by_page) * m_pages_intrusive.m_capacity);
     }
+
+    vector<heap_chunk> &l_page_chunks =
+        m_free_chunks_by_page[m_pages_intrusive.m_count - 1];
+    l_page_chunks.allocate(0);
+    heap_chunk l_chunk;
+    l_chunk.m_begin = 0;
+    l_chunk.m_size = m_single_page_capacity;
+    l_page_chunks.push_back(l_chunk);
+    m_state = state::NewPagePushed;
   };
 }; // namespace container
 
