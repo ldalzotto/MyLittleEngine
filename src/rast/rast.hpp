@@ -1,21 +1,19 @@
 #pragma once
 
 #include <bgfx/bgfx.h>
-#include <boost/container/list.hpp>
-#include <boost/container/map.hpp>
-#include <boost/pool/object_pool.hpp>
-#include <boost/range/algorithm.hpp>
-#include <boost/range/algorithm_ext.hpp>
 #include <cor/container.hpp>
-#include <cor/cor.hpp>
 #include <cor/orm.hpp>
+#include <cor/types.hpp>
+#include <m/mat.hpp>
+#include <m/vec.hpp>
 
 struct bgfx_impl {
 
   struct MemoryReference {
-    ui8_t m_is_ref;
+    uimax m_buffer_index;
+    ui8 is_ref() { return m_buffer_index == -1; };
     MemoryReference() = default;
-    MemoryReference(ui8_t p_is_ref) : m_is_ref(p_is_ref){};
+    MemoryReference(uimax p_buffer_index) : m_buffer_index(p_buffer_index){};
   };
 
   struct Texture {
@@ -52,7 +50,7 @@ struct bgfx_impl {
   };
 
   struct CommandTemporaryStack {
-    mat<f32, 4, 4> transform;
+    m::mat<f32, 4, 4> transform;
     bgfx::VertexBufferHandle vertex_buffer;
     bgfx::IndexBufferHandle index_buffer;
     void clear() {
@@ -74,7 +72,7 @@ struct bgfx_impl {
 
   struct Command_DrawCall {
     CommandHeader header = CommandHeader(CommandType::Enum::DrawCall);
-    mat<f32, 4, 4> transform;
+    m::mat<f32, 4, 4> transform;
     bgfx::IndexBufferHandle index_buffer;
     bgfx::VertexBufferHandle vertex_buffer;
 
@@ -86,16 +84,14 @@ struct bgfx_impl {
     };
   };
 
-  using CommandsMemoryType = boost::pool<>;
-
   struct RenderPass {
     bgfx::FrameBufferHandle framebuffer;
-    vec<ui16, 2> rect;
-    vec<ui16, 4> scissor;
-    mat<f32, 4, 4> view;
-    mat<f32, 4, 4> proj;
+    m::vec<ui16, 2> rect;
+    m::vec<ui16, 4> scissor;
+    m::mat<f32, 4, 4> view;
+    m::mat<f32, 4, 4> proj;
 
-    container::vector<uimax_t> commands;
+    container::vector<uimax> commands;
 
     void allocate() { commands.allocate(0); };
     void free() { commands.free(); };
@@ -114,32 +110,53 @@ struct bgfx_impl {
 
   struct heap {
 
-    using buffer_memory_table =
-        orm::table<orm::table_col_types<ui8_t>,
-                   orm::table_memory_layout::HEAP_FIXED_BYTES>;
-    using buffers_table =
-        orm::table<orm::table_col_types<bgfx::Memory, MemoryReference>,
-                   orm::table_memory_layout::POOL_FIXED>;
-    using texture_table = orm::table<orm::table_col_types<Texture>>;
-    using framebuffer_table = orm::table<orm::table_col_types<FrameBuffer>>;
-    using vertexbuffer_table = orm::table<orm::table_col_types<VertexBuffer>>;
-    using indexbuffer_table = orm::table<orm::table_col_types<IndexBuffer>>;
-    using commands_memory_table =
-        orm::table<orm::table_col_types<ui8_t>,
-                   orm::table_memory_layout::HEAP_FIXED_BYTES>;
+    struct buffer_memory_table {
+      table_heap_paged_meta;
+      table_heap_paged_cols_1(ui8);
+      table_define_heap_paged_1;
+    } buffer_memory_table;
 
-    orm::db<orm::db_table_types<
-        buffer_memory_table, buffers_table, texture_table, framebuffer_table,
-        vertexbuffer_table, indexbuffer_table, commands_memory_table>>
-        m_db;
+    struct buffers_table {
+      table_heap_paged_meta;
+      table_heap_paged_cols_2(bgfx::Memory, MemoryReference);
+      table_define_heap_paged_2;
+    } buffers_table;
 
-    static const int buffer_memory_table_idx = 0;
-    static const int buffers_table_idx = 1;
-    static const int texture_table_idx = 2;
-    static const int framebuffer_table_idx = 3;
-    static const int vertexbuffer_table_idx = 4;
-    static const int indexbuffer_table_idx = 5;
-    static constexpr int commands_memory_table_idx = 6;
+    struct buffers_ptr_mapping_table {
+      table_vector_meta;
+      table_cols_2(bgfx::Memory *, uimax);
+      table_define_vector_2;
+    } buffers_ptr_mapping_table;
+
+    struct texture_table {
+      table_pool_meta;
+      table_cols_1(Texture);
+      table_define_pool_1;
+    } texture_table;
+
+    struct framebuffer_table {
+      table_pool_meta;
+      table_cols_1(FrameBuffer);
+      table_define_pool_1;
+    } framebuffer_table;
+
+    struct vertexbuffer_table {
+      table_pool_meta;
+      table_cols_1(VertexBuffer);
+      table_define_pool_1;
+    } vertexbuffer_table;
+
+    struct indexbuffer_table {
+      table_pool_meta;
+      table_cols_1(IndexBuffer);
+      table_define_pool_1;
+    } indexbuffer_table;
+
+    struct commands_memory_table {
+      table_heap_paged_meta;
+      table_heap_paged_cols_1(ui8);
+      table_define_heap_paged_1;
+    } commands_memory_table;
 
     // TODO -> move to table
     container::vector<RenderPass> renderpasses;
@@ -148,56 +165,95 @@ struct bgfx_impl {
       renderpasses.allocate(0);
       renderpasses.push_back(
           RenderPass::get_default()); // at least one renderpass
-      m_db.allocate(4096 * 4096, 1024, 0, 0, 0, 0, 1024);
+      buffer_memory_table.allocate(4096 * 4096);
+      buffers_table.allocate(1024);
+      buffers_ptr_mapping_table.allocate(0);
+      texture_table.allocate(0);
+      framebuffer_table.allocate(0);
+      vertexbuffer_table.allocate(0);
+      indexbuffer_table.allocate(0);
+      commands_memory_table.allocate(1024);
     };
 
     void free() {
-      assert_debug(
-          !m_db.table<vertexbuffer_table_idx>().has_allocated_elements());
-      assert_debug(
-          !m_db.table<indexbuffer_table_idx>().has_allocated_elements());
+      assert_debug(!vertexbuffer_table.has_allocated_elements());
+      assert_debug(!indexbuffer_table.has_allocated_elements());
       assert_debug(renderpasses.count() == 1);
       for (auto l_render_pass_it = 0; l_render_pass_it < renderpasses.count();
            ++l_render_pass_it) {
         renderpasses.at(l_render_pass_it).free();
       }
       renderpasses.free();
-      m_db.free();
+      buffer_memory_table.free();
+      buffers_table.free();
+      buffers_ptr_mapping_table.free();
+      texture_table.free();
+      vertexbuffer_table.free();
+      indexbuffer_table.free();
+      commands_memory_table.free();
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
-      auto l_buffer_index =
-          m_db.push_back<buffer_memory_table_idx>(p_size.value);
-      container::range<ui8_t> l_buffer_range =
-          m_db.range<buffer_memory_table_idx, 0>(l_buffer_index);
+      auto l_buffer_index = buffer_memory_table.push_back(p_size);
+      container::range<ui8> l_buffer_range;
+      buffer_memory_table.at(l_buffer_index, &l_buffer_range);
+
       bgfx::Memory l_buffer{};
       l_buffer.data = (uint8_t *)l_buffer_range.m_begin;
       l_buffer.size = l_buffer_range.m_count;
 
-      auto l_index =
-          m_db.push_back<buffers_table_idx>(l_buffer, MemoryReference(0));
-      return &m_db.at<buffers_table_idx, 0>(l_index);
+      uimax l_index = buffers_table.push_back(1);
+      bgfx::Memory *l_bgfx_memory;
+      MemoryReference *l_memory_refence;
+      uimax l_memory_count;
+      buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence,
+                       &l_memory_count);
+      assert_debug(l_memory_count == 1);
+      *l_bgfx_memory = l_buffer;
+      *l_memory_refence = MemoryReference(l_buffer_index);
+
+      buffers_ptr_mapping_table.push_back(l_bgfx_memory, l_index);
+      return l_bgfx_memory;
     };
 
-    bgfx::Memory *allocate_ref(const void *p_ptr, ui32_t p_size) {
+    bgfx::Memory *allocate_ref(const void *p_ptr, ui32 p_size) {
       bgfx::Memory l_buffer{};
-      l_buffer.data = (ui8_t *)p_ptr;
+      l_buffer.data = (ui8 *)p_ptr;
       l_buffer.size = p_size;
 
-      auto l_index =
-          m_db.push_back<buffers_table_idx>(l_buffer, MemoryReference(1));
-      return &m_db.at<buffers_table_idx, 0>(l_index);
+      uimax l_index = buffers_table.push_back(1);
+      bgfx::Memory *l_bgfx_memory;
+      MemoryReference *l_memory_refence;
+      uimax l_memory_count;
+      buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence,
+                       &l_memory_count);
+      assert_debug(l_memory_count == 1);
+      *l_bgfx_memory = l_buffer;
+      *l_memory_refence = MemoryReference(-1);
+
+      buffers_ptr_mapping_table.push_back(l_bgfx_memory, l_index);
+      return l_bgfx_memory;
     };
 
     void free_buffer(const bgfx::Memory *p_buffer) {
-      auto l_index = m_db.get_fixed_index<buffers_table_idx, 0>(p_buffer);
 
-      if (!m_db.at<buffers_table_idx, 1>(l_index).m_is_ref) {
-        m_db.remove_at<buffer_memory_table_idx>(
-            m_db.get_fixed_index<buffer_memory_table_idx, 0>(p_buffer->data));
+      for (auto i = 0; i < buffers_ptr_mapping_table.m_meta.m_count; ++i) {
+        if (buffers_ptr_mapping_table.m_col_0[i] == p_buffer) {
+
+          bgfx::Memory *l_tmp_buffer;
+          MemoryReference *l_reference;
+          uimax l_buffers_table_count;
+          buffers_table.at(buffers_ptr_mapping_table.m_col_1[i], &l_tmp_buffer,
+                           &l_reference, &l_buffers_table_count);
+          assert_debug(l_buffers_table_count == 1);
+          assert_debug(l_tmp_buffer == p_buffer);
+          if (!l_reference->is_ref()) {
+            buffer_memory_table.remove_at(l_reference->m_buffer_index);
+          }
+          buffers_ptr_mapping_table.remove_at(i);
+          return;
+        }
       }
-
-      m_db.remove_at<buffers_table_idx>(l_index);
     };
 
     bgfx::TextureHandle
@@ -208,12 +264,13 @@ struct bgfx_impl {
       l_texture.info = p_texture_info;
       l_texture.buffer = allocate_buffer(l_image_size);
       bgfx::TextureHandle l_texture_handle;
-      l_texture_handle.idx = m_db.push_back<texture_table_idx>(l_texture);
+      l_texture_handle.idx = texture_table.push_back(l_texture);
 
       return l_texture_handle;
     };
 
     void free_texture(bgfx::TextureHandle p_texture) {
+      // texture_table.
       free_buffer(m_db.at<texture_table_idx, 0>(p_texture.idx).buffer);
       m_db.remove_at<texture_table_idx>(p_texture.idx);
     };
@@ -302,8 +359,8 @@ struct bgfx_impl {
     l_render_pass.framebuffer = p_handle;
   };
 
-  void view_set_transform(bgfx::ViewId p_id, const mat<f32, 4, 4> &p_view,
-                          const mat<f32, 4, 4> &p_proj) {
+  void view_set_transform(bgfx::ViewId p_id, const m::mat<f32, 4, 4> &p_view,
+                          const m::mat<f32, 4, 4> &p_proj) {
     auto &l_render_pass = heap.renderpasses.at(p_id);
     l_render_pass.view = p_view;
     l_render_pass.proj = p_proj;

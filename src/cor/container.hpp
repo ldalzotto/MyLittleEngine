@@ -262,6 +262,8 @@ struct pool_intrusive {
     return 1;
   };
 
+  bool has_allocated_elements() { return m_free_elements.count() != m_count; };
+
 private:
   void __re_capacitate(uimax p_delta_count) {
     auto l_new_capacity = m_capacity + p_delta_count;
@@ -456,11 +458,7 @@ struct heap_paged_intrusive {
 
   pool<heap_paged_chunk> m_allocated_chunks;
 
-  enum class state {
-    Undefined = 0,
-    NewPagePushed = 1,
-    NewChunkPushed = 2
-  } m_state;
+  enum class state { Undefined = 0, NewPagePushed = 1 } m_state;
 
   void clear_state() { m_state = state::Undefined; };
 
