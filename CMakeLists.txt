@@ -23,12 +23,16 @@ if(ENABLE_UNDEFINED)
     add_link_options(-fsanitize=undefined)
 endif()
 
+
+add_library(BGFX_API INTERFACE)
+target_include_directories(BGFX_API INTERFACE ./tp/bgfx_api/)
+
 add_library(WholeProject INTERFACE)
 target_include_directories(WholeProject INTERFACE ./src/)
+target_link_libraries(WholeProject INTERFACE BGFX_API)
 
 add_library(SYS STATIC ./src/sys/sys.cpp)
 target_link_libraries(SYS PUBLIC WholeProject)
-
 
 find_package(X11 REQUIRED)
 
