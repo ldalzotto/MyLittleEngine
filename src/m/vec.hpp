@@ -66,6 +66,8 @@ template <typename T, int N> struct vec {
     }
     return *this;
   };
+
+  static vec getZero() { return {0}; };
 };
 
 template <typename T>

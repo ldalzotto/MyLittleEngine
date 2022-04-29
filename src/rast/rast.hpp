@@ -54,7 +54,7 @@ struct bgfx_impl {
     bgfx::VertexBufferHandle vertex_buffer;
     bgfx::IndexBufferHandle index_buffer;
     void clear() {
-      transform.setIdentity();
+      transform = transform.getIdentity();
       vertex_buffer.idx = bgfx::kInvalidHandle;
       index_buffer.idx = bgfx::kInvalidHandle;
     };
@@ -100,10 +100,10 @@ struct bgfx_impl {
       RenderPass l_render_pass;
       l_render_pass.allocate();
       l_render_pass.framebuffer.idx = 0;
-      l_render_pass.rect.setZero();
-      l_render_pass.scissor.setZero();
-      l_render_pass.view.setZero();
-      l_render_pass.proj.setZero();
+      l_render_pass.rect = l_render_pass.rect.getZero();
+      l_render_pass.scissor = l_render_pass.scissor.getZero();
+      l_render_pass.view = l_render_pass.view.getZero();
+      l_render_pass.proj = l_render_pass.proj.getZero();
       return l_render_pass;
     };
   };
@@ -161,7 +161,7 @@ struct bgfx_impl {
     // TODO -> move to table
     container::vector<RenderPass> renderpasses;
 
-    heap() {
+    void allocate() {
       renderpasses.allocate(0);
       renderpasses.push_back(
           RenderPass::get_default()); // at least one renderpass
@@ -205,9 +205,8 @@ struct bgfx_impl {
       uimax l_index = buffers_table.push_back(1);
       bgfx::Memory *l_bgfx_memory;
       MemoryReference *l_memory_refence;
-      uimax l_memory_count;
-      buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence,
-                       &l_memory_count);
+      uimax l_memory_count =
+          buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = MemoryReference(l_buffer_index);
@@ -224,9 +223,8 @@ struct bgfx_impl {
       uimax l_index = buffers_table.push_back(1);
       bgfx::Memory *l_bgfx_memory;
       MemoryReference *l_memory_refence;
-      uimax l_memory_count;
-      buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence,
-                       &l_memory_count);
+      uimax l_memory_count =
+          buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = MemoryReference(-1);
@@ -240,13 +238,10 @@ struct bgfx_impl {
       for (auto i = 0; i < buffers_ptr_mapping_table.m_meta.m_count; ++i) {
         if (buffers_ptr_mapping_table.m_col_0[i] == p_buffer) {
 
-          bgfx::Memory *l_tmp_buffer;
           MemoryReference *l_reference;
-          uimax l_buffers_table_count;
-          buffers_table.at(buffers_ptr_mapping_table.m_col_1[i], &l_tmp_buffer,
-                           &l_reference, &l_buffers_table_count);
+          uimax l_buffers_table_count = buffers_table.at(
+              buffers_ptr_mapping_table.m_col_1[i], orm::none(), &l_reference);
           assert_debug(l_buffers_table_count == 1);
-          assert_debug(l_tmp_buffer == p_buffer);
           if (!l_reference->is_ref()) {
             buffer_memory_table.remove_at(l_reference->m_buffer_index);
           }
@@ -270,25 +265,27 @@ struct bgfx_impl {
     };
 
     void free_texture(bgfx::TextureHandle p_texture) {
-      // texture_table.
-      free_buffer(m_db.at<texture_table_idx, 0>(p_texture.idx).buffer);
-      m_db.remove_at<texture_table_idx>(p_texture.idx);
+      Texture *l_texture;
+      texture_table.at(p_texture.idx, &l_texture);
+      free_buffer(l_texture->buffer);
+      texture_table.remove_at(p_texture.idx);
     };
 
     bgfx::FrameBufferHandle
     allocate_frame_buffer(bgfx::TextureHandle p_texture) {
       FrameBuffer l_frame_buffer;
       l_frame_buffer.texture = p_texture;
+
       bgfx::FrameBufferHandle l_handle;
-      l_handle.idx = m_db.push_back<framebuffer_table_idx>(l_frame_buffer);
+      l_handle.idx = framebuffer_table.push_back(l_frame_buffer);
       return l_handle;
     };
 
     void free_frame_buffer(bgfx::FrameBufferHandle p_frame_buffer) {
-      auto &l_frame_buffer =
-          m_db.at<framebuffer_table_idx, 0>(p_frame_buffer.idx);
-      free_texture(l_frame_buffer.texture);
-      m_db.remove_at<framebuffer_table_idx>(p_frame_buffer.idx);
+      FrameBuffer *l_frame_buffer;
+      framebuffer_table.at(p_frame_buffer.idx, &l_frame_buffer);
+      free_texture(l_frame_buffer->texture);
+      framebuffer_table.remove_at(p_frame_buffer.idx);
     };
 
     bgfx::VertexBufferHandle
@@ -298,14 +295,15 @@ struct bgfx_impl {
       l_vertex_buffer.layout = p_layout;
       l_vertex_buffer.memory = p_memory;
       bgfx::VertexBufferHandle l_handle;
-      l_handle.idx = m_db.push_back<vertexbuffer_table_idx>(l_vertex_buffer);
+      l_handle.idx = vertexbuffer_table.push_back(l_vertex_buffer);
       return l_handle;
     };
 
     void free_vertex_buffer(bgfx::VertexBufferHandle p_handle) {
-      auto &l_vertex_buffer = m_db.at<vertexbuffer_table_idx, 0>(p_handle.idx);
-      free_buffer(l_vertex_buffer.memory);
-      m_db.remove_at<vertexbuffer_table_idx>(p_handle.idx);
+      VertexBuffer *l_vertex_buffer;
+      vertexbuffer_table.at(p_handle.idx, &l_vertex_buffer);
+      free_buffer(l_vertex_buffer->memory);
+      vertexbuffer_table.remove_at(p_handle.idx);
     };
 
     bgfx::IndexBufferHandle
@@ -313,14 +311,16 @@ struct bgfx_impl {
       IndexBuffer l_index_buffer;
       l_index_buffer.memory = p_memory;
       bgfx::IndexBufferHandle l_handle;
-      l_handle.idx = m_db.push_back<indexbuffer_table_idx>(l_index_buffer);
+      l_handle.idx = indexbuffer_table.push_back(l_index_buffer);
       return l_handle;
     };
 
     void free_index_buffer(bgfx::IndexBufferHandle p_handle) {
-      auto &l_index_buffer = m_db.at<indexbuffer_table_idx, 0>(p_handle.idx);
-      free_buffer(l_index_buffer.memory);
-      m_db.remove_at<indexbuffer_table_idx>(p_handle.idx);
+
+      IndexBuffer *l_index_buffer;
+      indexbuffer_table.at(p_handle.idx, &l_index_buffer);
+      free_buffer(l_index_buffer->memory);
+      indexbuffer_table.remove_at(p_handle.idx);
     };
 
   } heap;
@@ -333,8 +333,7 @@ struct bgfx_impl {
     l_texture_info.format = p_format;
     l_texture_info.width = p_width;
     l_texture_info.height = p_height;
-    l_texture_info.bitsPerPixel =
-        get_pixel_size_from_texture_format(p_format).value;
+    l_texture_info.bitsPerPixel = get_pixel_size_from_texture_format(p_format);
     return heap.allocate_texture(l_texture_info);
   };
 
@@ -372,16 +371,28 @@ struct bgfx_impl {
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
 
-    auto l_command_index = heap.m_db.push_back<heap::commands_memory_table_idx>(
-        sizeof(l_draw_call));
-    container::range<ui8_t> l_command =
-        heap.m_db.range<heap::commands_memory_table_idx, 0>(l_command_index);
-    l_command.copy_from(container::range<ui8_t>::make((ui8_t *)&l_draw_call,
-                                                      sizeof(l_draw_call)));
+    auto l_command_index =
+        heap.commands_memory_table.push_back(sizeof(l_draw_call));
+
+    container::range<ui8> l_command;
+    heap.commands_memory_table.at(l_command_index, &l_command);
+    l_command.copy_from(
+        container::range<ui8>::make((ui8 *)&l_draw_call, sizeof(l_draw_call)));
+
+    /*
+        auto l_command_index =
+       heap.m_db.push_back<heap::commands_memory_table_idx>(
+            sizeof(l_draw_call));
+        container::range<ui8_t> l_command =
+            heap.m_db.range<heap::commands_memory_table_idx,
+       0>(l_command_index);
+        l_command.copy_from(container::range<ui8_t>::make((ui8_t *)&l_draw_call,
+                                                          sizeof(l_draw_call)));
+                                                          */
     l_render_pass.commands.push_back(l_command_index);
   };
 
-  void set_transform(const mat<f32, 4, 4> &p_transform) {
+  void set_transform(const m::mat<f32, 4, 4> &p_transform) {
     command_temporary_stack.transform = p_transform;
   };
 
@@ -401,14 +412,17 @@ struct bgfx_impl {
       RenderPass &l_render_pass = heap.renderpasses.at(l_it);
       for (auto l_command_it = 0; l_command_it < l_render_pass.commands.count();
            ++l_command_it) {
-        heap.m_db.remove_at<heap::commands_memory_table_idx>(
+        heap.commands_memory_table.remove_at(
             l_render_pass.commands.at(l_command_it));
       }
       l_render_pass.commands.clear();
     }
   };
 
-  void initialize() { command_temporary_stack.clear(); };
+  void initialize() {
+    heap.allocate();
+    command_temporary_stack.clear();
+  };
   void terminate() {
 
     heap.free();
@@ -457,12 +471,12 @@ inline void VertexLayout::end(){};
 inline VertexLayout &VertexLayout::add(Attrib::Enum _attrib, uint8_t _num,
                                        AttribType::Enum _type, bool _normalized,
                                        bool _asInt) {
-  BOOST_ASSERT(!has(_attrib));
+  assert_debug(!has(_attrib));
   m_attributes[_attrib] = _attrib;
   m_offset[_attrib] = m_stride;
   m_stride += bgfx_impl::AttribType::get_size(_type) * _num;
 
-  ui8_t l_byte_offset = (9 * _attrib);
+  ui8 l_byte_offset = (9 * _attrib);
   m_hash = m_hash | ((0b1111 & _num) << l_byte_offset);
   m_hash = m_hash | ((0b111 & _type) << (l_byte_offset + 4));
   m_hash = m_hash | ((0b1 & _normalized) << (l_byte_offset + 7));
@@ -540,12 +554,12 @@ inline void setViewFrameBuffer(ViewId _id, FrameBufferHandle _handle) {
 };
 
 inline void setViewTransform(ViewId _id, const void *_view, const void *_proj) {
-  bgfx_impl.view_set_transform(_id, *(const mat<f32, 4, 4> *)_view,
-                               *(const mat<f32, 4, 4> *)_proj);
+  bgfx_impl.view_set_transform(_id, *(const m::mat<f32, 4, 4> *)_view,
+                               *(const m::mat<f32, 4, 4> *)_proj);
 };
 
 inline uint32_t setTransform(const void *_mtx, uint16_t _num) {
-  bgfx_impl.set_transform(*(const mat<f32, 4, 4> *)_mtx);
+  bgfx_impl.set_transform(*(const m::mat<f32, 4, 4> *)_mtx);
   return -1;
 };
 

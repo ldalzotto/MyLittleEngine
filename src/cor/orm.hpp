@@ -145,7 +145,7 @@ template <typename TableType> void __free_pool_1(TableType &p_table) {
 template <typename TableType> void __realloc_pool_1(TableType &p_table) {
   container::pool_intrusive &l_meta = p_table.m_meta;
   p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
-      p_table.m_col_0, l_meta.m_capacity * sizeof(p_table.m_col_0));
+      p_table.m_col_0, l_meta.m_capacity * sizeof(*p_table.m_col_0));
 };
 
 template <typename TableType>
@@ -164,6 +164,14 @@ template <typename TableType>
 void __remove_at_pool_1(TableType &p_table, uimax p_index) {
   container::pool_intrusive &l_meta = p_table.m_meta;
   l_meta.free_element(p_index);
+};
+
+template <typename TableType>
+void __at_pool_1(TableType &p_table, uimax p_index,
+                 typename TableType::type_0 **out_0) {
+  container::pool_intrusive &l_meta = p_table.m_meta;
+  assert_debug(p_index < l_meta.m_count);
+  *out_0 = &p_table.m_col_0[p_index];
 };
 
 template <typename TableType>
@@ -280,9 +288,9 @@ template <typename TableType> void __free_heap_paged_2(TableType &p_table) {
 };
 
 template <typename TableType>
-void __at_heap_paged_2(TableType &p_table, uimax p_chunk_index,
-                       typename TableType::type_0 **out_0,
-                       typename TableType::type_1 **out_1, uimax *out_count) {
+uimax __at_heap_paged_2(TableType &p_table, uimax p_chunk_index,
+                        typename TableType::type_0 **out_0,
+                        typename TableType::type_1 **out_1) {
   using type_0 = typename TableType::type_0;
   using type_1 = typename TableType::type_1;
   container::heap_paged_intrusive &l_meta = p_table.m_meta;
@@ -293,9 +301,21 @@ void __at_heap_paged_2(TableType &p_table, uimax p_chunk_index,
   container::range<type_1> l_range_1 =
       l_col_1.map_to_range(l_meta.m_allocated_chunks.at(p_chunk_index));
   assert_debug(l_range_0.m_count == l_range_1.m_count);
-  *out_0 = l_range_0;
-  *out_1 = l_range_1;
-  *out_count = l_range_0.m_count;
+  *out_0 = l_range_0.m_begin;
+  *out_1 = l_range_1.m_begin;
+  return l_range_0.m_count;
+};
+
+template <typename TableType>
+uimax __at_heap_paged_2(TableType &p_table, uimax p_chunk_index, orm::none,
+                        typename TableType::type_1 **out_1) {
+  using type_1 = typename TableType::type_1;
+  container::heap_paged_intrusive &l_meta = p_table.m_meta;
+  heap_paged_col<type_1> &l_col_1 = p_table.m_col_1;
+  container::range<type_1> l_range_1 =
+      l_col_1.map_to_range(l_meta.m_allocated_chunks.at(p_chunk_index));
+  *out_1 = l_range_1.m_begin;
+  return l_range_1.m_count;
 };
 
 template <typename TableType>
@@ -563,6 +583,9 @@ private:
   };                                                                           \
   bool has_allocated_elements() {                                              \
     return orm::details::__has_allocated_elements_pool(*this);                 \
+  };                                                                           \
+  void at(uimax p_index, type_0 **out_0) {                                     \
+    orm::details::__at_pool_1(*this, p_index, out_0);                          \
   };
 
 #define table_heap_paged_meta container::heap_paged_intrusive m_meta;
@@ -585,7 +608,7 @@ private:
     orm::details::__remove_at_heap_paged_1(*this, p_index);                    \
   };                                                                           \
   bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_pool(*this);                 \
+    return orm::details::__has_allocated_elements_heap_paged(*this);           \
   };
 
 #define table_heap_paged_cols_2(Type0, Type1)                                  \
@@ -602,14 +625,17 @@ private:
   uimax push_back(uimax p_count) {                                             \
     return orm::details::__push_back_heap_paged_2(*this, p_count);             \
   };                                                                           \
-  void at(uimax p_index, type_0 **out_0, type_1 **out_1, uimax *out_count) {   \
-    orm::details::__at_heap_paged_2(*this, p_index, out_0, out_1, out_count);  \
+  uimax at(uimax p_index, type_0 **out_0, type_1 **out_1) {                    \
+    return orm::details::__at_heap_paged_2(*this, p_index, out_0, out_1);      \
+  };                                                                           \
+  uimax at(uimax p_index, orm::none p_none, type_1 **out_1) {                  \
+    return orm::details::__at_heap_paged_2(*this, p_index, p_none, out_1);     \
   };                                                                           \
   void remove_at(uimax p_index) {                                              \
     orm::details::__remove_at_heap_paged_2(*this, p_index);                    \
   };                                                                           \
   bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_pool(*this);                 \
+    return orm::details::__has_allocated_elements_heap_paged(*this);           \
   };
 
 #define table_heap_paged_cols_3(Type0, Type1, Type2)                           \
@@ -637,7 +663,7 @@ private:
     orm::details::__remove_at_heap_paged_3(*this, p_index);                    \
   };                                                                           \
   bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_pool(*this);                 \
+    return orm::details::__has_allocated_elements_heap_paged(*this);           \
   };
 
 }; // namespace orm
