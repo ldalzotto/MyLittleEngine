@@ -6,6 +6,7 @@
 #include <cor/types.hpp>
 #include <m/mat.hpp>
 #include <m/vec.hpp>
+#include <rast/algorithm.hpp>
 
 struct bgfx_impl {
 
@@ -28,10 +29,18 @@ struct bgfx_impl {
   struct VertexBuffer {
     bgfx::VertexLayout layout;
     const bgfx::Memory *memory;
+
+    container::range<ui8> range() {
+      return container::range<ui8>::make(memory->data, memory->size);
+    };
   };
 
   struct IndexBuffer {
     const bgfx::Memory *memory;
+
+    container::range<ui8> range() {
+      return container::range<ui8>::make(memory->data, memory->size);
+    };
   };
 
   struct AttribType : bgfx::AttribType {
@@ -53,10 +62,15 @@ struct bgfx_impl {
     m::mat<f32, 4, 4> transform;
     bgfx::VertexBufferHandle vertex_buffer;
     bgfx::IndexBufferHandle index_buffer;
+    ui64 state;
+    ui32 rgba;
+
     void clear() {
       transform = transform.getIdentity();
       vertex_buffer.idx = bgfx::kInvalidHandle;
       index_buffer.idx = bgfx::kInvalidHandle;
+      state = -1;
+      rgba = -1;
     };
   } command_temporary_stack;
 
@@ -70,17 +84,24 @@ struct bgfx_impl {
     CommandHeader(CommandType::Enum p_type) : type(p_type){};
   };
 
+  // TODO Don't have the CommanHeader indirection anymore ? We clearly don't
+  // need it.
   struct Command_DrawCall {
     CommandHeader header = CommandHeader(CommandType::Enum::DrawCall);
+    bgfx::ProgramHandle program;
     m::mat<f32, 4, 4> transform;
     bgfx::IndexBufferHandle index_buffer;
     bgfx::VertexBufferHandle vertex_buffer;
+    ui64 state;
+    ui32 rgba;
 
     void
     make_from_temporary_stack(const CommandTemporaryStack &p_temporary_stack) {
       transform = p_temporary_stack.transform;
       index_buffer = p_temporary_stack.index_buffer;
       vertex_buffer = p_temporary_stack.vertex_buffer;
+      state = p_temporary_stack.state;
+      rgba = p_temporary_stack.rgba;
     };
   };
 
@@ -195,12 +216,9 @@ struct bgfx_impl {
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
       auto l_buffer_index = buffer_memory_table.push_back(p_size);
-      container::range<ui8> l_buffer_range;
-      buffer_memory_table.at(l_buffer_index, &l_buffer_range);
 
       bgfx::Memory l_buffer{};
-      l_buffer.data = (uint8_t *)l_buffer_range.m_begin;
-      l_buffer.size = l_buffer_range.m_count;
+      l_buffer.size = buffer_memory_table.at(l_buffer_index, &l_buffer.data);
 
       uimax l_index = buffers_table.push_back(1);
       bgfx::Memory *l_bgfx_memory;
@@ -365,9 +383,10 @@ struct bgfx_impl {
     l_render_pass.proj = p_proj;
   };
 
-  void view_submit(bgfx::ViewId p_id) {
+  void view_submit(bgfx::ViewId p_id, bgfx::ProgramHandle p_program) {
     auto &l_render_pass = heap.renderpasses.at(p_id);
     Command_DrawCall l_draw_call;
+    l_draw_call.program = p_program;
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
 
@@ -375,20 +394,11 @@ struct bgfx_impl {
         heap.commands_memory_table.push_back(sizeof(l_draw_call));
 
     container::range<ui8> l_command;
-    heap.commands_memory_table.at(l_command_index, &l_command);
+    l_command.m_count =
+        heap.commands_memory_table.at(l_command_index, &l_command.m_begin);
     l_command.copy_from(
         container::range<ui8>::make((ui8 *)&l_draw_call, sizeof(l_draw_call)));
 
-    /*
-        auto l_command_index =
-       heap.m_db.push_back<heap::commands_memory_table_idx>(
-            sizeof(l_draw_call));
-        container::range<ui8_t> l_command =
-            heap.m_db.range<heap::commands_memory_table_idx,
-       0>(l_command_index);
-        l_command.copy_from(container::range<ui8_t>::make((ui8_t *)&l_draw_call,
-                                                          sizeof(l_draw_call)));
-                                                          */
     l_render_pass.commands.push_back(l_command_index);
   };
 
@@ -404,9 +414,48 @@ struct bgfx_impl {
     command_temporary_stack.index_buffer = p_handle;
   };
 
+  void set_state(uint64_t p_state, uint32_t p_rgba) {
+    command_temporary_stack.state = p_state;
+    command_temporary_stack.rgba = p_rgba;
+  };
+
   void frame() {
 
-    // TOOD -> do stuffs
+    for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
+      RenderPass &l_render_pass = heap.renderpasses.at(l_it);
+
+      FrameBuffer *l_frame_buffer;
+      heap.framebuffer_table.at(l_render_pass.framebuffer.idx, &l_frame_buffer);
+      Texture *l_frame_texture;
+      heap.texture_table.at(l_frame_buffer->texture.idx, &l_frame_texture);
+      // TODO
+
+      for (auto l_command_it = 0; l_command_it < l_render_pass.commands.count();
+           ++l_command_it) {
+        container::range<ui8> l_command_memory;
+        l_command_memory.m_count = heap.commands_memory_table.at(
+            l_render_pass.commands.at(l_command_it), &l_command_memory.m_begin);
+        CommandType::Enum *l_command_type =
+            (CommandType::Enum *)l_command_memory.m_begin;
+        if (*l_command_type == CommandType::Enum::DrawCall) {
+          Command_DrawCall *l_draw_call = (Command_DrawCall *)l_command_type;
+
+          IndexBuffer *l_index_buffer;
+          heap.indexbuffer_table.at(l_draw_call->index_buffer.idx,
+                                    &l_index_buffer);
+
+          VertexBuffer *l_vertex_buffer;
+          heap.vertexbuffer_table.at(l_draw_call->vertex_buffer.idx,
+                                     &l_vertex_buffer);
+
+          rast::algorithm::rasterize(
+              rast::algorithm::shader(), l_render_pass.rect, l_render_pass.proj,
+              l_render_pass.view, l_draw_call->transform,
+              l_index_buffer->range(), l_vertex_buffer->layout,
+              l_vertex_buffer->range(), l_draw_call->state, l_draw_call->rgba);
+        }
+      }
+    }
 
     for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
       RenderPass &l_render_pass = heap.renderpasses.at(l_it);
@@ -423,6 +472,7 @@ struct bgfx_impl {
     heap.allocate();
     command_temporary_stack.clear();
   };
+
   void terminate() {
 
     heap.free();
@@ -571,11 +621,15 @@ inline void setIndexBuffer(IndexBufferHandle _handle) {
   bgfx_impl.set_index_buffer(_handle);
 };
 
-inline void touch(ViewId _id) { bgfx_impl.view_submit(_id); };
+inline void setState(uint64_t _state, uint32_t _rgba) {
+  bgfx_impl.set_state(_state, _rgba);
+};
+
+inline void touch(ViewId _id){/* bgfx_impl.view_submit(_id); */};
 
 inline void submit(ViewId _id, ProgramHandle _program, uint32_t _depth,
                    uint8_t _flags) {
-  bgfx_impl.view_submit(_id);
+  bgfx_impl.view_submit(_id, _program);
 };
 
 inline uint32_t frame(bool _capture) {

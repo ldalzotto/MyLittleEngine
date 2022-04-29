@@ -105,21 +105,31 @@ int test_rasterizer() {
 
   bgfx::setViewRect(0, 0, 0, 100, 100);
   m::mat<f32, 4, 4> viewMatrix, projectionMatrix;
+  viewMatrix = viewMatrix.getZero();
+  projectionMatrix = projectionMatrix.getZero();
   bgfx::setViewTransform(0, &viewMatrix, &projectionMatrix);
   bgfx::setViewFrameBuffer(0, l_frame_buffer);
   bgfx::touch(0);
 
+  ui8 m_r = 1, m_g = 1, m_b = 1, m_a = 0;
+  uint64_t state =
+      0 | (m_r ? BGFX_STATE_WRITE_R : 0) | (m_g ? BGFX_STATE_WRITE_G : 0) |
+      (m_b ? BGFX_STATE_WRITE_B : 0) | (m_a ? BGFX_STATE_WRITE_A : 0) |
+      BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW |
+      BGFX_STATE_MSAA | BGFX_STATE_PT_TRISTRIP;
+
   for (i32 i = 0; i < 10; ++i) {
-    m::mat<f32, 4, 4> transformMatrix;
+    m::mat<f32, 4, 4> transformMatrix = m::mat<f32, 4, 4>::getIdentity();
     bgfx::setTransform(&transformMatrix);
 
     // Set vertex and index buffer.
     bgfx::setVertexBuffer(0, m_vbh);
-    // TODO
-    // bgfx::setIndexBuffer(ibh);
+    bgfx::setIndexBuffer(m_ibh[0]);
+    bgfx::setState(state);
 
     bgfx::submit(0, bgfx::ProgramHandle());
   }
+
   bgfx::frame();
 
   // Cleanup.

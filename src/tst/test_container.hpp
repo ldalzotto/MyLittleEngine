@@ -101,7 +101,7 @@ struct tests {
 
     uimax l_chunk = entry_heap_table.push_back(3);
     container::range<entry> l_entries;
-    entry_heap_table.at(l_chunk, &l_entries);
+    l_entries.m_count = entry_heap_table.at(l_chunk, &l_entries.m_begin);
     sys::sassert(l_entries.m_count == 3);
 
     entry_table.free();
