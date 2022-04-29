@@ -132,5 +132,7 @@ int test_rasterizer() {
 
   bgfx::shutdown();
 
+  return 0;
+
   // TODO -> memleak in containers (maybe as an option ?) extended container
 };

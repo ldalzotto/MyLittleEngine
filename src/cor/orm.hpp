@@ -185,7 +185,12 @@ template <typename T> struct heap_paged_col {
 
   void allocate() { m_data = (T **)sys::malloc(0); };
 
-  void free() { sys::free(m_data); };
+  void free(const container::heap_paged_intrusive &p_intrusive) {
+    for (auto i = 0; i < p_intrusive.m_pages_intrusive.m_count; ++i) {
+      sys::free(m_data[i]);
+    }
+    sys::free(m_data);
+  };
 
   void realloc(const container::heap_paged_intrusive &p_intrusive) {
     m_data = (T **)sys::realloc(
@@ -220,7 +225,7 @@ template <typename TableType> void __free_heap_paged_1(TableType &p_table) {
   container::heap_paged_intrusive &l_meta = p_table.m_meta;
   l_meta.free();
   heap_paged_col<type_0> &l_col_0 = p_table.m_col_0;
-  l_col_0.free();
+  l_col_0.free(l_meta);
 };
 
 template <typename TableType>
@@ -283,8 +288,8 @@ template <typename TableType> void __free_heap_paged_2(TableType &p_table) {
   l_meta.free();
   heap_paged_col<type_0> &l_col_0 = p_table.m_col_0;
   heap_paged_col<type_1> &l_col_1 = p_table.m_col_1;
-  l_col_0.free();
-  l_col_1.free();
+  l_col_0.free(l_meta);
+  l_col_1.free(l_meta);
 };
 
 template <typename TableType>
