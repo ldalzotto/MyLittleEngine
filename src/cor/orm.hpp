@@ -229,14 +229,15 @@ template <typename TableType> void __free_heap_paged_1(TableType &p_table) {
 };
 
 template <typename TableType>
-void __at_heap_paged_1(
-    TableType &p_table, uimax p_chunk_index,
-    container::range<typename TableType::type_0> *out_range) {
+uimax __at_heap_paged_1(TableType &p_table, uimax p_chunk_index,
+                        typename TableType::type_0 **out_0) {
   using type_0 = typename TableType::type_0;
   container::heap_paged_intrusive &l_meta = p_table.m_meta;
   heap_paged_col<type_0> &l_col_0 = p_table.m_col_0;
-  *out_range =
+  container::range<type_0> l_range_0 =
       l_col_0.map_to_range(l_meta.m_allocated_chunks.at(p_chunk_index));
+  *out_0 = l_range_0.m_begin;
+  return l_range_0.m_count;
 };
 
 template <typename TableType>
@@ -606,8 +607,8 @@ private:
   uimax push_back(uimax p_count) {                                             \
     return orm::details::__push_back_heap_paged_1(*this, p_count);             \
   };                                                                           \
-  void at(uimax p_index, container::range<type_0> *out_range) {                \
-    orm::details::__at_heap_paged_1(*this, p_index, out_range);                \
+  uimax at(uimax p_index, type_0 **out_0) {                                    \
+    return orm::details::__at_heap_paged_1(*this, p_index, out_0);             \
   };                                                                           \
   void remove_at(uimax p_index) {                                              \
     orm::details::__remove_at_heap_paged_1(*this, p_index);                    \
