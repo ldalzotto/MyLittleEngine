@@ -108,6 +108,7 @@ struct tests {
     int_table.free();
     int_pool_table.free();
     entry_heap_table.free();
+    entry_to_int.free();
   };
 };
 } // namespace

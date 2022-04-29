@@ -289,7 +289,10 @@ template <typename T> struct pool {
     m_data = (T *)sys::malloc(sizeof(*m_data) * m_intrusive.m_capacity);
   };
 
-  void free() { sys::free(m_data); };
+  void free() {
+    m_intrusive.free();
+    sys::free(m_data);
+  };
 
   uimax push_back(const T &p_value) {
     uimax l_index;
