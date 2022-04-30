@@ -78,20 +78,7 @@ struct bgfx_impl {
     };
   } command_temporary_stack;
 
-  struct CommandType {
-    enum Enum { Undefined = 0, DrawCall = 1 };
-  };
-
-  struct CommandHeader {
-    CommandType::Enum type;
-    CommandHeader() = default;
-    CommandHeader(CommandType::Enum p_type) : type(p_type){};
-  };
-
-  // TODO Don't have the CommanHeader indirection anymore ? We clearly don't
-  // need it.
-  struct Command_DrawCall {
-    CommandHeader header = CommandHeader(CommandType::Enum::DrawCall);
+  struct CommandDrawCall {
     bgfx::ProgramHandle program;
     m::mat<f32, 4, 4> transform;
     bgfx::IndexBufferHandle index_buffer;
@@ -116,7 +103,7 @@ struct bgfx_impl {
     m::mat<f32, 4, 4> view;
     m::mat<f32, 4, 4> proj;
 
-    container::vector<uimax> commands;
+    container::vector<CommandDrawCall> commands;
 
     void allocate() { commands.allocate(0); };
     void free() { commands.free(); };
@@ -130,6 +117,12 @@ struct bgfx_impl {
       l_render_pass.view = l_render_pass.view.getZero();
       l_render_pass.proj = l_render_pass.proj.getZero();
       return l_render_pass;
+    };
+
+    template <typename Callback> void for_each_commands(const Callback &p_cb) {
+      for (auto l_it = 0; l_it < commands.count(); ++l_it) {
+        p_cb(commands.at(l_it));
+      }
     };
   };
 
@@ -177,12 +170,6 @@ struct bgfx_impl {
       table_define_pool_1;
     } indexbuffer_table;
 
-    struct commands_memory_table {
-      table_heap_paged_meta;
-      table_heap_paged_cols_1(ui8);
-      table_define_heap_paged_1;
-    } commands_memory_table;
-
     // TODO -> move to table
     container::vector<RenderPass> renderpasses;
 
@@ -197,7 +184,6 @@ struct bgfx_impl {
       framebuffer_table.allocate(0);
       vertexbuffer_table.allocate(0);
       indexbuffer_table.allocate(0);
-      commands_memory_table.allocate(1024);
     };
 
     void free() {
@@ -215,7 +201,6 @@ struct bgfx_impl {
       texture_table.free();
       vertexbuffer_table.free();
       indexbuffer_table.free();
-      commands_memory_table.free();
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
@@ -303,9 +288,14 @@ struct bgfx_impl {
       return l_handle;
     };
 
-    void free_frame_buffer(bgfx::FrameBufferHandle p_frame_buffer) {
+    FrameBuffer *get_frame_buffer(bgfx::FrameBufferHandle p_frame_buffer) {
       FrameBuffer *l_frame_buffer;
       framebuffer_table.at(p_frame_buffer.idx, &l_frame_buffer);
+      return l_frame_buffer;
+    };
+
+    void free_frame_buffer(bgfx::FrameBufferHandle p_frame_buffer) {
+      FrameBuffer *l_frame_buffer = get_frame_buffer(p_frame_buffer);
       free_texture(l_frame_buffer->texture);
       framebuffer_table.remove_at(p_frame_buffer.idx);
     };
@@ -346,6 +336,60 @@ struct bgfx_impl {
     };
 
   } heap;
+
+  struct TextureProxy {
+    struct heap &m_heap;
+    Texture *m_value;
+
+    Texture *value() { return m_value; };
+  };
+
+  struct FrameBufferProxy {
+    struct heap &m_heap;
+    FrameBuffer *m_value;
+
+    TextureProxy Texture() {
+      struct Texture *l_texture;
+      m_heap.texture_table.at(m_value->texture.idx, &l_texture);
+      return {.m_heap = m_heap, .m_value = l_texture};
+    };
+  };
+
+  struct CommandDrawCallProxy {
+    struct heap &m_heap;
+    CommandDrawCall *m_value;
+
+    CommandDrawCallProxy(struct heap &p_heap, CommandDrawCall *p_value)
+        : m_heap(p_heap), m_value(p_value){
+
+                          };
+
+    CommandDrawCall *value() { return m_value; };
+
+    IndexBuffer *IndexBuffer() {
+      struct IndexBuffer *l_index_buffer;
+      m_heap.indexbuffer_table.at(m_value->index_buffer.idx, &l_index_buffer);
+      return l_index_buffer;
+    };
+
+    VertexBuffer *VertexBuffer() {
+      struct VertexBuffer *l_vertex_buffer;
+      m_heap.vertexbuffer_table.at(m_value->vertex_buffer.idx,
+                                   &l_vertex_buffer);
+      return l_vertex_buffer;
+    };
+  };
+
+  struct heap_proxy {
+    struct heap &m_heap;
+
+    FrameBufferProxy FrameBuffer(bgfx::FrameBufferHandle p_handle) {
+      struct FrameBuffer *l_frame_buffer = m_heap.get_frame_buffer(p_handle);
+      return {.m_heap = m_heap, .m_value = l_frame_buffer};
+    };
+  };
+
+  heap_proxy proxy() { return {.m_heap = heap}; };
 
   bgfx::TextureHandle allocate_texture(uint16_t p_width, uint16_t p_height,
                                        bool p_hasMips, uint16_t p_numLayers,
@@ -389,21 +433,12 @@ struct bgfx_impl {
 
   void view_submit(bgfx::ViewId p_id, bgfx::ProgramHandle p_program) {
     auto &l_render_pass = heap.renderpasses.at(p_id);
-    Command_DrawCall l_draw_call;
+    CommandDrawCall l_draw_call;
     l_draw_call.program = p_program;
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
 
-    auto l_command_index =
-        heap.commands_memory_table.push_back(sizeof(l_draw_call));
-
-    container::range<ui8> l_command;
-    l_command.m_count =
-        heap.commands_memory_table.at(l_command_index, &l_command.m_begin);
-    l_command.copy_from(
-        container::range<ui8>::make((ui8 *)&l_draw_call, sizeof(l_draw_call)));
-
-    l_render_pass.commands.push_back(l_command_index);
+    l_render_pass.commands.push_back(l_draw_call);
   };
 
   void set_transform(const m::mat<f32, 4, 4> &p_transform) {
@@ -428,47 +463,29 @@ struct bgfx_impl {
     for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
       RenderPass &l_render_pass = heap.renderpasses.at(l_it);
 
-      FrameBuffer *l_frame_buffer;
-      heap.framebuffer_table.at(l_render_pass.framebuffer.idx, &l_frame_buffer);
-      Texture *l_frame_texture;
-      heap.texture_table.at(l_frame_buffer->texture.idx, &l_frame_texture);
-      container::range<ui8> l_frame_texture_range = l_frame_texture->range();
+      TextureProxy l_frame_texture =
+          proxy().FrameBuffer(l_render_pass.framebuffer).Texture();
 
-      for (auto l_command_it = 0; l_command_it < l_render_pass.commands.count();
-           ++l_command_it) {
-        container::range<ui8> l_command_memory;
-        l_command_memory.m_count = heap.commands_memory_table.at(
-            l_render_pass.commands.at(l_command_it), &l_command_memory.m_begin);
-        CommandType::Enum *l_command_type =
-            (CommandType::Enum *)l_command_memory.m_begin;
-        if (*l_command_type == CommandType::Enum::DrawCall) {
-          Command_DrawCall *l_draw_call = (Command_DrawCall *)l_command_type;
+      container::range<ui8> l_frame_texture_range =
+          l_frame_texture.value()->range();
 
-          IndexBuffer *l_index_buffer;
-          heap.indexbuffer_table.at(l_draw_call->index_buffer.idx,
-                                    &l_index_buffer);
+      l_render_pass.for_each_commands([&](CommandDrawCall &p_command) {
+        CommandDrawCallProxy l_draw_call(heap, &p_command);
+        IndexBuffer *l_index_buffer = l_draw_call.IndexBuffer();
+        VertexBuffer *l_vertex_buffer = l_draw_call.VertexBuffer();
 
-          VertexBuffer *l_vertex_buffer;
-          heap.vertexbuffer_table.at(l_draw_call->vertex_buffer.idx,
-                                     &l_vertex_buffer);
-
-          rast::algorithm::rasterize(
-              rast::algorithm::shader(), l_render_pass.rect, l_render_pass.proj,
-              l_render_pass.view, l_draw_call->transform,
-              l_index_buffer->range(), l_vertex_buffer->layout,
-              l_vertex_buffer->range(), l_draw_call->state, l_draw_call->rgba,
-              l_frame_texture->info, l_frame_texture_range);
-        }
-      }
+        rast::algorithm::rasterize(
+            rast::algorithm::shader(), l_render_pass.rect, l_render_pass.proj,
+            l_render_pass.view, l_draw_call.value()->transform,
+            l_index_buffer->range(), l_vertex_buffer->layout,
+            l_vertex_buffer->range(), l_draw_call.value()->state,
+            l_draw_call.value()->rgba, l_frame_texture.value()->info,
+            l_frame_texture_range);
+      });
     }
 
     for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
       RenderPass &l_render_pass = heap.renderpasses.at(l_it);
-      for (auto l_command_it = 0; l_command_it < l_render_pass.commands.count();
-           ++l_command_it) {
-        heap.commands_memory_table.remove_at(
-            l_render_pass.commands.at(l_command_it));
-      }
       l_render_pass.commands.clear();
     }
   };
