@@ -20,8 +20,9 @@ static inline void rasterize(const shader &p_shader, m::vec<ui16, 2> &p_rect,
                              const container::range<ui8> &p_index_buffer,
                              bgfx::VertexLayout p_vertex_layout,
                              const container::range<ui8> &p_vertex_buffer,
-                             ui64 p_state, ui32 p_rgba
-                             /* ,container::range<ui8> &p_target_buffer */) {
+                             ui64 p_state, ui32 p_rgba,
+                             const bgfx::TextureInfo &p_target_info,
+                             container::range<ui8> &p_target_buffer) {
   // TODO
   int l_do_magical_stuff_here = 0;
 };
