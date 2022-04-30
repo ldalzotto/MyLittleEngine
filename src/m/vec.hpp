@@ -7,6 +7,10 @@ namespace m {
 template <typename T, int N> struct vec {
   T m_data[N];
 
+  T &at(ui8 p_index) { return m_data[p_index]; };
+
+  const T &at(ui8 p_index) const { return m_data[p_index]; };
+
   vec operator+(const vec<T, N> &p_other) {
     vec l_return;
     for (auto i = 0; i < N; ++i) {
