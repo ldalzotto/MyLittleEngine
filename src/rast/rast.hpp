@@ -20,6 +20,10 @@ struct bgfx_impl {
   struct Texture {
     bgfx::TextureInfo info;
     bgfx::Memory *buffer;
+
+    container::range<ui8> range() {
+      return container::range<ui8>::make(buffer->data, buffer->size);
+    };
   };
 
   struct FrameBuffer {
@@ -428,7 +432,7 @@ struct bgfx_impl {
       heap.framebuffer_table.at(l_render_pass.framebuffer.idx, &l_frame_buffer);
       Texture *l_frame_texture;
       heap.texture_table.at(l_frame_buffer->texture.idx, &l_frame_texture);
-      // TODO
+      container::range<ui8> l_frame_texture_range = l_frame_texture->range();
 
       for (auto l_command_it = 0; l_command_it < l_render_pass.commands.count();
            ++l_command_it) {
@@ -452,7 +456,8 @@ struct bgfx_impl {
               rast::algorithm::shader(), l_render_pass.rect, l_render_pass.proj,
               l_render_pass.view, l_draw_call->transform,
               l_index_buffer->range(), l_vertex_buffer->layout,
-              l_vertex_buffer->range(), l_draw_call->state, l_draw_call->rgba);
+              l_vertex_buffer->range(), l_draw_call->state, l_draw_call->rgba,
+              l_frame_texture->info, l_frame_texture_range);
         }
       }
     }
