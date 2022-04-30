@@ -118,6 +118,10 @@ int test_rasterizer() {
       BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW |
       BGFX_STATE_MSAA | BGFX_STATE_PT_TRISTRIP;
 
+  bgfx::ShaderHandle l_vertex = bgfx::createShader((const bgfx::Memory *)0);
+  bgfx::ShaderHandle l_fragment = bgfx::createShader((const bgfx::Memory *)0);
+  bgfx::ProgramHandle l_program = bgfx::createProgram(l_vertex, l_fragment);
+
   for (i32 i = 0; i < 10; ++i) {
     m::mat<f32, 4, 4> transformMatrix = m::mat<f32, 4, 4>::getIdentity();
     bgfx::setTransform(&transformMatrix);
@@ -127,7 +131,7 @@ int test_rasterizer() {
     bgfx::setIndexBuffer(m_ibh[0]);
     bgfx::setState(state);
 
-    bgfx::submit(0, bgfx::ProgramHandle());
+    bgfx::submit(0, l_program);
   }
 
   bgfx::frame();
@@ -138,7 +142,7 @@ int test_rasterizer() {
   }
 
   bgfx::destroy(m_vbh);
-  // bgfx::destroy(m_program);
+  bgfx::destroy(l_program);
 
   bgfx::shutdown();
 

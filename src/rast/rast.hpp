@@ -62,6 +62,15 @@ struct bgfx_impl {
     };
   };
 
+  struct Shader {
+    void *callback;
+  };
+
+  struct Program {
+    bgfx::ShaderHandle vertex;
+    bgfx::ShaderHandle fragment;
+  };
+
   struct CommandTemporaryStack {
     m::mat<f32, 4, 4> transform;
     bgfx::VertexBufferHandle vertex_buffer;
@@ -170,6 +179,18 @@ struct bgfx_impl {
       table_define_vector_1;
     } renderpass_table;
 
+    struct shader_table {
+      table_pool_meta;
+      table_cols_2(Shader, uimax);
+      table_define_pool_2;
+    } shader_table;
+
+    struct program_table {
+      table_pool_meta;
+      table_cols_1(Program);
+      table_define_pool_1;
+    } program_table;
+
     void allocate() {
       renderpass_table.allocate(0);
       buffer_memory_table.allocate(4096 * 4096);
@@ -179,7 +200,8 @@ struct bgfx_impl {
       framebuffer_table.allocate(0);
       vertexbuffer_table.allocate(0);
       indexbuffer_table.allocate(0);
-
+      shader_table.allocate(0);
+      program_table.allocate(0);
       renderpass_table.push_back(
           RenderPass::get_default()); // at least one renderpass
     };
@@ -188,6 +210,9 @@ struct bgfx_impl {
       assert_debug(!vertexbuffer_table.has_allocated_elements());
       assert_debug(!indexbuffer_table.has_allocated_elements());
       assert_debug(renderpass_table.element_count() == 1);
+      assert_debug(!shader_table.has_allocated_elements());
+      assert_debug(!program_table.has_allocated_elements());
+
       for (auto l_render_pass_it = 0;
            l_render_pass_it < renderpass_table.element_count();
            ++l_render_pass_it) {
@@ -202,6 +227,8 @@ struct bgfx_impl {
       texture_table.free();
       vertexbuffer_table.free();
       indexbuffer_table.free();
+      shader_table.free();
+      program_table.free();
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
@@ -336,6 +363,55 @@ struct bgfx_impl {
       indexbuffer_table.remove_at(p_handle.idx);
     };
 
+    bgfx::ShaderHandle allocate_shader(void *p_cb) {
+      bgfx::ShaderHandle l_handle;
+      Shader l_shader;
+      l_shader.callback = p_cb;
+      l_handle.idx = shader_table.push_back(l_shader, 0);
+      return l_handle;
+    };
+
+    void free_shader(bgfx::ShaderHandle p_handle) {
+      block_debug({
+        uimax *l_count;
+        shader_table.at(p_handle.idx, orm::none(), &l_count);
+        assert_debug(*l_count == 0);
+      });
+      shader_table.remove_at(p_handle.idx);
+    };
+
+    bgfx::ProgramHandle allocate_program(const Program &p_program) {
+
+      uimax *l_shader_count;
+      shader_table.at(p_program.fragment.idx, orm::none(), &l_shader_count);
+      *l_shader_count += 1;
+      shader_table.at(p_program.vertex.idx, orm::none(), &l_shader_count);
+      *l_shader_count += 1;
+
+      bgfx::ProgramHandle l_handle;
+      l_handle.idx = program_table.push_back(p_program);
+      return l_handle;
+    };
+
+    void free_program(bgfx::ProgramHandle p_handle) {
+      Program *l_program;
+      program_table.at(p_handle.idx, &l_program);
+
+      uimax *l_shader_count;
+      shader_table.at(l_program->fragment.idx, orm::none(), &l_shader_count);
+      *l_shader_count -= 1;
+      if (*l_shader_count == 0) {
+        free_shader(l_program->fragment);
+      }
+      shader_table.at(l_program->vertex.idx, orm::none(), &l_shader_count);
+      *l_shader_count -= 1;
+      if (*l_shader_count == 0) {
+        free_shader(l_program->vertex);
+      }
+
+      program_table.remove_at(p_handle.idx);
+    };
+
   } heap;
 
   struct TextureProxy {
@@ -379,6 +455,33 @@ struct bgfx_impl {
     };
   };
 
+  struct ShaderProxy {
+    struct heap &m_heap;
+    Shader *m_shader;
+  };
+
+  struct ProgramProxy {
+    struct heap &m_heap;
+    Program *m_program;
+
+    ProgramProxy(struct heap &p_heap, Program *p_program)
+        : m_heap(p_heap), m_program(p_program){
+
+                          };
+
+    ShaderProxy VertexShader() {
+      Shader *l_shader;
+      m_heap.shader_table.at(m_program->vertex.idx, &l_shader, orm::none());
+      return {.m_heap = m_heap, .m_shader = l_shader};
+    };
+
+    ShaderProxy FragmentShader() {
+      Shader *l_shader;
+      m_heap.shader_table.at(m_program->fragment.idx, &l_shader, orm::none());
+      return {.m_heap = m_heap, .m_shader = l_shader};
+    };
+  };
+
   struct CommandDrawCallProxy {
     struct heap &m_heap;
     CommandDrawCall *m_value;
@@ -401,6 +504,12 @@ struct bgfx_impl {
       m_heap.vertexbuffer_table.at(m_value->vertex_buffer.idx,
                                    &l_vertex_buffer);
       return l_vertex_buffer;
+    };
+
+    ProgramProxy Program() {
+      struct Program *l_program;
+      m_heap.program_table.at(m_value->program.idx, &l_program);
+      return ProgramProxy(m_heap, l_program);
     };
   };
 
@@ -450,6 +559,14 @@ struct bgfx_impl {
     auto l_texture =
         allocate_texture(p_width, p_height, 0, 0, p_format, p_textureFlags);
     return heap.allocate_frame_buffer(l_texture);
+  };
+
+  bgfx::ProgramHandle allocate_program(bgfx::ShaderHandle p_vertex,
+                                       bgfx::ShaderHandle p_fragment) {
+    Program l_program;
+    l_program.vertex = p_vertex;
+    l_program.fragment = p_fragment;
+    return heap.allocate_program(l_program);
   };
 
   void view_set_rect(bgfx::ViewId p_id, uint16_t p_x, uint16_t p_y,
@@ -507,9 +624,15 @@ struct bgfx_impl {
         CommandDrawCallProxy l_draw_call(heap, &p_command);
         IndexBuffer *l_index_buffer = l_draw_call.IndexBuffer();
         VertexBuffer *l_vertex_buffer = l_draw_call.VertexBuffer();
+        ProgramProxy l_program = l_draw_call.Program();
+        rast::algorithm::program l_rasterizer_program;
+        l_rasterizer_program.m_vertex =
+            l_program.VertexShader().m_shader->callback;
+        l_rasterizer_program.m_fragment =
+            l_program.FragmentShader().m_shader->callback;
 
         rast::algorithm::rasterize(
-            rast::algorithm::shader(), p_render_pass.value()->rect,
+            l_rasterizer_program, p_render_pass.value()->rect,
             p_render_pass.value()->proj, p_render_pass.value()->view,
             l_draw_call.value()->transform, l_index_buffer->range(),
             l_vertex_buffer->layout, l_vertex_buffer->range(),
@@ -647,6 +770,23 @@ inline IndexBufferHandle createIndexBuffer(const Memory *_mem,
 
 inline void destroy(IndexBufferHandle _handle) {
   return bgfx_impl.heap.free_index_buffer(_handle);
+};
+
+inline ShaderHandle createShader(const Memory *_mem) {
+  return bgfx_impl.heap.allocate_shader((void *)_mem);
+};
+
+inline void destroy(ShaderHandle _handle) {
+  bgfx_impl.heap.free_shader(_handle);
+};
+
+inline ProgramHandle createProgram(ShaderHandle _vsh, ShaderHandle _fsh,
+                                   bool _destroyShaders) {
+  return bgfx_impl.allocate_program(_vsh, _fsh);
+};
+
+inline void destroy(ProgramHandle _handle) {
+  bgfx_impl.heap.free_program(_handle);
 };
 
 inline void setViewRect(ViewId _id, uint16_t _x, uint16_t _y, uint16_t _width,

@@ -8,12 +8,12 @@
 namespace rast {
 namespace algorithm {
 
-struct shader {
+struct program {
   void *m_vertex;
   void *m_fragment;
 };
 
-static inline void rasterize(const shader &p_shader, m::vec<ui16, 2> &p_rect,
+static inline void rasterize(const program &p_program, m::vec<ui16, 2> &p_rect,
                              const m::mat<f32, 4, 4> &p_proj,
                              const m::mat<f32, 4, 4> &p_view,
                              const m::mat<f32, 4, 4> &p_transform,
@@ -23,6 +23,8 @@ static inline void rasterize(const shader &p_shader, m::vec<ui16, 2> &p_rect,
                              ui64 p_state, ui32 p_rgba,
                              const bgfx::TextureInfo &p_target_info,
                              container::range<ui8> &p_target_buffer) {
+
+  auto zd = p_proj * p_view;
   // TODO
   int l_do_magical_stuff_here = 0;
 };
