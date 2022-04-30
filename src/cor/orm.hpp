@@ -57,6 +57,11 @@ void __remove_at_vector_1(TableType &p_table, uimax p_index) {
   l_intrusive.m_count -= 1;
 };
 
+template <typename TableType> uimax __element_count_vector(TableType &p_table) {
+  container::vector_intrusive &l_intrusive = p_table.m_meta;
+  return l_intrusive.m_count;
+};
+
 template <typename TableType>
 void __at_vector_1(TableType &p_table, uimax p_index,
                    typename TableType::type_0 **out_0) {
@@ -540,7 +545,8 @@ private:
   };                                                                           \
   bool has_allocated_elements() {                                              \
     return orm::details::__has_allocated_elements_vector(*this);               \
-  };
+  };                                                                           \
+  uimax element_count() { return orm::details::__element_count_vector(*this); };
 
 #define table_cols_2(Type0, Type1)                                             \
   using type_0 = Type0;                                                        \
@@ -572,7 +578,8 @@ private:
   };                                                                           \
   bool has_allocated_elements() {                                              \
     return orm::details::__has_allocated_elements_vector(*this);               \
-  };
+  };                                                                           \
+  uimax element_count() { return orm::details::__element_count_vector(*this); };
 
 #define table_pool_meta container::pool_intrusive m_meta;
 

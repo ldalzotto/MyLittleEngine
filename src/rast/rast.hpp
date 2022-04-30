@@ -118,12 +118,6 @@ struct bgfx_impl {
       l_render_pass.proj = l_render_pass.proj.getZero();
       return l_render_pass;
     };
-
-    template <typename Callback> void for_each_commands(const Callback &p_cb) {
-      for (auto l_it = 0; l_it < commands.count(); ++l_it) {
-        p_cb(commands.at(l_it));
-      }
-    };
   };
 
   struct heap {
@@ -170,13 +164,14 @@ struct bgfx_impl {
       table_define_pool_1;
     } indexbuffer_table;
 
-    // TODO -> move to table
-    container::vector<RenderPass> renderpasses;
+    struct renderpass_table {
+      table_vector_meta;
+      table_cols_1(RenderPass);
+      table_define_vector_1;
+    } renderpass_table;
 
     void allocate() {
-      renderpasses.allocate(0);
-      renderpasses.push_back(
-          RenderPass::get_default()); // at least one renderpass
+      renderpass_table.allocate(0);
       buffer_memory_table.allocate(4096 * 4096);
       buffers_table.allocate(1024);
       buffers_ptr_mapping_table.allocate(0);
@@ -184,17 +179,23 @@ struct bgfx_impl {
       framebuffer_table.allocate(0);
       vertexbuffer_table.allocate(0);
       indexbuffer_table.allocate(0);
+
+      renderpass_table.push_back(
+          RenderPass::get_default()); // at least one renderpass
     };
 
     void free() {
       assert_debug(!vertexbuffer_table.has_allocated_elements());
       assert_debug(!indexbuffer_table.has_allocated_elements());
-      assert_debug(renderpasses.count() == 1);
-      for (auto l_render_pass_it = 0; l_render_pass_it < renderpasses.count();
+      assert_debug(renderpass_table.element_count() == 1);
+      for (auto l_render_pass_it = 0;
+           l_render_pass_it < renderpass_table.element_count();
            ++l_render_pass_it) {
-        renderpasses.at(l_render_pass_it).free();
+        RenderPass *l_render_pass;
+        renderpass_table.at(l_render_pass_it, &l_render_pass);
+        l_render_pass->free();
       }
-      renderpasses.free();
+      renderpass_table.free();
       buffer_memory_table.free();
       buffers_table.free();
       buffers_ptr_mapping_table.free();
@@ -355,6 +356,29 @@ struct bgfx_impl {
     };
   };
 
+  struct RenderPassProxy {
+    struct heap &m_heap;
+    RenderPass *m_value;
+
+    RenderPassProxy(struct heap &p_heap, RenderPass *p_value)
+        : m_heap(p_heap), m_value(p_value){
+
+                          };
+    RenderPass *value() { return m_value; };
+
+    FrameBufferProxy FrameBuffer() {
+      struct FrameBuffer *l_frame_buffer;
+      m_heap.framebuffer_table.at(m_value->framebuffer.idx, &l_frame_buffer);
+      return {.m_heap = m_heap, .m_value = l_frame_buffer};
+    };
+
+    template <typename Callback> void for_each_commands(const Callback &p_cb) {
+      for (auto l_it = 0; l_it < m_value->commands.count(); ++l_it) {
+        p_cb(m_value->commands.at(l_it));
+      }
+    };
+  };
+
   struct CommandDrawCallProxy {
     struct heap &m_heap;
     CommandDrawCall *m_value;
@@ -387,6 +411,22 @@ struct bgfx_impl {
       struct FrameBuffer *l_frame_buffer = m_heap.get_frame_buffer(p_handle);
       return {.m_heap = m_heap, .m_value = l_frame_buffer};
     };
+
+    RenderPassProxy RenderPass(bgfx::ViewId p_handle) {
+      struct RenderPass *l_render_pass;
+      m_heap.renderpass_table.at(p_handle, &l_render_pass);
+      return RenderPassProxy(m_heap, l_render_pass);
+    };
+
+    template <typename Callback>
+    void for_each_renderpass(const Callback &p_cb) {
+      for (auto i = 0; i < m_heap.renderpass_table.m_meta.m_count; ++i) {
+        struct RenderPass *l_render_pass;
+        m_heap.renderpass_table.at(i, &l_render_pass);
+        RenderPassProxy l_proxy(m_heap, l_render_pass);
+        p_cb(l_proxy);
+      }
+    };
   };
 
   heap_proxy proxy() { return {.m_heap = heap}; };
@@ -414,31 +454,28 @@ struct bgfx_impl {
 
   void view_set_rect(bgfx::ViewId p_id, uint16_t p_x, uint16_t p_y,
                      uint16_t p_width, uint16_t p_height) {
-    auto &l_render_pass = heap.renderpasses.at(p_id);
-    l_render_pass.rect = {p_x, p_y};
+    proxy().RenderPass(p_id).value()->rect = {p_x, p_y};
   };
 
   void view_set_framebuffer(bgfx::ViewId p_id,
                             bgfx::FrameBufferHandle p_handle) {
-    auto &l_render_pass = heap.renderpasses.at(p_id);
-    l_render_pass.framebuffer = p_handle;
+    proxy().RenderPass(p_id).value()->framebuffer = p_handle;
   };
 
   void view_set_transform(bgfx::ViewId p_id, const m::mat<f32, 4, 4> &p_view,
                           const m::mat<f32, 4, 4> &p_proj) {
-    auto &l_render_pass = heap.renderpasses.at(p_id);
-    l_render_pass.view = p_view;
-    l_render_pass.proj = p_proj;
+    RenderPassProxy l_render_pass = proxy().RenderPass(p_id);
+    l_render_pass.value()->view = p_view;
+    l_render_pass.value()->proj = p_proj;
   };
 
   void view_submit(bgfx::ViewId p_id, bgfx::ProgramHandle p_program) {
-    auto &l_render_pass = heap.renderpasses.at(p_id);
     CommandDrawCall l_draw_call;
     l_draw_call.program = p_program;
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
 
-    l_render_pass.commands.push_back(l_draw_call);
+    proxy().RenderPass(p_id).value()->commands.push_back(l_draw_call);
   };
 
   void set_transform(const m::mat<f32, 4, 4> &p_transform) {
@@ -460,34 +497,30 @@ struct bgfx_impl {
 
   void frame() {
 
-    for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
-      RenderPass &l_render_pass = heap.renderpasses.at(l_it);
-
-      TextureProxy l_frame_texture =
-          proxy().FrameBuffer(l_render_pass.framebuffer).Texture();
+    proxy().for_each_renderpass([&](RenderPassProxy &p_render_pass) {
+      TextureProxy l_frame_texture = p_render_pass.FrameBuffer().Texture();
 
       container::range<ui8> l_frame_texture_range =
           l_frame_texture.value()->range();
 
-      l_render_pass.for_each_commands([&](CommandDrawCall &p_command) {
+      p_render_pass.for_each_commands([&](CommandDrawCall &p_command) {
         CommandDrawCallProxy l_draw_call(heap, &p_command);
         IndexBuffer *l_index_buffer = l_draw_call.IndexBuffer();
         VertexBuffer *l_vertex_buffer = l_draw_call.VertexBuffer();
 
         rast::algorithm::rasterize(
-            rast::algorithm::shader(), l_render_pass.rect, l_render_pass.proj,
-            l_render_pass.view, l_draw_call.value()->transform,
-            l_index_buffer->range(), l_vertex_buffer->layout,
-            l_vertex_buffer->range(), l_draw_call.value()->state,
-            l_draw_call.value()->rgba, l_frame_texture.value()->info,
-            l_frame_texture_range);
+            rast::algorithm::shader(), p_render_pass.value()->rect,
+            p_render_pass.value()->proj, p_render_pass.value()->view,
+            l_draw_call.value()->transform, l_index_buffer->range(),
+            l_vertex_buffer->layout, l_vertex_buffer->range(),
+            l_draw_call.value()->state, l_draw_call.value()->rgba,
+            l_frame_texture.value()->info, l_frame_texture_range);
       });
-    }
+    });
 
-    for (auto l_it = 0; l_it < heap.renderpasses.count(); ++l_it) {
-      RenderPass &l_render_pass = heap.renderpasses.at(l_it);
-      l_render_pass.commands.clear();
-    }
+    proxy().for_each_renderpass([&](RenderPassProxy &p_render_passs) {
+      p_render_passs.value()->commands.clear();
+    });
   };
 
   void initialize() {
@@ -509,7 +542,7 @@ private:
     case bgfx::TextureFormat::Enum::RG8:
       return ui8(16);
     case bgfx::TextureFormat::Enum::RGB8:
-      return ui8(23);
+      return ui8(24);
     case bgfx::TextureFormat::Enum::RGBA8:
       return ui8(32);
     }
