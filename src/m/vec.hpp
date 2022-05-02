@@ -84,4 +84,9 @@ vec<T, 3> cross(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
                        p_left.m_data[1] * p_right.m_data[0]};
 };
 
+template <typename T>
+T perp_dot(const vec<T, 2> &p_left, const vec<T, 2> &p_right) {
+  return (p_left.at(0) * p_right.at(1)) - (p_left.at(1) * p_right.at(0));
+};
+
 }; // namespace m

@@ -107,7 +107,7 @@ struct bgfx_impl {
 
   struct RenderPass {
     bgfx::FrameBufferHandle framebuffer;
-    m::vec<ui16, 2> rect;
+    m::rect_point_extend<ui16> rect;
     m::vec<ui16, 4> scissor;
     m::mat<f32, 4, 4> view;
     m::mat<f32, 4, 4> proj;
@@ -372,7 +372,7 @@ struct bgfx_impl {
     };
 
     void free_shader(bgfx::ShaderHandle p_handle) {
-      block_debug({
+      block_debug([&]() {
         uimax *l_count;
         shader_table.at(p_handle.idx, orm::none(), &l_count);
         assert_debug(*l_count == 0);
@@ -571,7 +571,9 @@ struct bgfx_impl {
 
   void view_set_rect(bgfx::ViewId p_id, uint16_t p_x, uint16_t p_y,
                      uint16_t p_width, uint16_t p_height) {
-    proxy().RenderPass(p_id).value()->rect = {p_x, p_y};
+    m::rect_point_extend<ui16> &l_view = proxy().RenderPass(p_id).value()->rect;
+    l_view.point() = {p_x, p_y};
+    l_view.extend() = {p_width, p_height};
   };
 
   void view_set_framebuffer(bgfx::ViewId p_id,
@@ -620,6 +622,9 @@ struct bgfx_impl {
       container::range<ui8> l_frame_texture_range =
           l_frame_texture.value()->range();
 
+      // TODO -> this clear should be conditioned
+      l_frame_texture_range.zero();
+
       p_render_pass.for_each_commands([&](CommandDrawCall &p_command) {
         CommandDrawCallProxy l_draw_call(heap, &p_command);
         IndexBuffer *l_index_buffer = l_draw_call.IndexBuffer();
@@ -661,13 +666,13 @@ private:
   ui8 get_pixel_size_from_texture_format(bgfx::TextureFormat::Enum p_format) {
     switch (p_format) {
     case bgfx::TextureFormat::Enum::R8:
-      return ui8(8);
+      return ui8(1);
     case bgfx::TextureFormat::Enum::RG8:
-      return ui8(16);
+      return ui8(2);
     case bgfx::TextureFormat::Enum::RGB8:
-      return ui8(24);
+      return ui8(3);
     case bgfx::TextureFormat::Enum::RGBA8:
-      return ui8(32);
+      return ui8(4);
     }
     return ui8(0);
   };
@@ -694,6 +699,90 @@ inline VertexLayout &VertexLayout::begin(RendererType::Enum _renderer) {
   return *this;
 };
 
+struct VertexSingleLayoutBitsMask {
+
+  static const ui8 BITS_COUNT = 9;
+
+  static const ui8 NUM_OFFSET = 0;
+  static const auto NUM_MASK = 0b1111;
+
+  static const ui8 TYPE_OFFSET = 4;
+  static const auto TYPE_MASK = 0b111;
+
+  static const ui8 NORMALIZED_OFFSET = 7;
+  static const auto NORMALIZED_MASK = 0b1;
+
+  static const ui8 AS_INT_OFFSET = 8;
+  static const auto AS_INT_MASK = 0b1;
+};
+
+struct VertexSingleLayoutBits {
+
+  ui8 m_byte_offset;
+  ui32 &m_bits;
+
+  VertexSingleLayoutBits(ui32 &p_bits, ui8 p_array_index) : m_bits(p_bits) {
+    m_byte_offset = VertexSingleLayoutBitsMask::BITS_COUNT * p_array_index;
+  };
+
+  void set_num(ui8 p_num) {
+    m_bits = m_bits |
+             (VertexSingleLayoutBitsMask::NUM_MASK & p_num)
+                 << (m_byte_offset + VertexSingleLayoutBitsMask::NUM_OFFSET);
+  };
+  void set_type(ui8 p_type) {
+    m_bits = m_bits |
+             (VertexSingleLayoutBitsMask::TYPE_MASK & p_type)
+                 << (m_byte_offset + VertexSingleLayoutBitsMask::TYPE_OFFSET);
+  };
+  void set_normalized(ui8 p_num) {
+    m_bits = m_bits | (VertexSingleLayoutBitsMask::NORMALIZED_MASK & p_num)
+                          << (m_byte_offset +
+                              VertexSingleLayoutBitsMask::NORMALIZED_OFFSET);
+  };
+  void set_as_int(ui8 p_num) {
+    m_bits = m_bits |
+             (VertexSingleLayoutBitsMask::AS_INT_MASK & p_num)
+                 << (m_byte_offset + VertexSingleLayoutBitsMask::AS_INT_OFFSET);
+  };
+};
+
+struct VertexSingleLayoutBitsReadonly {
+
+  ui8 m_byte_offset;
+  const ui32 &m_bits;
+
+  VertexSingleLayoutBitsReadonly(const ui32 &p_bits, ui8 p_array_index)
+      : m_bits(p_bits) {
+    m_byte_offset = VertexSingleLayoutBitsMask::BITS_COUNT * p_array_index;
+  };
+
+  ui8 get_num() {
+    return (m_bits &
+            VertexSingleLayoutBitsMask::NUM_MASK
+                << (m_byte_offset + VertexSingleLayoutBitsMask::NUM_OFFSET)) >>
+           (m_byte_offset + VertexSingleLayoutBitsMask::NUM_OFFSET);
+  };
+  ui8 get_type() {
+    return (m_bits &
+            VertexSingleLayoutBitsMask::TYPE_MASK
+                << (m_byte_offset + VertexSingleLayoutBitsMask::TYPE_OFFSET)) >>
+           (m_byte_offset + VertexSingleLayoutBitsMask::TYPE_OFFSET);
+  };
+  ui8 get_normalized() {
+    return (m_bits & VertexSingleLayoutBitsMask::NORMALIZED_MASK
+                         << (m_byte_offset +
+                             VertexSingleLayoutBitsMask::NORMALIZED_OFFSET)) >>
+           (m_byte_offset + VertexSingleLayoutBitsMask::NORMALIZED_OFFSET);
+  };
+  ui8 get_as_int() {
+    return (m_bits & VertexSingleLayoutBitsMask::AS_INT_MASK
+                         << (m_byte_offset +
+                             VertexSingleLayoutBitsMask::AS_INT_OFFSET)) >>
+           (m_byte_offset + VertexSingleLayoutBitsMask::AS_INT_OFFSET);
+  };
+};
+
 inline void VertexLayout::end(){};
 
 inline VertexLayout &VertexLayout::add(Attrib::Enum _attrib, uint8_t _num,
@@ -704,22 +793,22 @@ inline VertexLayout &VertexLayout::add(Attrib::Enum _attrib, uint8_t _num,
   m_offset[_attrib] = m_stride;
   m_stride += bgfx_impl::AttribType::get_size(_type) * _num;
 
-  ui8 l_byte_offset = (9 * _attrib);
-  m_hash = m_hash | ((0b1111 & _num) << l_byte_offset);
-  m_hash = m_hash | ((0b111 & _type) << (l_byte_offset + 4));
-  m_hash = m_hash | ((0b1 & _normalized) << (l_byte_offset + 7));
-  m_hash = m_hash | ((0b1 & _asInt) << (l_byte_offset + 8));
+  VertexSingleLayoutBits l_entry(m_hash, _attrib);
+  l_entry.set_num(_num);
+  l_entry.set_type(_type);
+  l_entry.set_normalized(_normalized);
+  l_entry.set_as_int(_asInt);
   return *this;
 };
 
 inline void VertexLayout::decode(Attrib::Enum _attrib, uint8_t &_num,
                                  AttribType::Enum &_type, bool &_normalized,
                                  bool &_asInt) const {
-  uint32_t l_attrib_bytes = m_hash >> (9 * _attrib);
-  _num = l_attrib_bytes & 0b1111;
-  _type = (AttribType::Enum)(l_attrib_bytes & 0b1110000);
-  _normalized = l_attrib_bytes & 0b10000000;
-  _asInt = l_attrib_bytes & 0b100000000;
+  VertexSingleLayoutBitsReadonly l_entry(m_hash, _attrib);
+  _num = l_entry.get_num();
+  _type = (AttribType::Enum)l_entry.get_type();
+  _normalized = l_entry.get_normalized();
+  _asInt = l_entry.get_as_int();
 };
 
 inline bool init(const Init &p_init) {

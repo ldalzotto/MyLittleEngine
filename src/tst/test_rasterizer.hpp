@@ -72,7 +72,7 @@ int test_rasterizer() {
   bgfx::IndexBufferHandle m_ibh[s_ptState_count];
 
   auto l_frame_buffer =
-      bgfx::createFrameBuffer(100, 100, bgfx::TextureFormat::RG8);
+      bgfx::createFrameBuffer(100, 100, bgfx::TextureFormat::RGB8);
 
   m_vbh = bgfx::createVertexBuffer(
       bgfx::makeRef(s_cubeVertices, sizeof(s_cubeVertices)),
@@ -105,8 +105,8 @@ int test_rasterizer() {
 
   bgfx::setViewRect(0, 0, 0, 100, 100);
   m::mat<f32, 4, 4> viewMatrix, projectionMatrix;
-  viewMatrix = viewMatrix.getZero();
-  projectionMatrix = projectionMatrix.getZero();
+  viewMatrix = viewMatrix.getIdentity();
+  projectionMatrix = projectionMatrix.getIdentity();
   bgfx::setViewTransform(0, &viewMatrix, &projectionMatrix);
   bgfx::setViewFrameBuffer(0, l_frame_buffer);
   bgfx::touch(0);

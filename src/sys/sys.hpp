@@ -8,20 +8,21 @@ struct sys {
   static void *realloc(void *p_ptr, uimax p_new_size);
   static void memmove(void *p_dest, void *p_src, uimax p_n);
   static void memcpy(void *p_dest, void *p_src, uimax p_n);
+  static void memset(void *p_dest, ui32 p_value, uimax p_n);
 
-    template<typename T>
+  template <typename T>
   inline static void memmove_up_t(T *p_ptr, uimax p_break_index,
-                                uimax p_move_delta, uimax p_chunk_count) {
+                                  uimax p_move_delta, uimax p_chunk_count) {
     T *l_src = p_ptr + p_break_index;
     T *l_dst = l_src - p_move_delta;
     uimax l_byte_size = p_chunk_count * sizeof(T);
     sys::memmove(l_dst, l_src, l_byte_size);
   };
 
-    template<typename T>
+  template <typename T>
   inline static void memmove_down_t(T *p_ptr, uimax p_break_index,
-                                uimax p_move_delta, uimax p_chunk_count) {
-       T *l_src = p_ptr + p_break_index;
+                                    uimax p_move_delta, uimax p_chunk_count) {
+    T *l_src = p_ptr + p_break_index;
     T *l_dst = l_src + p_move_delta;
     uimax l_byte_size = p_chunk_count * sizeof(T);
     sys::memmove(l_dst, l_src, l_byte_size);
