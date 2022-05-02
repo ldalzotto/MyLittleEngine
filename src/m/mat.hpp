@@ -9,13 +9,10 @@ namespace m {
 template <typename T, int R, int C> struct mat;
 
 template <typename T> struct mat<T, 4, 4> {
-  union {
-    T m_data[4 * 4];
-    vec<T, 4> m_cols[4];
-  };
+  vec<T, 4> m_data[4];
 
-  T &at(uimax r, uimax c) { return m_cols[c].at(r); }
-  const T &at(uimax r, uimax c) const { return m_cols[c].at(r); }
+  T &at(uimax c, uimax r) { return m_data[c].at(r); }
+  const T &at(uimax c, uimax r) const { return m_data[c].at(r); }
 
   static mat getIdentity();
   static mat getZero() { return {0}; };
@@ -50,7 +47,10 @@ static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
   l_result.at(3, 0) = -dot(s, p_eye);
   l_result.at(3, 1) = -dot(u, p_eye);
   l_result.at(3, 2) = dot(f, p_eye);
-  l_result.m_cols[3] = {0, 0, 0, 1};
+  l_result.at(0, 3) = 0;
+  l_result.at(1, 3) = 0;
+  l_result.at(2, 3) = 0;
+  l_result.at(3, 3) = 1;
 
   return l_result;
 };
