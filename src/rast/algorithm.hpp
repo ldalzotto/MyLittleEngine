@@ -261,8 +261,10 @@ private:
           i16 c3 = m::perp_dot(l_polygon.m_2 - l_polygon.m_0,
                                l_polygon.m_2 - l_pixel);
           if (c1 >= 0 && c2 >= 0 && c3 >= 0) {
-            m_visibility_buffer.at(m_input.m_target_image_view.get_buffer_index(
-                l_pixel.at(0), l_pixel.at(1))) = 1;
+            m_visibility_buffer.at(
+                (l_pixel.at(1) *
+                 m_input.m_target_image_view.m_target_info.width) +
+                l_pixel.at(0)) = 1;
           }
         }
       }
