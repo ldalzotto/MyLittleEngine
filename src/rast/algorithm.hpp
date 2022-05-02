@@ -182,19 +182,27 @@ private:
 
   void __calculate_screen_vertices() {
 
-    m::mat<f32, 4, 4> l_local_to_screen =
-        m_input.m_transform * m_input.m_view * m_input.m_proj;
+    // m::mat<f32, 4, 4> l_local_to_camera = m_input.m_view *
+    // m_input.m_transform;
+    m::mat<f32, 4, 4> l_local_to_unit =
+        m_input.m_proj * m_input.m_view * m_input.m_transform;
 
     m_screen_vertices.allocate(m_vertex_count);
 
     for (auto i = 0; i < m_vertex_count; ++i) {
       ui8 *l_vertex_bytes =
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
-      m::vec<f32, 4> l_vertex_vec = *(m::vec<f32, 4> *)l_vertex_bytes;
-      l_vertex_vec.at(3) = 1;
-      m::vec<f32, 4> l_vertex_screen = l_local_to_screen * l_vertex_vec;
-      m_screen_vertices.at(i) = {(i16)l_vertex_screen.at(0),
-                                 (i16)l_vertex_screen.at(1)};
+      m::vec<f32, 3> l_vertex_vec = *(m::vec<f32, 3> *)l_vertex_bytes;
+      m::vec<f32, 3> l_vertex_screen = l_local_to_unit * l_vertex_vec;
+      m::vec<f32, 2> l_vertex_screen_2 = {l_vertex_screen.at(0),
+                                          l_vertex_screen.at(1)};
+      l_vertex_screen_2.at(0) = (l_vertex_screen_2.at(0) + 1) * 0.5;
+      l_vertex_screen_2.at(1) = (l_vertex_screen_2.at(1) + 1) * 0.5;
+      l_vertex_screen_2.at(1) = 1 - l_vertex_screen.at(1);
+      l_vertex_screen_2.at(0) *= m_input.m_rect.extend().at(0);
+      l_vertex_screen_2.at(1) *= m_input.m_rect.extend().at(1);
+      m_screen_vertices.at(i) = {(i16)l_vertex_screen_2.at(0),
+                                 (i16)l_vertex_screen_2.at(1)};
     }
   };
 
