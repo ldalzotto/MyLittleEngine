@@ -34,13 +34,15 @@ template <typename T> struct range {
 
   void copy_to(const range &p_to) const {
     assert_debug(m_count <= p_to.m_count);
-    sys::memcpy(p_to.m_begin, m_begin, m_count);
+    sys::memcpy(p_to.m_begin, m_begin, m_count * sizeof(T));
   };
 
   void copy_from(const range &p_from) const {
     assert_debug(p_from.m_count <= m_count);
-    sys::memcpy(m_begin, p_from.m_begin, m_count);
+    sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
   };
+
+  void zero() { sys::memset(m_begin, 0, m_count * sizeof(T)); };
 };
 
 template <typename T, typename AllocFunctions = malloc_free_functions>
@@ -68,7 +70,7 @@ struct span {
     T *l_dst = l_src + p_move_delta;
     uimax l_byte_size = p_chunk_count * sizeof(T);
 
-    block_debug(__assert_memove(l_dst, l_src, p_chunk_count););
+    block_debug([&]() { __assert_memove(l_dst, l_src, p_chunk_count); });
 
     sys::memmove(l_dst, l_src, l_byte_size);
   };
@@ -79,7 +81,7 @@ struct span {
     T *l_dst = l_src - p_move_delta;
     uimax l_byte_size = p_chunk_count * sizeof(T);
 
-    block_debug(__assert_memove(l_dst, l_src, p_chunk_count););
+    block_debug([&]() { __assert_memove(l_dst, l_src, p_chunk_count); });
 
     sys::memmove(l_dst, l_src, l_byte_size);
   };
