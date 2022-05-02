@@ -13,13 +13,11 @@ struct image_view {
 
   const bgfx::TextureInfo &m_target_info;
   container::range<ui8> &m_buffer;
-  uimax m_stride;
 
   image_view(const bgfx::TextureInfo &p_target_info,
              container::range<ui8> &p_buffer)
       : m_target_info(p_target_info), m_buffer(p_buffer) {
     m_buffer = p_buffer;
-    m_stride = p_target_info.bitsPerPixel * p_target_info.width;
 
     assert_debug(m_buffer.count() ==
                  p_target_info.bitsPerPixel *
@@ -31,7 +29,7 @@ struct image_view {
     assert_debug(r < m_target_info.height);
     assert_debug(c < m_target_info.width);
 
-    return r * m_stride + (c * m_target_info.bitsPerPixel);
+    return r * stride() + (c * m_target_info.bitsPerPixel);
   };
   uimax get_buffer_index(ui16 p) {
 
@@ -53,8 +51,9 @@ struct image_view {
     *(m::vec<ui8, 3> *)at(p) = p_pixel;
   };
 
-  uimax get_image_byte_size() { return m_stride * m_target_info.height; };
+  uimax get_image_byte_size() { return stride() * m_target_info.height; };
   uimax pixel_count() { return m_target_info.height * m_target_info.width; };
+  uimax stride() { return m_target_info.bitsPerPixel * m_target_info.width; };
 };
 
 struct index_buffer_const_view {

@@ -3,7 +3,7 @@
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
 
-namespace engine {
+namespace eng {
 
 namespace input {
 

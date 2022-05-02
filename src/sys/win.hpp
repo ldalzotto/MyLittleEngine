@@ -14,7 +14,7 @@ struct event {
   enum class type { Undefined = 0, InputPress = 1, InputRelease = 2 } m_type;
 
   struct input {
-    engine::input::Key m_key;
+    eng::input::Key m_key;
   };
 
   union {
