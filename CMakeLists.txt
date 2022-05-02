@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD 17)
 # set(ENABLE_ADDRESS true)
 # set(ENABLE_UNDEFINED true)
 
+add_compile_options(-fPIC)
 if(ENABLE_SAFETY_CHECKS)
     add_compile_definitions(DEBUG_PREPROCESS=1)
 else()
@@ -40,6 +41,10 @@ add_library(WIN STATIC ./src/sys/win.cpp)
 target_link_libraries(WIN PUBLIC WholeProject)
 target_link_libraries(WIN PUBLIC SYS)
 target_link_libraries(WIN PUBLIC ${X11_LIBRARIES})
+
+add_library(API SHARED ./src/eng/api.cpp)
+target_link_libraries(API PUBLIC SYS)
+target_link_libraries(API PUBLIC WIN)
 
 add_executable(TESTS ./src/tst/tests.cpp)
 target_link_libraries(TESTS PUBLIC SYS)
