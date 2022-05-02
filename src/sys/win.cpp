@@ -6,7 +6,7 @@
 #include <sys/sys.hpp>
 #include <sys/win.hpp>
 
-Display *s_display = 0;
+inline static Display *s_display = 0;
 
 int handler(Display *d, XErrorEvent *e) {
   sys::sassert(false);
@@ -51,18 +51,18 @@ get_events_from_window(Window p_window,
   return 0;
 };
 
-engine::input::Key native_key_to_input(KeySym p_key_sym) {
+eng::input::Key native_key_to_input(KeySym p_key_sym) {
   switch (p_key_sym) {
   case XK_Up:
-    return engine::input::Key::ARROW_UP;
+    return eng::input::Key::ARROW_UP;
   case XK_Down:
-    return engine::input::Key::ARROW_DOWN;
+    return eng::input::Key::ARROW_DOWN;
   case XK_Left:
-    return engine::input::Key::ARROW_LEFT;
+    return eng::input::Key::ARROW_LEFT;
   case XK_Right:
-    return engine::input::Key::ARROW_RIGHT;
+    return eng::input::Key::ARROW_RIGHT;
   default:
-    return engine::input::Key::UNDEFINED;
+    return eng::input::Key::UNDEFINED;
   }
 };
 
