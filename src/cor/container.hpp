@@ -64,6 +64,12 @@ struct span {
     m_data = (T *)AllocFunctions::realloc(m_data, m_count * sizeof(T));
   };
 
+  void resize(uimax p_new_count) {
+    if (p_new_count > m_count) {
+      realloc(p_new_count);
+    }
+  };
+
   void memmove_down(uimax p_break_index, uimax p_move_delta,
                     uimax p_chunk_count) {
     T *l_src = m_data + p_break_index;
