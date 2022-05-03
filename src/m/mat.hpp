@@ -35,15 +35,15 @@ static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
   const vec<T, 3> u = cross(s, f);
 
   mat<T, 4, 4> l_result;
-  l_result.at(0, 0) = s.at(0);
-  l_result.at(1, 0) = s.at(1);
-  l_result.at(2, 0) = s.at(2);
-  l_result.at(0, 1) = u.at(0);
-  l_result.at(1, 1) = u.at(1);
-  l_result.at(2, 1) = u.at(2);
-  l_result.at(0, 2) = -f.at(0);
-  l_result.at(1, 2) = -f.at(1);
-  l_result.at(2, 2) = -f.at(2);
+  l_result.at(0, 0) = s.x();
+  l_result.at(1, 0) = s.y();
+  l_result.at(2, 0) = s.z();
+  l_result.at(0, 1) = u.x();
+  l_result.at(1, 1) = u.y();
+  l_result.at(2, 1) = u.z();
+  l_result.at(0, 2) = -f.x();
+  l_result.at(1, 2) = -f.y();
+  l_result.at(2, 2) = -f.z();
   l_result.at(3, 0) = -dot(s, p_eye);
   l_result.at(3, 1) = -dot(u, p_eye);
   l_result.at(3, 2) = dot(f, p_eye);
@@ -136,14 +136,16 @@ static vec<T, 4> operator*(const mat<T, 4, 4> &p_left,
 
   return l_return;
 };
+
+// TODO -> move to another function ?
 template <typename T>
 static vec<T, 3> operator*(const mat<T, 4, 4> &p_left,
                            const vec<T, 3> &p_right) {
-  vec<T, 4> l_tmp = {p_right.at(0), p_right.at(1), p_right.at(2), 1};
+  vec<T, 4> l_tmp = {p_right.x(), p_right.y(), p_right.z(), 1};
 
   vec<T, 4> l_return = p_left * l_tmp;
-  l_return = l_return / l_return.at(3);
-  return {l_return.at(0), l_return.at(1), l_return.at(2)};
+  l_return = l_return / l_return.w();
+  return vec<T, 3>::make(l_return);
 };
 
 } // namespace m

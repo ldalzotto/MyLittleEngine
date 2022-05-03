@@ -3,6 +3,9 @@
 #include <m/const.hpp>
 #include <rast/rast.hpp>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_write.h>
+
 struct PosColorVertex {
   float m_x;
   float m_y;
@@ -22,13 +25,9 @@ struct PosColorVertex {
 struct rastzerizer_sandbox_test {
 
   inline static const uint16_t s_cubeTriList[] = {
-      0, 1, 2,          // 0
-      1, 3, 2, 4, 6, 5, // 2
-      5, 6, 7, 0, 2, 4, // 4
-      4, 2, 6, 1, 5, 3, // 6
-      5, 7, 3, 0, 4, 1, // 8
-      4, 5, 1, 2, 3, 6, // 10
-      6, 3, 7,
+      0,
+      1,
+      2,
   };
 
   inline static const uint16_t s_cubeTriStrip[] = {
@@ -62,18 +61,28 @@ struct rastzerizer_sandbox_test {
     bgfx::init();
 
     PosColorVertex::init();
+    /*
     static PosColorVertex s_cubeVertices[] = {
         {-1.0f, 1.0f, 1.0f, 0xff000000},   {1.0f, 1.0f, 1.0f, 0xff0000ff},
         {-1.0f, -1.0f, 1.0f, 0xff00ff00},  {1.0f, -1.0f, 1.0f, 0xff00ffff},
         {-1.0f, 1.0f, -1.0f, 0xffff0000},  {1.0f, 1.0f, -1.0f, 0xffff00ff},
         {-1.0f, -1.0f, -1.0f, 0xffffff00}, {1.0f, -1.0f, -1.0f, 0xffffffff},
     };
+    */
+    static PosColorVertex s_cubeVertices[] = {
+
+        {0.0f, 0.0f, 0.0f, 0xff0000ff},
+        {1.0f, 0.0f, 0.0f, 0xff00ff00},
+        {0.0f, 1.0f, 0.0f, 0xff000000},
+    };
 
     bgfx::VertexBufferHandle m_vbh;
     bgfx::IndexBufferHandle m_ibh[s_ptState_count];
 
+    ui16 l_width = 20;
+    ui16 l_height = 20;
     auto l_frame_buffer =
-        bgfx::createFrameBuffer(100, 100, bgfx::TextureFormat::RGB8);
+        bgfx::createFrameBuffer(l_width, l_height, bgfx::TextureFormat::RGB8);
 
     m_vbh = bgfx::createVertexBuffer(
         bgfx::makeRef(s_cubeVertices, sizeof(s_cubeVertices)),
@@ -104,7 +113,7 @@ struct rastzerizer_sandbox_test {
         // Static data can be passed with bgfx::makeRef
         bgfx::makeRef(s_cubePoints, sizeof(s_cubePoints)));
 
-    bgfx::setViewRect(0, 0, 0, 100, 100);
+    bgfx::setViewRect(0, 0, 0, l_width, l_height);
     m::mat<f32, 4, 4> viewMatrix, projectionMatrix;
     viewMatrix = viewMatrix.getIdentity();
     projectionMatrix = projectionMatrix.getIdentity();
@@ -123,19 +132,25 @@ struct rastzerizer_sandbox_test {
     bgfx::ShaderHandle l_fragment = bgfx::createShader((const bgfx::Memory *)0);
     bgfx::ProgramHandle l_program = bgfx::createProgram(l_vertex, l_fragment);
 
-    for (i32 i = 0; i < 10; ++i) {
-      m::mat<f32, 4, 4> transformMatrix = m::mat<f32, 4, 4>::getIdentity();
-      bgfx::setTransform(&transformMatrix);
+    m::mat<f32, 4, 4> transformMatrix = m::mat<f32, 4, 4>::getIdentity();
+    bgfx::setTransform(&transformMatrix);
 
-      // Set vertex and index buffer.
-      bgfx::setVertexBuffer(0, m_vbh);
-      bgfx::setIndexBuffer(m_ibh[0]);
-      bgfx::setState(state);
+    // Set vertex and index buffer.
+    bgfx::setVertexBuffer(0, m_vbh);
+    bgfx::setIndexBuffer(m_ibh[0]);
+    bgfx::setState(state);
 
-      bgfx::submit(0, l_program);
-    }
-
+    bgfx::submit(0, l_program);
     bgfx::frame();
+
+    auto *l_frame_texture =
+        bgfx_impl.proxy().FrameBuffer(l_frame_buffer).Texture().value();
+
+    stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/test.png",
+                   l_frame_texture->info.width, l_frame_texture->info.height, 3,
+                   l_frame_texture->range().m_begin,
+                   l_frame_texture->info.bitsPerPixel *
+                       l_frame_texture->info.width);
 
     // Cleanup.
     for (uint32_t ii = 0; ii < s_ptState_count; ++ii) {
@@ -316,6 +331,14 @@ struct rastzerizer_cube_test {
     // process submitted rendering primitives.
     bgfx::frame();
 
+    auto *l_frame_texture =
+        bgfx_impl.proxy().FrameBuffer(l_frame_buffer).Texture().value();
+
+    stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/test.png",
+                   l_frame_texture->info.width, l_frame_texture->info.height, 3,
+                   l_frame_texture->range().m_begin,
+                   l_frame_texture->info.bitsPerPixel *
+                       l_frame_texture->info.width);
     // Cleanup.
     for (uint32_t ii = 0; ii < s_ptState_count; ++ii) {
       bgfx::destroy(m_ibh[ii]);
@@ -330,8 +353,8 @@ struct rastzerizer_cube_test {
 
 inline int test_rasterizer() {
 
-  // rastzerizer_sandbox_test{}();
-  rastzerizer_cube_test{}();
+  rastzerizer_sandbox_test{}();
+  // rastzerizer_cube_test{}();
   return 0;
 
   // TODO -> memleak in containers (maybe as an option ?) extended container
