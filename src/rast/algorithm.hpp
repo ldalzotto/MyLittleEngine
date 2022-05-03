@@ -78,6 +78,75 @@ struct program {
   void *m_fragment;
 };
 
+struct screen_polygon {
+  m::vec<i16, 2> m_0, m_1, m_2;
+
+  m::rect_min_max<i16> calculate_bounding_rect() {
+    container::range<m::vec<i16, 2>> l_points;
+    l_points.m_begin = &m_0;
+    l_points.m_count = 3;
+    return m::rect_min_max<i16>::bounding_box(l_points);
+  };
+
+  i32 edge_0(const m::vec<i16, 2> &p) {
+    return (m_0.at(0) - m_1.at(0)) * (p.at(1) - m_0.at(1)) -
+           (m_0.at(1) - m_1.at(1)) * (p.at(0) - m_0.at(0));
+  };
+
+  i32 edge_1(const m::vec<i16, 2> &p) {
+    return (m_1.at(0) - m_2.at(0)) * (p.at(1) - m_1.at(2)) -
+           (m_1.at(1) - m_2.at(1)) * (p.at(0) - m_1.at(0));
+  };
+
+  i32 edge_2(const m::vec<i16, 2> &p) {
+    return (m_2.at(0) - m_0.at(0)) * (p.at(1) - m_2.at(1)) -
+           (m_2.at(1) - m_0.at(1)) * (p.at(0) - m_2.at(0));
+  };
+};
+
+struct utils {
+  static void rasterize_polygon_to_visiblity(
+      const screen_polygon &p_polygon, m::rect_min_max<i16> &p_bounding_rect,
+      container::span<ui8> &p_visibility, ui32 p_width) {
+
+    m::vec<i16, 2> l_pixel = {p_bounding_rect.min().x(),
+                              p_bounding_rect.min().y()};
+
+    const m::vec<i16, 2> d0 = p_polygon.m_0 - p_polygon.m_2;
+    const m::vec<i16, 2> d1 = p_polygon.m_1 - p_polygon.m_0;
+    const m::vec<i16, 2> d2 = p_polygon.m_2 - p_polygon.m_1;
+    i32 ey0 = ((l_pixel.x() - p_polygon.m_0.x()) * d0.y()) -
+              ((l_pixel.y() - p_polygon.m_0.y()) * d0.x());
+    i32 ey1 = ((l_pixel.x() - p_polygon.m_1.x()) * d1.y()) -
+              ((l_pixel.y() - p_polygon.m_1.y()) * d1.x());
+    i32 ey2 = ((l_pixel.x() - p_polygon.m_2.x()) * d2.y()) -
+              ((l_pixel.y() - p_polygon.m_2.y()) * d2.x());
+
+    for (auto y = p_bounding_rect.min().y(); y <= p_bounding_rect.max().y();
+         ++y) {
+      i32 ex0 = ey0;
+      i32 ex1 = ey1;
+      i32 ex2 = ey2;
+
+      for (auto x = p_bounding_rect.min().x(); x <= p_bounding_rect.max().x();
+           ++x) {
+
+        if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
+          p_visibility.at((y * p_width) + x) = 1;
+        }
+
+        ex0 += d0.y();
+        ex1 += d1.y();
+        ex2 += d2.y();
+      }
+
+      ey0 -= d0.x();
+      ey1 -= d1.x();
+      ey2 -= d2.x();
+    }
+  };
+};
+
 struct rasterize_unit {
 
   struct input {
@@ -113,17 +182,6 @@ struct rasterize_unit {
   uimax m_vertex_count;
   uimax m_polygon_count;
   container::span<m::vec<i16, 2>> m_screen_vertices;
-
-  struct screen_polygon {
-    m::vec<i16, 2> m_0, m_1, m_2;
-
-    m::rect_min_max<i16> calculate_bounding_rect() {
-      container::range<m::vec<i16, 2>> l_points;
-      l_points.m_begin = &m_0;
-      l_points.m_count = 3;
-      return m::rect_min_max<i16>::bounding_box(l_points);
-    };
-  };
 
   container::span<screen_polygon> m_screen_polygons;
 
@@ -182,8 +240,6 @@ private:
 
   void __calculate_screen_vertices() {
 
-    // m::mat<f32, 4, 4> l_local_to_camera = m_input.m_view *
-    // m_input.m_transform;
     m::mat<f32, 4, 4> l_local_to_unit =
         m_input.m_proj * m_input.m_view * m_input.m_transform;
 
@@ -193,16 +249,16 @@ private:
       ui8 *l_vertex_bytes =
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
       m::vec<f32, 3> l_vertex_vec = *(m::vec<f32, 3> *)l_vertex_bytes;
-      m::vec<f32, 3> l_vertex_screen = l_local_to_unit * l_vertex_vec;
-      m::vec<f32, 2> l_vertex_screen_2 = {l_vertex_screen.at(0),
-                                          l_vertex_screen.at(1)};
-      l_vertex_screen_2.at(0) = (l_vertex_screen_2.at(0) + 1) * 0.5;
-      l_vertex_screen_2.at(1) = (l_vertex_screen_2.at(1) + 1) * 0.5;
-      l_vertex_screen_2.at(1) = 1 - l_vertex_screen.at(1);
-      l_vertex_screen_2.at(0) *= m_input.m_rect.extend().at(0);
-      l_vertex_screen_2.at(1) *= m_input.m_rect.extend().at(1);
-      m_screen_vertices.at(i) = {(i16)l_vertex_screen_2.at(0),
-                                 (i16)l_vertex_screen_2.at(1)};
+      m::vec<f32, 2> l_vertex_screen_2;
+      {
+        m::vec<f32, 3> l_vertex_screen = l_local_to_unit * l_vertex_vec;
+        l_vertex_screen_2 = m::vec<f32, 2>::make(l_vertex_screen);
+      }
+
+      l_vertex_screen_2 = (l_vertex_screen_2 + 1) * 0.5;
+      l_vertex_screen_2.y() = 1 - l_vertex_screen_2.y();
+      l_vertex_screen_2 *= (m_input.m_rect.extend() - 1);
+      m_screen_vertices.at(i) = l_vertex_screen_2.cast<i16>();
     }
   };
 
@@ -229,6 +285,7 @@ private:
     for (auto l_polygon_it = 0; l_polygon_it < m_screen_polygons.count();
          ++l_polygon_it) {
       screen_polygon &l_polygon = m_screen_polygons.at(l_polygon_it);
+
       auto l_bounding_rect = l_polygon.calculate_bounding_rect();
 
       // TODO -> utility function for this
@@ -247,6 +304,102 @@ private:
       if (l_bounding_rect.max().at(1) >= m_input.m_rect.extend().at(1)) {
         l_bounding_rect.max().at(1) = m_input.m_rect.extend().at(1) - 1;
       }
+
+      utils::rasterize_polygon_to_visiblity(
+          l_polygon, l_bounding_rect, m_visibility_buffer,
+          m_input.m_target_image_view.m_target_info.width);
+
+#if 0
+
+      m::vec<i16, 2> l_pixel = {l_bounding_rect.min().x(),
+                                l_bounding_rect.min().y()};
+
+      const m::vec<i16, 2> d0 = l_polygon.m_0 - l_polygon.m_2;
+      const m::vec<i16, 2> d1 = l_polygon.m_1 - l_polygon.m_0;
+      const m::vec<i16, 2> d2 = l_polygon.m_2 - l_polygon.m_1;
+      i32 ey0 = ((l_pixel.x() - l_polygon.m_0.x()) * d0.y()) -
+                ((l_pixel.y() - l_polygon.m_0.y()) * d0.x());
+      i32 ey1 = ((l_pixel.x() - l_polygon.m_1.x()) * d1.y()) -
+                ((l_pixel.y() - l_polygon.m_1.y()) * d1.x());
+      i32 ey2 = ((l_pixel.x() - l_polygon.m_2.x()) * d2.y()) -
+                ((l_pixel.y() - l_polygon.m_2.y()) * d2.x());
+
+      for (auto y = l_bounding_rect.min().y(); y <= l_bounding_rect.max().y();
+           ++y) {
+        i32 ex0 = ey0;
+        i32 ex1 = ey1;
+        i32 ex2 = ey2;
+
+        for (auto x = l_bounding_rect.min().x(); x <= l_bounding_rect.max().x();
+             ++x) {
+
+          if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
+            m_visibility_buffer.at(
+                (y * m_input.m_target_image_view.m_target_info.width) + x) = 1;
+          }
+
+          ex0 += d0.y();
+          ex1 += d1.y();
+          ex2 += d2.y();
+        }
+
+        ey0 -= d0.x();
+        ey1 -= d1.x();
+        ey2 -= d2.x();
+      }
+
+#endif
+
+#if 0
+
+      const i32 i01 = l_polygon.m_0.y() - l_polygon.m_1.y();
+      const i32 j01 = l_polygon.m_1.x() - l_polygon.m_0.x();
+      const i32 k01 = (l_polygon.m_0.x() * l_polygon.m_1.y()) -
+                      (l_polygon.m_0.y() * l_polygon.m_1.x());
+
+      const i32 i02 = l_polygon.m_1.y() - l_polygon.m_2.y();
+      const i32 j02 = l_polygon.m_2.x() - l_polygon.m_1.x();
+      const i32 k02 = (l_polygon.m_1.x() * l_polygon.m_2.y()) -
+                      (l_polygon.m_1.y() * l_polygon.m_2.x());
+
+      const i32 i03 = l_polygon.m_2.y() - l_polygon.m_0.y();
+      const i32 j03 = l_polygon.m_0.x() - l_polygon.m_2.x();
+      const i32 k03 = (l_polygon.m_2.x() * l_polygon.m_0.y()) -
+                      (l_polygon.m_2.y() * l_polygon.m_0.x());
+
+      m::vec<i16, 2> l_pixel = {l_bounding_rect.min().x(),
+                                l_bounding_rect.min().y()};
+
+      i32 cy1 = i01 * l_pixel.x() + j01 * l_pixel.y() + k01;
+      i32 cy2 = i02 * l_pixel.x() + j02 * l_pixel.y() + k02;
+      i32 cy3 = i03 * l_pixel.x() + j03 * l_pixel.y() + k03;
+
+      for (auto y = l_bounding_rect.min().y(); y <= l_bounding_rect.max().y();
+           ++y) {
+        i32 cx1 = cy1;
+        i32 cx2 = cy2;
+        i32 cx3 = cy3;
+        for (auto x = l_bounding_rect.min().x(); x <= l_bounding_rect.max().x();
+             ++x) {
+
+          if (cx1 > 0 && cx2 > 0 && cx3 > 0) {
+            m_visibility_buffer.at(
+                (y * m_input.m_target_image_view.m_target_info.width) + x) = 1;
+          }
+
+          cx1 += j01;
+          cx2 += j02;
+          cx3 += j03;
+        }
+
+        cy1 -= i01;
+        cy2 -= i02;
+        cy3 -= i03;
+      }
+
+#endif
+
+#if 0
 
       for (auto i = l_bounding_rect.min().at(0);
            i <= l_bounding_rect.max().at(0); ++i) {
@@ -268,6 +421,7 @@ private:
           }
         }
       }
+#endif
     }
   };
 
