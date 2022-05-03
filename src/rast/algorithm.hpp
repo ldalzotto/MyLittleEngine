@@ -28,7 +28,7 @@ struct index_buffer_const_view {
 };
 
 struct program {
-  void *m_vertex;
+  rast::shader_vertex_function m_vertex;
   void *m_fragment;
 };
 
@@ -41,27 +41,12 @@ struct screen_polygon {
     l_points.m_count = 3;
     return m::rect_min_max<i16>::bounding_box(l_points);
   };
-
-  i32 edge_0(const m::vec<i16, 2> &p) {
-    return (m_0.at(0) - m_1.at(0)) * (p.at(1) - m_0.at(1)) -
-           (m_0.at(1) - m_1.at(1)) * (p.at(0) - m_0.at(0));
-  };
-
-  i32 edge_1(const m::vec<i16, 2> &p) {
-    return (m_1.at(0) - m_2.at(0)) * (p.at(1) - m_1.at(2)) -
-           (m_1.at(1) - m_2.at(1)) * (p.at(0) - m_1.at(0));
-  };
-
-  i32 edge_2(const m::vec<i16, 2> &p) {
-    return (m_2.at(0) - m_0.at(0)) * (p.at(1) - m_2.at(1)) -
-           (m_2.at(1) - m_0.at(1)) * (p.at(0) - m_2.at(0));
-  };
 };
 
 struct utils {
   static void rasterize_polygon_to_visiblity(
       const screen_polygon &p_polygon, m::rect_min_max<i16> &p_bounding_rect,
-      container::span<ui8> &p_visibility, ui32 p_width) {
+      container::span<ui8> &p_visibility, ui16 p_width) {
 
     m::vec<i16, 2> l_pixel = {p_bounding_rect.min().x(),
                               p_bounding_rect.min().y()};
@@ -69,18 +54,15 @@ struct utils {
     const m::vec<i16, 2> d0 = p_polygon.m_0 - p_polygon.m_2;
     const m::vec<i16, 2> d1 = p_polygon.m_1 - p_polygon.m_0;
     const m::vec<i16, 2> d2 = p_polygon.m_2 - p_polygon.m_1;
-    i32 ey0 = ((l_pixel.x() - p_polygon.m_0.x()) * d0.y()) -
-              ((l_pixel.y() - p_polygon.m_0.y()) * d0.x());
-    i32 ey1 = ((l_pixel.x() - p_polygon.m_1.x()) * d1.y()) -
-              ((l_pixel.y() - p_polygon.m_1.y()) * d1.x());
-    i32 ey2 = ((l_pixel.x() - p_polygon.m_2.x()) * d2.y()) -
-              ((l_pixel.y() - p_polygon.m_2.y()) * d2.x());
+    i16 ey0 = __ey_calculation(l_pixel, p_polygon.m_0, d0);
+    i16 ey1 = __ey_calculation(l_pixel, p_polygon.m_1, d1);
+    i16 ey2 = __ey_calculation(l_pixel, p_polygon.m_2, d2);
 
     for (auto y = p_bounding_rect.min().y(); y <= p_bounding_rect.max().y();
          ++y) {
-      i32 ex0 = ey0;
-      i32 ex1 = ey1;
-      i32 ex2 = ey2;
+      i16 ex0 = ey0;
+      i16 ex1 = ey1;
+      i16 ex2 = ey2;
 
       for (auto x = p_bounding_rect.min().x(); x <= p_bounding_rect.max().x();
            ++x) {
@@ -98,6 +80,14 @@ struct utils {
       ey1 -= d1.x();
       ey2 -= d2.x();
     }
+  };
+
+private:
+  static i16 __ey_calculation(const m::vec<i16, 2> &p_pixel,
+                              const m::vec<i16, 2> &p_polygon_point,
+                              const m::vec<i16, 2> &p_delta) {
+    return ((p_pixel.x() - p_polygon_point.x()) * p_delta.y()) -
+           ((p_pixel.y() - p_polygon_point.y()) * p_delta.x());
   };
 };
 
@@ -151,7 +141,7 @@ struct rasterize_unit {
   } m_input;
 
   rasterize_heap &m_heap;
-
+  m::mat<f32, 4, 4> m_local_to_unit;
   ui16 m_vertex_stride;
   uimax m_vertex_count;
   uimax m_polygon_count;
@@ -179,7 +169,7 @@ struct rasterize_unit {
                  m_input.m_vertex_buffer.count());
 
     m_polygon_count = m_input.m_index_buffer.m_index_count / 3;
-
+    m_local_to_unit = m_input.m_proj * m_input.m_view * m_input.m_transform;
     block_debug([&]() {
       ui8 l_position_num;
       bgfx::AttribType::Enum l_position_type;
@@ -194,7 +184,8 @@ struct rasterize_unit {
       assert_debug(!l_position_as_int);
     });
 
-    __calculate_screen_vertices();
+    // __vertex();
+    __vertex_v2();
     __extract_screen_polygons();
     __calculate_visibility_buffer();
     __fragment();
@@ -205,10 +196,36 @@ struct rasterize_unit {
 private:
   void __free(){};
 
-  void __calculate_screen_vertices() {
+  void __vertex_v2() {
+    assert_debug(m_input.m_program.m_vertex);
+    m_heap.m_screen_vertices.resize(m_vertex_count);
 
-    m::mat<f32, 4, 4> l_local_to_unit =
-        m_input.m_proj * m_input.m_view * m_input.m_transform;
+    const shader_vertex_runtime_ctx l_ctx = shader_vertex_runtime_ctx(
+        m_input.m_rect, m_input.m_proj, m_input.m_view, m_input.m_transform,
+        m_local_to_unit, m_input.m_vertex_layout);
+
+    for (auto i = 0; i < m_vertex_count; ++i) {
+      ui8 *l_vertex_bytes =
+          m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
+      m::vec<f32, 4> l_vertex_shader_out;
+
+      m_input.m_program.m_vertex(l_ctx, l_vertex_bytes, l_vertex_shader_out);
+
+      l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
+
+      m::vec<f32, 2> l_vertex_shader_out_2 =
+          m::vec<f32, 2>::make(l_vertex_shader_out);
+
+      l_vertex_shader_out_2 = (l_vertex_shader_out_2 + 1) * 0.5;
+      l_vertex_shader_out_2.y() = 1 - l_vertex_shader_out_2.y();
+      l_vertex_shader_out_2 *= (m_input.m_rect.extend() - 1);
+
+      m_heap.m_screen_vertices.at(i) = l_vertex_shader_out_2.cast<i16>();
+    }
+  };
+
+  // TODO -> deprecate this
+  void __vertex() {
 
     m_heap.m_screen_vertices.resize(m_vertex_count);
 
@@ -218,7 +235,9 @@ private:
       m::vec<f32, 3> l_vertex_vec = *(m::vec<f32, 3> *)l_vertex_bytes;
       m::vec<f32, 2> l_vertex_screen_2;
       {
-        m::vec<f32, 3> l_vertex_screen = l_local_to_unit * l_vertex_vec;
+        m::vec<f32, 4> l_vertex_screen =
+            m_local_to_unit * m::vec<f32, 4>::make(l_vertex_vec, 1);
+        l_vertex_screen = l_vertex_screen / l_vertex_screen.w();
         l_vertex_screen_2 = m::vec<f32, 2>::make(l_vertex_screen);
       }
 
@@ -245,6 +264,8 @@ private:
     }
   };
 
+  // TODO -> should apply z clipping
+  // TODO -> should apply depth comparison if needed.
   void __calculate_visibility_buffer() {
     m_heap.m_visibility_buffer.resize(
         m_input.m_target_image_view.pixel_count());
@@ -257,24 +278,10 @@ private:
          ++l_polygon_it) {
       screen_polygon &l_polygon = m_heap.m_screen_polygons.at(l_polygon_it);
 
-      auto l_bounding_rect = l_polygon.calculate_bounding_rect();
+      m::rect_min_max<i16> l_bounding_rect =
+          l_polygon.calculate_bounding_rect();
 
-      // TODO -> utility function for this
-      if (l_bounding_rect.min().at(0) < m_input.m_rect.point().at(0)) {
-        l_bounding_rect.min().at(0) = m_input.m_rect.point().at(0);
-      }
-
-      if (l_bounding_rect.min().at(1) < m_input.m_rect.point().at(1)) {
-        l_bounding_rect.min().at(1) = m_input.m_rect.point().at(1);
-      }
-
-      if (l_bounding_rect.max().at(0) >= m_input.m_rect.extend().at(0)) {
-        l_bounding_rect.max().at(0) = m_input.m_rect.extend().at(0) - 1;
-      }
-
-      if (l_bounding_rect.max().at(1) >= m_input.m_rect.extend().at(1)) {
-        l_bounding_rect.max().at(1) = m_input.m_rect.extend().at(1) - 1;
-      }
+      l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
 
       utils::rasterize_polygon_to_visiblity(
           l_polygon, l_bounding_rect, m_heap.m_visibility_buffer,

@@ -128,7 +128,17 @@ struct rastzerizer_sandbox_test {
         BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_CULL_CW |
         BGFX_STATE_MSAA | BGFX_STATE_PT_TRISTRIP;
 
-    bgfx::ShaderHandle l_vertex = bgfx::createShader((const bgfx::Memory *)0);
+    rast::shader_vertex_function l_vertex_function =
+        [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
+           m::vec<f32, 4> &out_screen_position) {
+          const m::vec<f32, 3> &l_vertex_pos =
+              rast::shader_utils::get_vertex_vec3f32(p_ctx, 0, p_vertex);
+          out_screen_position =
+              p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+        };
+
+    bgfx::ShaderHandle l_vertex =
+        bgfx::createShader((const bgfx::Memory *)l_vertex_function);
     bgfx::ShaderHandle l_fragment = bgfx::createShader((const bgfx::Memory *)0);
     bgfx::ProgramHandle l_program = bgfx::createProgram(l_vertex, l_fragment);
 
@@ -272,7 +282,17 @@ struct rastzerizer_cube_test {
         // Static data can be passed with bgfx::makeRef
         bgfx::makeRef(s_cubePoints, sizeof(s_cubePoints)));
 
-    bgfx::ShaderHandle l_vertex = bgfx::createShader((const bgfx::Memory *)0);
+    rast::shader_vertex_function l_vertex_function =
+        [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
+           m::vec<f32, 4> &out_screen_position) {
+          const m::vec<f32, 3> &l_vertex_pos =
+              rast::shader_utils::get_vertex_vec3f32(p_ctx, 0, p_vertex);
+          out_screen_position =
+              p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+        };
+
+    bgfx::ShaderHandle l_vertex =
+        bgfx::createShader((const bgfx::Memory *)l_vertex_function);
     bgfx::ShaderHandle l_fragment = bgfx::createShader((const bgfx::Memory *)0);
     bgfx::ProgramHandle l_program = bgfx::createProgram(l_vertex, l_fragment);
 
@@ -352,7 +372,7 @@ struct rastzerizer_cube_test {
 
 inline int test_rasterizer() {
 
-  // rastzerizer_sandbox_test{}();
+  rastzerizer_sandbox_test{}();
   rastzerizer_cube_test{}();
   return 0;
 
