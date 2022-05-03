@@ -105,8 +105,21 @@ struct bgfx_impl {
     };
   };
 
+  struct clear_state {
+    ui16 m_flags;
+    ui32 m_rgba;
+    f32 m_depth;
+
+    void reset() {
+      m_flags = 0;
+      m_rgba = 0;
+      m_depth = 0;
+    };
+  };
+
   struct RenderPass {
     bgfx::FrameBufferHandle framebuffer;
+    clear_state clear;
     m::rect_point_extend<ui16> rect;
     m::vec<ui16, 4> scissor;
     m::mat<f32, 4, 4> view;
@@ -125,6 +138,7 @@ struct bgfx_impl {
       l_render_pass.scissor = l_render_pass.scissor.getZero();
       l_render_pass.view = l_render_pass.view.getZero();
       l_render_pass.proj = l_render_pass.proj.getZero();
+      l_render_pass.clear.reset();
       return l_render_pass;
     };
   };
@@ -414,6 +428,8 @@ struct bgfx_impl {
 
   } heap;
 
+  rast::algorithm::rasterize_heap m_rasterize_heap;
+
   struct TextureProxy {
     struct heap &m_heap;
     Texture *m_value;
@@ -581,6 +597,14 @@ struct bgfx_impl {
     proxy().RenderPass(p_id).value()->framebuffer = p_handle;
   };
 
+  void view_set_clear(bgfx::ViewId p_id, ui16 p_flags, ui32 p_rgba,
+                      f32 p_depth) {
+    clear_state &l_clear = proxy().RenderPass(p_id).value()->clear;
+    l_clear.m_rgba = p_rgba;
+    l_clear.m_flags = p_flags;
+    l_clear.m_depth = p_depth;
+  };
+
   void view_set_transform(bgfx::ViewId p_id, const m::mat<f32, 4, 4> &p_view,
                           const m::mat<f32, 4, 4> &p_proj) {
     RenderPassProxy l_render_pass = proxy().RenderPass(p_id);
@@ -622,8 +646,18 @@ struct bgfx_impl {
       container::range<ui8> l_frame_texture_range =
           l_frame_texture.value()->range();
 
-      // TODO -> this clear should be conditioned
-      l_frame_texture_range.zero();
+      // color clear
+      {
+        ui32 l_rgba = p_render_pass.value()->clear.m_rgba;
+        m::vec<ui8, 3> l_clear_color;
+        l_clear_color.x() = (ui8)(l_rgba >> 24);
+        l_clear_color.y() = (ui8)(l_rgba >> 16);
+        l_clear_color.z() = (ui8)(l_rgba >> 8);
+        rast::image_view l_target_view(l_frame_texture.value()->info,
+                                       l_frame_texture_range);
+        l_target_view.for_each_pixels_rgb(
+            [&](m::vec<ui8, 3> &p_pixel) { p_pixel = l_clear_color; });
+      }
 
       p_render_pass.for_each_commands([&](CommandDrawCall &p_command) {
         CommandDrawCallProxy l_draw_call(heap, &p_command);
@@ -637,7 +671,7 @@ struct bgfx_impl {
             l_program.FragmentShader().m_shader->callback;
 
         rast::algorithm::rasterize(
-            l_rasterizer_program, p_render_pass.value()->rect,
+            m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,
             p_render_pass.value()->proj, p_render_pass.value()->view,
             l_draw_call.value()->transform, l_index_buffer->range(),
             l_vertex_buffer->layout, l_vertex_buffer->range(),
@@ -653,12 +687,14 @@ struct bgfx_impl {
 
   void initialize() {
     heap.allocate();
+    m_rasterize_heap.allocate();
     command_temporary_stack.clear();
   };
 
   void terminate() {
 
     heap.free();
+    m_rasterize_heap.free();
     // TODO
   };
 
@@ -885,6 +921,11 @@ inline void setViewRect(ViewId _id, uint16_t _x, uint16_t _y, uint16_t _width,
 
 inline void setViewFrameBuffer(ViewId _id, FrameBufferHandle _handle) {
   bgfx_impl.view_set_framebuffer(_id, _handle);
+};
+
+inline void setViewClear(ViewId _id, uint16_t _flags, uint32_t _rgba,
+                         float _depth, uint8_t _stencil) {
+  bgfx_impl.view_set_clear(_id, _flags, _rgba, _depth);
 };
 
 inline void setViewTransform(ViewId _id, const void *_view, const void *_proj) {

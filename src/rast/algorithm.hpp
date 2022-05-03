@@ -5,56 +5,10 @@
 #include <m/mat.hpp>
 #include <m/rect.hpp>
 #include <m/vec.hpp>
+#include <rast/model.hpp>
 
 namespace rast {
 namespace algorithm {
-
-struct image_view {
-
-  const bgfx::TextureInfo &m_target_info;
-  container::range<ui8> &m_buffer;
-
-  image_view(const bgfx::TextureInfo &p_target_info,
-             container::range<ui8> &p_buffer)
-      : m_target_info(p_target_info), m_buffer(p_buffer) {
-    m_buffer = p_buffer;
-
-    assert_debug(m_buffer.count() ==
-                 p_target_info.bitsPerPixel *
-                     (p_target_info.height * p_target_info.width));
-  };
-
-  uimax get_buffer_index(ui16 r, ui16 c) {
-
-    assert_debug(r < m_target_info.height);
-    assert_debug(c < m_target_info.width);
-
-    return r * stride() + (c * m_target_info.bitsPerPixel);
-  };
-  uimax get_buffer_index(ui16 p) {
-
-    assert_debug(p < (m_target_info.height * m_target_info.width));
-
-    return m_target_info.bitsPerPixel * p;
-  };
-
-  ui8 *at(ui16 r, ui16 c) { return &m_buffer.at(get_buffer_index(r, c)); };
-  ui8 *at(ui16 p) { return &m_buffer.at(get_buffer_index(p)); };
-
-  void set_pixel(ui16 r, ui16 c, const m::vec<ui8, 3> &p_pixel) {
-    assert_debug(sizeof(p_pixel) == m_target_info.bitsPerPixel);
-    *(m::vec<ui8, 3> *)at(r, c) = p_pixel;
-  };
-
-  void set_pixel(ui16 p, const m::vec<ui8, 3> &p_pixel) {
-    assert_debug(sizeof(p_pixel) == m_target_info.bitsPerPixel);
-    *(m::vec<ui8, 3> *)at(p) = p_pixel;
-  };
-
-  uimax get_image_byte_size() { return stride() * m_target_info.height; };
-  uimax pixel_count() { return m_target_info.height * m_target_info.width; };
-  uimax stride() { return m_target_info.bitsPerPixel * m_target_info.width; };
-};
 
 struct index_buffer_const_view {
   ui8 m_index_byte_size;
@@ -147,6 +101,24 @@ struct utils {
   };
 };
 
+struct rasterize_heap {
+  container::span<m::vec<i16, 2>> m_screen_vertices;
+  container::span<screen_polygon> m_screen_polygons;
+  container::span<ui8> m_visibility_buffer;
+
+  void allocate() {
+    m_screen_vertices.allocate(1024);
+    m_screen_polygons.allocate(1024);
+    m_visibility_buffer.allocate(1024);
+  };
+
+  void free() {
+    m_screen_vertices.free();
+    m_screen_polygons.free();
+    m_visibility_buffer.free();
+  };
+};
+
 struct rasterize_unit {
 
   struct input {
@@ -178,16 +150,14 @@ struct rasterize_unit {
 
   } m_input;
 
+  rasterize_heap &m_heap;
+
   ui16 m_vertex_stride;
   uimax m_vertex_count;
   uimax m_polygon_count;
-  container::span<m::vec<i16, 2>> m_screen_vertices;
 
-  container::span<screen_polygon> m_screen_polygons;
-
-  container::span<ui8> m_visibility_buffer;
-
-  rasterize_unit(const program &p_program, m::rect_point_extend<ui16> &p_rect,
+  rasterize_unit(rasterize_heap &p_heap, const program &p_program,
+                 m::rect_point_extend<ui16> &p_rect,
                  const m::mat<f32, 4, 4> &p_proj,
                  const m::mat<f32, 4, 4> &p_view,
                  const m::mat<f32, 4, 4> &p_transform,
@@ -198,7 +168,8 @@ struct rasterize_unit {
                  container::range<ui8> &p_target_buffer)
       : m_input(p_program, p_rect, p_proj, p_view, p_transform, p_index_buffer,
                 p_vertex_layout, p_vertex_buffer, p_state, p_rgba,
-                p_target_info, p_target_buffer){};
+                p_target_info, p_target_buffer),
+        m_heap(p_heap){};
 
   void rasterize() {
 
@@ -232,18 +203,14 @@ struct rasterize_unit {
   };
 
 private:
-  void __free() {
-    m_screen_vertices.free();
-    m_screen_polygons.free();
-    m_visibility_buffer.free();
-  };
+  void __free(){};
 
   void __calculate_screen_vertices() {
 
     m::mat<f32, 4, 4> l_local_to_unit =
         m_input.m_proj * m_input.m_view * m_input.m_transform;
 
-    m_screen_vertices.allocate(m_vertex_count);
+    m_heap.m_screen_vertices.resize(m_vertex_count);
 
     for (auto i = 0; i < m_vertex_count; ++i) {
       ui8 *l_vertex_bytes =
@@ -258,33 +225,37 @@ private:
       l_vertex_screen_2 = (l_vertex_screen_2 + 1) * 0.5;
       l_vertex_screen_2.y() = 1 - l_vertex_screen_2.y();
       l_vertex_screen_2 *= (m_input.m_rect.extend() - 1);
-      m_screen_vertices.at(i) = l_vertex_screen_2.cast<i16>();
+      m_heap.m_screen_vertices.at(i) = l_vertex_screen_2.cast<i16>();
     }
   };
 
   void __extract_screen_polygons() {
-    m_screen_polygons.allocate(m_polygon_count);
+    m_heap.m_screen_polygons.resize(m_polygon_count);
 
     uimax l_index_idx = 0;
-    for (auto i = 0; i < m_screen_polygons.count(); ++i) {
-      screen_polygon &l_polygon = m_screen_polygons.at(i);
-      l_polygon.m_0 =
-          m_screen_vertices.at(m_input.m_index_buffer.at<ui16>(l_index_idx));
-      l_polygon.m_1 = m_screen_vertices.at(
+    for (auto i = 0; i < m_polygon_count; ++i) {
+      screen_polygon &l_polygon = m_heap.m_screen_polygons.at(i);
+      l_polygon.m_0 = m_heap.m_screen_vertices.at(
+          m_input.m_index_buffer.at<ui16>(l_index_idx));
+      l_polygon.m_1 = m_heap.m_screen_vertices.at(
           m_input.m_index_buffer.at<ui16>(l_index_idx + 1));
-      l_polygon.m_2 = m_screen_vertices.at(
+      l_polygon.m_2 = m_heap.m_screen_vertices.at(
           m_input.m_index_buffer.at<ui16>(l_index_idx + 2));
       l_index_idx += 3;
     }
   };
 
   void __calculate_visibility_buffer() {
-    m_visibility_buffer.allocate(m_input.m_target_image_view.pixel_count());
-    m_visibility_buffer.range().zero();
+    m_heap.m_visibility_buffer.resize(
+        m_input.m_target_image_view.pixel_count());
 
-    for (auto l_polygon_it = 0; l_polygon_it < m_screen_polygons.count();
+    auto l_visibility_range = m_heap.m_visibility_buffer.range();
+    l_visibility_range.m_count = m_input.m_target_image_view.pixel_count();
+    l_visibility_range.zero();
+
+    for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
          ++l_polygon_it) {
-      screen_polygon &l_polygon = m_screen_polygons.at(l_polygon_it);
+      screen_polygon &l_polygon = m_heap.m_screen_polygons.at(l_polygon_it);
 
       auto l_bounding_rect = l_polygon.calculate_bounding_rect();
 
@@ -306,14 +277,14 @@ private:
       }
 
       utils::rasterize_polygon_to_visiblity(
-          l_polygon, l_bounding_rect, m_visibility_buffer,
+          l_polygon, l_bounding_rect, m_heap.m_visibility_buffer,
           m_input.m_target_image_view.m_target_info.width);
     }
   };
 
   void __fragment() {
     for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
-      if (m_visibility_buffer.at(i)) {
+      if (m_heap.m_visibility_buffer.at(i)) {
         m::vec<ui8, 3> l_color = {255, 255, 255};
         m_input.m_target_image_view.set_pixel(i, l_color);
       }
@@ -322,17 +293,17 @@ private:
 };
 
 static inline void
-rasterize(const program &p_program, m::rect_point_extend<ui16> &p_rect,
-          const m::mat<f32, 4, 4> &p_proj, const m::mat<f32, 4, 4> &p_view,
-          const m::mat<f32, 4, 4> &p_transform,
+rasterize(rasterize_heap &p_heap, const program &p_program,
+          m::rect_point_extend<ui16> &p_rect, const m::mat<f32, 4, 4> &p_proj,
+          const m::mat<f32, 4, 4> &p_view, const m::mat<f32, 4, 4> &p_transform,
           const container::range<ui8> &p_index_buffer,
           bgfx::VertexLayout p_vertex_layout,
           const container::range<ui8> &p_vertex_buffer, ui64 p_state,
           ui32 p_rgba, const bgfx::TextureInfo &p_target_info,
           container::range<ui8> &p_target_buffer) {
-  rasterize_unit(p_program, p_rect, p_proj, p_view, p_transform, p_index_buffer,
-                 p_vertex_layout, p_vertex_buffer, p_state, p_rgba,
-                 p_target_info, p_target_buffer)
+  rasterize_unit(p_heap, p_program, p_rect, p_proj, p_view, p_transform,
+                 p_index_buffer, p_vertex_layout, p_vertex_buffer, p_state,
+                 p_rgba, p_target_info, p_target_buffer)
       .rasterize();
 };
 

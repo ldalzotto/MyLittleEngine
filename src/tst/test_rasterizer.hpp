@@ -228,10 +228,9 @@ struct rastzerizer_cube_test {
     // bgfx::setDebug(m_debug);
 
     // Set view 0 clear state.
-    /*
+
     bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x303030ff, 1.0f,
                        0);
-*/
 
     // Create vertex stream declaration.
     PosColorVertex::init();
@@ -353,8 +352,8 @@ struct rastzerizer_cube_test {
 
 inline int test_rasterizer() {
 
-  rastzerizer_sandbox_test{}();
-  // rastzerizer_cube_test{}();
+  // rastzerizer_sandbox_test{}();
+  rastzerizer_cube_test{}();
   return 0;
 
   // TODO -> memleak in containers (maybe as an option ?) extended container
