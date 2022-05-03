@@ -2,7 +2,8 @@
 
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
-#include <m/vec.hpp>
+#include <m/mat.hpp>
+#include <m/rect.hpp>
 
 namespace rast {
 
@@ -58,6 +59,39 @@ struct image_view {
     for (auto i = 0; i < l_pix_count; ++i) {
       p_cb(*(m::vec<ui8, 3> *)at(i));
     }
+  };
+};
+
+struct shader_vertex_runtime_ctx {
+  m::rect_point_extend<ui16> &m_rect;
+  const m::mat<f32, 4, 4> &m_proj;
+  const m::mat<f32, 4, 4> &m_view;
+  const m::mat<f32, 4, 4> &m_transform;
+  const m::mat<f32, 4, 4> &m_local_to_unit;
+  const bgfx::VertexLayout &m_vertex_layout;
+
+  shader_vertex_runtime_ctx(m::rect_point_extend<ui16> &p_rect,
+                            const m::mat<f32, 4, 4> &p_proj,
+                            const m::mat<f32, 4, 4> &p_view,
+                            const m::mat<f32, 4, 4> &p_transform,
+                            const m::mat<f32, 4, 4> &p_local_to_unit,
+                            const bgfx::VertexLayout &p_vertex_layout)
+      : m_rect(p_rect), m_proj(p_proj), m_view(p_view),
+        m_transform(p_transform), m_local_to_unit(p_local_to_unit),
+        m_vertex_layout(p_vertex_layout){};
+};
+
+using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
+                                        const ui8 *p_vertex,
+                                        m::vec<f32, 4> &out_screen_position);
+
+struct shader_utils {
+  static const m::vec<f32, 3> &
+  get_vertex_vec3f32(const shader_vertex_runtime_ctx &p_ctx, ui8 p_attrib_index,
+                     const ui8 *p_vertex) {
+    return *(
+        const m::vec<f32, 3> *)(p_vertex +
+                                p_ctx.m_vertex_layout.m_offset[p_attrib_index]);
   };
 };
 

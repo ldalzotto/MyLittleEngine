@@ -27,6 +27,13 @@ template <typename T> struct vec<T, 2> {
     return l_return;
   };
 
+  static vec make(const vec<T, 4> &p_other) {
+    vec l_return;
+    l_return.m_data[0] = p_other.x();
+    l_return.m_data[1] = p_other.y();
+    return l_return;
+  };
+
   template <typename TT> vec<TT, 2> cast() {
     return {TT(m_data[0]), TT(m_data[1])};
   };
@@ -302,6 +309,10 @@ template <typename T> struct vec<T, 4> {
   };
 
   static vec getZero() { return {0}; };
+
+  static vec make(const vec<T, 3> &p_xyz, const T &p_w) {
+    return {p_xyz.x(), p_xyz.y(), p_xyz.z(), p_w};
+  };
 };
 
 template <typename T>

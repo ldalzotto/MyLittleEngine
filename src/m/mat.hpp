@@ -137,15 +137,4 @@ static vec<T, 4> operator*(const mat<T, 4, 4> &p_left,
   return l_return;
 };
 
-// TODO -> move to another function ?
-template <typename T>
-static vec<T, 3> operator*(const mat<T, 4, 4> &p_left,
-                           const vec<T, 3> &p_right) {
-  vec<T, 4> l_tmp = {p_right.x(), p_right.y(), p_right.z(), 1};
-
-  vec<T, 4> l_return = p_left * l_tmp;
-  l_return = l_return / l_return.w();
-  return vec<T, 3>::make(l_return);
-};
-
 } // namespace m

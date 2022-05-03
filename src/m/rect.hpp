@@ -46,8 +46,9 @@ template <typename T> struct rect_point_extend {
   m::vec<T, 2> m_extend;
 
   m::vec<T, 2> &point() { return m_point; };
-
   m::vec<T, 2> &extend() { return m_extend; };
+  const m::vec<T, 2> &point() const { return m_point; };
+  const m::vec<T, 2> &extend() const { return m_extend; };
 
   static rect_point_extend getZero() {
     rect_point_extend l_rect;
@@ -55,6 +56,28 @@ template <typename T> struct rect_point_extend {
     l_rect.m_extend = l_rect.m_extend.getZero();
     return l_rect;
   };
+};
+
+template <typename T, typename TT>
+m::rect_min_max<T> fit_into(const m::rect_min_max<T> &p_rect,
+                            const m::rect_point_extend<TT> &p_into) {
+  m::rect_min_max<T> l_rect = p_rect;
+  if (l_rect.min().x() < p_into.point().x()) {
+    l_rect.min().x() = p_into.point().x();
+  }
+
+  if (l_rect.min().y() < p_into.point().y()) {
+    l_rect.min().y() = p_into.point().y();
+  }
+
+  if (l_rect.max().x() >= p_into.extend().x()) {
+    l_rect.max().x() = p_into.extend().x() - TT(1);
+  }
+
+  if (l_rect.max().y() >= p_into.extend().y()) {
+    l_rect.max().y() = p_into.extend().y() - TT(1);
+  }
+  return l_rect;
 };
 
 } // namespace m

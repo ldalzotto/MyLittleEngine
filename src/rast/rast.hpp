@@ -665,8 +665,8 @@ struct bgfx_impl {
         VertexBuffer *l_vertex_buffer = l_draw_call.VertexBuffer();
         ProgramProxy l_program = l_draw_call.Program();
         rast::algorithm::program l_rasterizer_program;
-        l_rasterizer_program.m_vertex =
-            l_program.VertexShader().m_shader->callback;
+        l_rasterizer_program.m_vertex = (rast::shader_vertex_function)(
+            l_program.VertexShader().m_shader->callback);
         l_rasterizer_program.m_fragment =
             l_program.FragmentShader().m_shader->callback;
 
