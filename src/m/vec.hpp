@@ -181,6 +181,14 @@ template <typename T> struct vec<T, 3> {
     return l_return;
   };
 
+  template <typename TT> vec operator*(const TT &p_other) const {
+    vec l_return;
+    l_return.m_data[0] = m_data[0] * p_other;
+    l_return.m_data[1] = m_data[1] * p_other;
+    l_return.m_data[2] = m_data[2] * p_other;
+    return l_return;
+  };
+
   vec &operator*=(const vec<T, 3> &p_other) {
     m_data[0] = m_data[0] * p_other.m_data[0];
     m_data[1] = m_data[1] * p_other.m_data[1];

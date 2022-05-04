@@ -294,13 +294,11 @@ struct rastzerizer_cube_test {
               p_ctx, bgfx::Attrib::Enum::Color0, p_vertex);
           out_screen_position =
               p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
-          *(m::vec<f32, 3> *)out_vertex.m_data[0] = m::vec<f32, 3>{
-              (f32)(l_color >> 24) / 255, (f32)(l_color >> 16) / 255,
-              (f32)(l_color >> 8) / 255};
+          *(m::vec<f32, 3> *)out_vertex.m_data[0] = m::vec<f32, 3>{0, 0.5, 1};
         };
 
     rast::shader_vertex_meta::output_parameter l_vertex_output_parameters[1] = {
-        {sizeof(f32) * 3}};
+        rast::shader_vertex_meta::output_parameter(bgfx::AttribType::Float, 3)};
     auto l_vertex_output_parameters_slice =
         container::range<rast::shader_vertex_meta::output_parameter>::make(
             l_vertex_output_parameters, 1);

@@ -70,7 +70,26 @@ struct shader_vertex_meta {
   };
 
   struct output_parameter {
+    bgfx::AttribType::Enum m_attrib_type;
+    ui8 m_attrib_element_count;
     ui16 m_single_element_size;
+
+    output_parameter() = default;
+    output_parameter(bgfx::AttribType::Enum p_attrib_type,
+                     ui8 p_attrib_element_count) {
+      m_attrib_type = p_attrib_type;
+      m_attrib_element_count = p_attrib_element_count;
+      m_single_element_size = 0;
+      switch (p_attrib_type) {
+      case bgfx::AttribType::Float:
+        m_single_element_size = sizeof(f32);
+        break;
+      default:
+        m_single_element_size = 0;
+        break;
+      }
+      m_single_element_size *= p_attrib_element_count;
+    };
   };
 
   static uimax
