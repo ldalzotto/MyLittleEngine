@@ -316,14 +316,22 @@ template <typename T> struct vec<T, 4> {
 };
 
 template <typename T>
+T cross(const vec<T, 2> &p_left, const vec<T, 2> &p_right) {
+  return p_left.x() * p_right.y() - p_left.y() * p_right.x();
+};
+
+template <typename T>
 vec<T, 3> cross(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
   return vec<T, 3>{p_left.y() * p_right.z() - p_left.z() * p_right.y(),
                    p_left.z() * p_right.x() - p_left.x() * p_right.z(),
                    p_left.x() * p_right.y() - p_left.y() * p_right.x()};
 };
 
-template <typename T>
-f32 dot(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
+template <typename T> T dot(const vec<T, 2> &p_left, const vec<T, 2> &p_right) {
+  return (p_left.x() * p_right.x()) + (p_left.y() * p_right.y());
+};
+
+template <typename T> T dot(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
   return (p_left.x() * p_right.x()) + (p_left.y() * p_right.y()) +
          (p_left.z() * p_right.z());
 };
