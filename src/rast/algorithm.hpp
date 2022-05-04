@@ -29,11 +29,9 @@ struct multi_buffer {
 
   void resize(uimax p_count) {
     uimax l_count_before = m_buffers.count();
-    if (l_count_before != p_count) {
-      m_buffers.resize(p_count);
-      for (auto i = l_count_before; i < m_buffers.count(); ++i) {
-        m_buffers.at(i).allocate(0);
-      }
+    m_buffers.resize(p_count);
+    for (auto i = l_count_before; i < m_buffers.count(); ++i) {
+      m_buffers.at(i).allocate(0);
     }
   };
 
