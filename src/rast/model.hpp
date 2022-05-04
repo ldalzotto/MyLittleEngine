@@ -62,6 +62,58 @@ struct image_view {
   };
 };
 
+struct shader_vertex_meta {
+  struct header {
+    uimax m_output_offset;
+    uimax m_output_count;
+    uimax m_output_byte_size;
+  };
+
+  struct output_parameter {
+    ui16 m_single_element_size;
+  };
+
+  static uimax
+  size_in_bytes(const container::range<output_parameter> &p_output_parameters) {
+    return sizeof(header) +
+           +(p_output_parameters.count() * sizeof(output_parameter));
+  };
+
+  struct view {
+    ui8 *m_buffer;
+
+    view(ui8 *p_buffer) : m_buffer(p_buffer){};
+
+    void
+    initialize(const container::range<output_parameter> &p_output_parameters) {
+      header l_header;
+      l_header.m_output_offset = sizeof(l_header);
+      l_header.m_output_count = p_output_parameters.count();
+      l_header.m_output_byte_size =
+          l_header.m_output_count * sizeof(output_parameter);
+
+      *(header *)m_buffer = l_header;
+
+      auto l_output_paramters_range =
+          container::range<ui8>::make(m_buffer + l_header.m_output_offset,
+                                      l_header.m_output_byte_size)
+              .cast_to<output_parameter>();
+      l_output_paramters_range.copy_from(p_output_parameters);
+    };
+
+    header &get_header() { return *(header *)m_buffer; };
+
+    container::range<output_parameter> get_output_parameters() {
+      container::range<output_parameter> l_return;
+      header &l_header = get_header();
+      l_return.m_count = l_header.m_output_count;
+      l_return.m_begin =
+          (output_parameter *)(m_buffer + l_header.m_output_offset);
+      return l_return;
+    };
+  };
+};
+
 struct shader_vertex_runtime_ctx {
   m::rect_point_extend<ui16> &m_rect;
   const m::mat<f32, 4, 4> &m_proj;
@@ -83,15 +135,43 @@ struct shader_vertex_runtime_ctx {
 
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         const ui8 *p_vertex,
-                                        m::vec<f32, 4> &out_screen_position);
+                                        m::vec<f32, 4> &out_screen_position,
+                                        container::span<ui8 *> &out_vertex);
 
 struct shader_utils {
-  static const m::vec<f32, 3> &
-  get_vertex_vec3f32(const shader_vertex_runtime_ctx &p_ctx, ui8 p_attrib_index,
-                     const ui8 *p_vertex) {
-    return *(
-        const m::vec<f32, 3> *)(p_vertex +
-                                p_ctx.m_vertex_layout.m_offset[p_attrib_index]);
+  template <typename T>
+  static const T &get_vertex(const shader_vertex_runtime_ctx &p_ctx,
+                             bgfx::Attrib::Enum p_attrib, const ui8 *p_vertex) {
+    return *(T *)(p_vertex + p_ctx.m_vertex_layout.m_offset[p_attrib]);
+  };
+};
+
+struct shader_view {
+  static uimax vertex_shader_size_in_bytes(
+      const container::range<shader_vertex_meta::output_parameter>
+          &p_output_parameters) {
+    return sizeof(shader_vertex_function) +
+           shader_vertex_meta::size_in_bytes(p_output_parameters);
+  };
+
+  ui8 *m_buffer;
+
+  shader_view(ui8 *p_buffer) : m_buffer(p_buffer){};
+
+  void initialize(shader_vertex_function *p_function,
+                  const container::range<shader_vertex_meta::output_parameter>
+                      &p_output_parameters) {
+    sys::memcpy(m_buffer, p_function, sizeof(*p_function));
+    shader_vertex_meta::view(m_buffer + sizeof(p_function))
+        .initialize(p_output_parameters);
+  };
+
+  shader_vertex_function *get_function() {
+    return (shader_vertex_function *)m_buffer;
+  };
+
+  shader_vertex_meta::view get_vertex_meta() {
+    return shader_vertex_meta::view(m_buffer + sizeof(shader_vertex_function));
   };
 };
 

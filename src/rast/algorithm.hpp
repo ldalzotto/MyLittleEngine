@@ -28,10 +28,11 @@ struct index_buffer_const_view {
 };
 
 struct program {
-  rast::shader_vertex_function m_vertex;
+  void *m_vertex;
   void *m_fragment;
 };
 
+// TODO -> move to math
 struct screen_polygon {
   m::vec<i16, 2> m_0, m_1, m_2;
 
@@ -91,21 +92,28 @@ private:
   };
 };
 
+// struct
+
 struct rasterize_heap {
   container::span<m::vec<i16, 2>> m_screen_vertices;
   container::span<screen_polygon> m_screen_polygons;
+
+  container::span<ui8 *> m_vertex_output_parameter_references;
+
   container::span<ui8> m_visibility_buffer;
 
   void allocate() {
     m_screen_vertices.allocate(1024);
     m_screen_polygons.allocate(1024);
     m_visibility_buffer.allocate(1024);
+    m_vertex_output_parameter_references.allocate(0);
   };
 
   void free() {
     m_screen_vertices.free();
     m_screen_polygons.free();
     m_visibility_buffer.free();
+    m_vertex_output_parameter_references.free();
   };
 };
 
@@ -184,7 +192,6 @@ struct rasterize_unit {
       assert_debug(!l_position_as_int);
     });
 
-    // __vertex();
     __vertex_v2();
     __extract_screen_polygons();
     __calculate_visibility_buffer();
@@ -197,19 +204,49 @@ private:
   void __free(){};
 
   void __vertex_v2() {
-    assert_debug(m_input.m_program.m_vertex);
     m_heap.m_screen_vertices.resize(m_vertex_count);
 
     const shader_vertex_runtime_ctx l_ctx = shader_vertex_runtime_ctx(
         m_input.m_rect, m_input.m_proj, m_input.m_view, m_input.m_transform,
         m_local_to_unit, m_input.m_vertex_layout);
 
+    assert_debug(m_input.m_program.m_vertex);
+    auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_vertex);
+    shader_vertex_function l_vertex_function = *l_shader_view.get_function();
+    auto &l_shader_header = l_shader_view.get_vertex_meta().get_header();
+    auto l_output_parameters =
+        l_shader_view.get_vertex_meta().get_output_parameters();
+
+    container::span<container::span<ui8>> l_allocated_output_parameters;
+    l_allocated_output_parameters.allocate(l_shader_header.m_output_count);
+
+    m_heap.m_vertex_output_parameter_references.resize(
+        l_shader_header.m_output_count);
+
+    for (auto i = 0; i < l_shader_header.m_output_count; ++i) {
+      container::span<ui8> l_output_buffer;
+      l_output_buffer.allocate(l_output_parameters.at(i).m_single_element_size *
+                               m_vertex_count);
+      l_allocated_output_parameters.at(i) = l_output_buffer;
+    }
+
+    // m_heap.m_vertex_output_parameter_references.at(i) =
+    // l_output_buffer.m_data;
+
     for (auto i = 0; i < m_vertex_count; ++i) {
       ui8 *l_vertex_bytes =
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
       m::vec<f32, 4> l_vertex_shader_out;
 
-      m_input.m_program.m_vertex(l_ctx, l_vertex_bytes, l_vertex_shader_out);
+      for (auto l_output_it = 0; l_output_it < l_shader_header.m_output_count;
+           ++l_output_it) {
+        m_heap.m_vertex_output_parameter_references.at(l_output_it) =
+            l_allocated_output_parameters.at(l_output_it).m_data +
+            l_output_parameters.at(l_output_it).m_single_element_size;
+      }
+
+      l_vertex_function(l_ctx, l_vertex_bytes, l_vertex_shader_out,
+                        m_heap.m_vertex_output_parameter_references);
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
@@ -221,30 +258,6 @@ private:
       l_vertex_shader_out_2 *= (m_input.m_rect.extend() - 1);
 
       m_heap.m_screen_vertices.at(i) = l_vertex_shader_out_2.cast<i16>();
-    }
-  };
-
-  // TODO -> deprecate this
-  void __vertex() {
-
-    m_heap.m_screen_vertices.resize(m_vertex_count);
-
-    for (auto i = 0; i < m_vertex_count; ++i) {
-      ui8 *l_vertex_bytes =
-          m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
-      m::vec<f32, 3> l_vertex_vec = *(m::vec<f32, 3> *)l_vertex_bytes;
-      m::vec<f32, 2> l_vertex_screen_2;
-      {
-        m::vec<f32, 4> l_vertex_screen =
-            m_local_to_unit * m::vec<f32, 4>::make(l_vertex_vec, 1);
-        l_vertex_screen = l_vertex_screen / l_vertex_screen.w();
-        l_vertex_screen_2 = m::vec<f32, 2>::make(l_vertex_screen);
-      }
-
-      l_vertex_screen_2 = (l_vertex_screen_2 + 1) * 0.5;
-      l_vertex_screen_2.y() = 1 - l_vertex_screen_2.y();
-      l_vertex_screen_2 *= (m_input.m_rect.extend() - 1);
-      m_heap.m_screen_vertices.at(i) = l_vertex_screen_2.cast<i16>();
     }
   };
 

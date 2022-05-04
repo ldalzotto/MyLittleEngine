@@ -130,9 +130,10 @@ struct rastzerizer_sandbox_test {
 
     rast::shader_vertex_function l_vertex_function =
         [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
-           m::vec<f32, 4> &out_screen_position) {
-          const m::vec<f32, 3> &l_vertex_pos =
-              rast::shader_utils::get_vertex_vec3f32(p_ctx, 0, p_vertex);
+           m::vec<f32, 4> &out_screen_position, container::span<ui8 *> &) {
+          const auto &l_vertex_pos =
+              rast::shader_utils::get_vertex<m::vec<f32, 3>>(
+                  p_ctx, bgfx::Attrib::Enum::Position, p_vertex);
           out_screen_position =
               p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
         };
@@ -284,15 +285,40 @@ struct rastzerizer_cube_test {
 
     rast::shader_vertex_function l_vertex_function =
         [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
-           m::vec<f32, 4> &out_screen_position) {
-          const m::vec<f32, 3> &l_vertex_pos =
-              rast::shader_utils::get_vertex_vec3f32(p_ctx, 0, p_vertex);
+           m::vec<f32, 4> &out_screen_position,
+           container::span<ui8 *> &out_vertex) {
+          const auto &l_vertex_pos =
+              rast::shader_utils::get_vertex<m::vec<f32, 3>>(
+                  p_ctx, bgfx::Attrib::Enum::Position, p_vertex);
+          const ui8 &l_color = rast::shader_utils::get_vertex<ui8>(
+              p_ctx, bgfx::Attrib::Enum::Color0, p_vertex);
           out_screen_position =
               p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+          *(m::vec<f32, 3> *)out_vertex.m_data[0] = m::vec<f32, 3>{
+              (f32)(l_color >> 24) / 255, (f32)(l_color >> 16) / 255,
+              (f32)(l_color >> 8) / 255};
         };
 
-    bgfx::ShaderHandle l_vertex =
-        bgfx::createShader((const bgfx::Memory *)l_vertex_function);
+    rast::shader_vertex_meta::output_parameter l_vertex_output_parameters[1] = {
+        {sizeof(f32) * 3}};
+    auto l_vertex_output_parameters_slice =
+        container::range<rast::shader_vertex_meta::output_parameter>::make(
+            l_vertex_output_parameters, 1);
+
+    uimax l_vertex_shader_size = rast::shader_view::vertex_shader_size_in_bytes(
+        l_vertex_output_parameters_slice);
+    const bgfx::Memory *l_vertex_shader_memory =
+        bgfx::alloc(l_vertex_shader_size);
+    rast::shader_view(l_vertex_shader_memory->data)
+        .initialize(&l_vertex_function, l_vertex_output_parameters_slice);
+
+    block_debug([&]() {
+      auto l_function =
+          rast::shader_view(l_vertex_shader_memory->data).get_function();
+      assert_debug(*l_function == l_vertex_function);
+    });
+
+    bgfx::ShaderHandle l_vertex = bgfx::createShader(l_vertex_shader_memory);
     bgfx::ShaderHandle l_fragment = bgfx::createShader((const bgfx::Memory *)0);
     bgfx::ProgramHandle l_program = bgfx::createProgram(l_vertex, l_fragment);
 
@@ -372,7 +398,7 @@ struct rastzerizer_cube_test {
 
 inline int test_rasterizer() {
 
-  rastzerizer_sandbox_test{}();
+  // rastzerizer_sandbox_test{}();
   rastzerizer_cube_test{}();
   return 0;
 

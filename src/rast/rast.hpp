@@ -63,7 +63,7 @@ struct bgfx_impl {
   };
 
   struct Shader {
-    void *callback;
+    const bgfx::Memory *m_buffer;
   };
 
   struct Program {
@@ -377,10 +377,10 @@ struct bgfx_impl {
       indexbuffer_table.remove_at(p_handle.idx);
     };
 
-    bgfx::ShaderHandle allocate_shader(void *p_cb) {
+    bgfx::ShaderHandle allocate_shader(const bgfx::Memory *p_memory) {
       bgfx::ShaderHandle l_handle;
       Shader l_shader;
-      l_shader.callback = p_cb;
+      l_shader.m_buffer = p_memory;
       l_handle.idx = shader_table.push_back(l_shader, 0);
       return l_handle;
     };
@@ -665,10 +665,10 @@ struct bgfx_impl {
         VertexBuffer *l_vertex_buffer = l_draw_call.VertexBuffer();
         ProgramProxy l_program = l_draw_call.Program();
         rast::algorithm::program l_rasterizer_program;
-        l_rasterizer_program.m_vertex = (rast::shader_vertex_function)(
-            l_program.VertexShader().m_shader->callback);
-        l_rasterizer_program.m_fragment =
-            l_program.FragmentShader().m_shader->callback;
+        l_rasterizer_program.m_vertex =
+            l_program.VertexShader().m_shader->m_buffer->data;
+        l_rasterizer_program.m_fragment = 0;
+            // l_program.FragmentShader().m_shader->m_buffer->data;
 
         rast::algorithm::rasterize(
             m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,
@@ -898,7 +898,7 @@ inline void destroy(IndexBufferHandle _handle) {
 };
 
 inline ShaderHandle createShader(const Memory *_mem) {
-  return bgfx_impl.heap.allocate_shader((void *)_mem);
+  return bgfx_impl.heap.allocate_shader(_mem);
 };
 
 inline void destroy(ShaderHandle _handle) {

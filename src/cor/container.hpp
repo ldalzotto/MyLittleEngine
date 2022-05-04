@@ -43,6 +43,18 @@ template <typename T> struct range {
   };
 
   void zero() { sys::memset(m_begin, 0, m_count * sizeof(T)); };
+
+  range<T> slide(uimax p_count) {
+    assert_debug(m_count >= p_count);
+    return range<T>::make(m_begin + p_count, m_count - p_count);
+  };
+
+  template <typename TT> range<TT> cast_to() {
+    range<TT> l_return;
+    l_return.m_begin = (TT*)m_begin;
+    l_return.m_count = (m_count * sizeof(T)) / sizeof(TT);
+    return l_return;
+  };
 };
 
 template <typename T, typename AllocFunctions = malloc_free_functions>
