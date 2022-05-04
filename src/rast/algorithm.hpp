@@ -2,6 +2,7 @@
 
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
+#include <cor/orm.hpp>
 #include <m/mat.hpp>
 #include <m/rect.hpp>
 #include <m/vec.hpp>
@@ -219,7 +220,16 @@ struct rasterize_heap {
   multi_buffer m_vertex_parameter_buffers;
   container::span<ui8 *> m_vertex_output_parameter_references;
 
-  container::span<ui8> m_visibility_buffer;
+  struct visiblity {
+    table_span_meta;
+    using type_0 = ui8;
+    using type_1 = m::vec<f32, 3>;
+    type_0 *m_col_0;
+    type_1 *m_col_1;
+    table_define_span_2;
+  } m_visibility_buffer;
+
+  // container::span<ui8> m_visibility_buffer;
   multi_buffer m_interpolated_vertex_output;
   container::span<ui8 *> m_interpolated_vertex_parameter_references;
 
@@ -410,7 +420,8 @@ private:
     m_heap.m_visibility_buffer.resize(
         m_input.m_target_image_view.pixel_count());
 
-    auto l_visibility_range = m_heap.m_visibility_buffer.range();
+    container::range<ui8> l_visibility_range;
+    m_heap.m_visibility_buffer.range(&l_visibility_range);
     l_visibility_range.m_count = m_input.m_target_image_view.pixel_count();
     l_visibility_range.zero();
 
@@ -425,9 +436,16 @@ private:
 
       utils::rasterize_polygon_weighted(
           l_polygon, l_bounding_rect,
-          [&](auto x, auto y, auto w0, auto w1, auto w2) {
-            m_heap.m_visibility_buffer.at(
-                (y * m_input.m_target_image_view.m_target_info.width) + x) = 1;
+          [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
+            ui8 *l_visibility_boolean;
+            m::vec<f32, 3> *l_visibility_weight;
+            auto l_visibility_index =
+                (y * m_input.m_target_image_view.m_target_info.width) + x;
+            m_heap.m_visibility_buffer.at(l_visibility_index,
+                                          &l_visibility_boolean,
+                                          &l_visibility_weight);
+            *l_visibility_boolean = 1;
+            *l_visibility_weight = {w0, w1, w2};
           });
     }
   };
@@ -454,20 +472,19 @@ private:
           l_vertex_output.m_data;
     }
 
+    ui8 *l_visibility_boolean;
+    m::vec<f32, 3> *l_visibility_weight;
     for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
-      if (m_heap.m_visibility_buffer.at(i)) {
-
-        // TODO -> get weights
+      m_heap.m_visibility_buffer.at(i, &l_visibility_boolean,
+                                    &l_visibility_weight);
+      if (*l_visibility_boolean) {
 
         for (auto j = 0; j < l_vertex_output_parameters.count(); ++j) {
 
           ui8 *l_interpolated_vertex_output =
               m_heap.m_vertex_output_parameter_references.at(j);
 
-          // m_heap.
-          // m_heap.
-          // l_vertex_output_parameters.at(i);
-          // l_shader_view.get_vertex_meta().get_output_parameters().at(i).m_single_element_size
+          // TODO -> perform interpolation
         }
       }
     }
@@ -477,7 +494,9 @@ private:
 
   void __fragment() {
     for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
-      if (m_heap.m_visibility_buffer.at(i)) {
+      ui8 *l_visibility_boolean;
+      m_heap.m_visibility_buffer.at(i, &l_visibility_boolean, orm::none());
+      if (*l_visibility_boolean) {
         m::vec<ui8, 3> l_color = {255, 255, 255};
         m_input.m_target_image_view.set_pixel(i, l_color);
       }
