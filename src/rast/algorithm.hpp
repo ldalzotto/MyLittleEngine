@@ -10,6 +10,67 @@
 namespace rast {
 namespace algorithm {
 
+struct multi_buffer {
+
+  container::span<container::span<ui8>> m_buffers;
+  container::vector<uimax> m_locked_buffers;
+  void allocate() {
+    m_buffers.allocate(0);
+    m_locked_buffers.allocate(0);
+  };
+
+  void free() {
+    assert_debug(m_locked_buffers.count() == 0);
+    __for_each_buffer(
+        [](container::span<ui8> &p_buffer, auto) { p_buffer.free(); });
+    m_buffers.free();
+    m_locked_buffers.free();
+  };
+
+  void resize(uimax p_count) {
+    uimax l_count_before = m_buffers.count();
+    if (l_count_before != p_count) {
+      m_buffers.resize(p_count);
+      for (auto i = l_count_before; i < m_buffers.count(); ++i) {
+        m_buffers.at(i).allocate(0);
+      }
+    }
+  };
+
+  container::span<ui8> &borrow_buffer() {
+    uimax l_index = -1;
+    for (auto l_buffer_iter = 0; l_buffer_iter < m_buffers.count();
+         ++l_buffer_iter) {
+      if (!__is_buffer_locked(l_buffer_iter)) {
+        l_index = l_buffer_iter;
+        break;
+      }
+    }
+    return m_buffers.at(l_index);
+  };
+
+  void release_all() { m_locked_buffers.clear(); };
+
+private:
+  template <typename CallbacFunc>
+  void __for_each_buffer(const CallbacFunc &p_callback) {
+    for (auto i = 0; i < m_buffers.count(); ++i) {
+      p_callback(m_buffers.at(i), i);
+    }
+  };
+
+  ui8 __is_buffer_locked(uimax p_buffer_index) {
+    for (auto l_locked_buffer_iter = 0;
+         l_locked_buffer_iter < m_locked_buffers.count();
+         ++l_locked_buffer_iter) {
+      if (m_locked_buffers.at(l_locked_buffer_iter) == p_buffer_index) {
+        return 1;
+      }
+    }
+    return 0;
+  }
+};
+
 struct index_buffer_const_view {
   ui8 m_index_byte_size;
   uimax m_index_count;
@@ -98,6 +159,7 @@ struct rasterize_heap {
   container::span<m::vec<i16, 2>> m_screen_vertices;
   container::span<screen_polygon> m_screen_polygons;
 
+  multi_buffer m_vertex_parameter_buffers;
   container::span<ui8 *> m_vertex_output_parameter_references;
 
   container::span<ui8> m_visibility_buffer;
@@ -106,6 +168,7 @@ struct rasterize_heap {
     m_screen_vertices.allocate(1024);
     m_screen_polygons.allocate(1024);
     m_visibility_buffer.allocate(1024);
+    m_vertex_parameter_buffers.allocate();
     m_vertex_output_parameter_references.allocate(0);
   };
 
@@ -113,6 +176,7 @@ struct rasterize_heap {
     m_screen_vertices.free();
     m_screen_polygons.free();
     m_visibility_buffer.free();
+    m_vertex_parameter_buffers.free();
     m_vertex_output_parameter_references.free();
   };
 };
@@ -197,11 +261,11 @@ struct rasterize_unit {
     __calculate_visibility_buffer();
     __fragment();
 
-    __free();
+    __terminate();
   };
 
 private:
-  void __free(){};
+  void __terminate() { m_heap.m_vertex_parameter_buffers.release_all(); };
 
   void __vertex_v2() {
     m_heap.m_screen_vertices.resize(m_vertex_count);
@@ -217,33 +281,23 @@ private:
     auto l_output_parameters =
         l_shader_view.get_vertex_meta().get_output_parameters();
 
-    container::span<container::span<ui8>> l_allocated_output_parameters;
-    l_allocated_output_parameters.allocate(l_shader_header.m_output_count);
-
+    m_heap.m_vertex_parameter_buffers.resize(l_shader_header.m_output_count);
     m_heap.m_vertex_output_parameter_references.resize(
         l_shader_header.m_output_count);
 
     for (auto i = 0; i < l_shader_header.m_output_count; ++i) {
-      container::span<ui8> l_output_buffer;
-      l_output_buffer.allocate(l_output_parameters.at(i).m_single_element_size *
-                               m_vertex_count);
-      l_allocated_output_parameters.at(i) = l_output_buffer;
+      container::span<ui8> &l_output_buffer =
+          m_heap.m_vertex_parameter_buffers.borrow_buffer();
+      l_output_buffer.resize(l_output_parameters.at(i).m_single_element_size *
+                             m_vertex_count);
+      m_heap.m_vertex_output_parameter_references.at(i) =
+          l_output_buffer.m_data;
     }
-
-    // m_heap.m_vertex_output_parameter_references.at(i) =
-    // l_output_buffer.m_data;
 
     for (auto i = 0; i < m_vertex_count; ++i) {
       ui8 *l_vertex_bytes =
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
       m::vec<f32, 4> l_vertex_shader_out;
-
-      for (auto l_output_it = 0; l_output_it < l_shader_header.m_output_count;
-           ++l_output_it) {
-        m_heap.m_vertex_output_parameter_references.at(l_output_it) =
-            l_allocated_output_parameters.at(l_output_it).m_data +
-            l_output_parameters.at(l_output_it).m_single_element_size;
-      }
 
       l_vertex_function(l_ctx, l_vertex_bytes, l_vertex_shader_out,
                         m_heap.m_vertex_output_parameter_references);
@@ -258,6 +312,12 @@ private:
       l_vertex_shader_out_2 *= (m_input.m_rect.extend() - 1);
 
       m_heap.m_screen_vertices.at(i) = l_vertex_shader_out_2.cast<i16>();
+
+      for (auto l_output_it = 0; l_output_it < l_shader_header.m_output_count;
+           ++l_output_it) {
+        m_heap.m_vertex_output_parameter_references.at(l_output_it) +=
+            l_output_parameters.at(l_output_it).m_single_element_size;
+      }
     }
   };
 
