@@ -193,7 +193,7 @@ struct rasterize_unit {
   ui16 m_vertex_stride;
   uimax m_vertex_count;
   uimax m_polygon_count;
-  m::rect_min_max<ui16> m_scissor;
+  m::rect_min_max<ui16> m_scissor_indexes;
 
   rasterize_unit(rasterize_heap &p_heap, const program &p_program,
                  m::rect_point_extend<ui16> &p_rect,
@@ -212,8 +212,8 @@ struct rasterize_unit {
 
   void rasterize() {
 
-    m_scissor.min() = {0, 0};
-    m_scissor.max() = {0, 0};
+    m_scissor_indexes.min() = {0, 0};
+    m_scissor_indexes.max() = {0, 0};
 
     m_vertex_stride = m_input.m_vertex_layout.getStride();
     m_vertex_count = m_input.m_vertex_buffer.count() / m_vertex_stride;
@@ -321,6 +321,8 @@ private:
     }
   };
 
+#define APPLY_SCISSOR 1
+
   // TODO -> should apply z clipping
   // TODO -> should apply depth comparison if needed.
   void __calculate_visibility_buffer() {
@@ -333,14 +335,22 @@ private:
     l_visibility_range.m_count = m_input.m_target_image_view.pixel_count();
     l_visibility_range.zero();
 
+#if APPLY_SCISSOR
     {
       screen_polygon *l_polygon;
       m_heap.m_per_polygons.at(0, &l_polygon, orm::none());
       m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
-      m_scissor.min() = l_bounding_rect.min().cast<ui16>();
-      m_scissor.max() = l_bounding_rect.max().cast<ui16>();
+      m_scissor_indexes.min() = l_bounding_rect.min().cast<ui16>();
+      m_scissor_indexes.max() = l_bounding_rect.max().cast<ui16>();
     }
+#else
+    {
+      m_scissor.min() = {0, 0};
+      m_scissor.max() = {m_input.m_target_image_view.m_target_info.width,
+                         m_input.m_target_image_view.m_target_info.height};
+    }
+#endif
 
     for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
          ++l_polygon_it) {
@@ -350,7 +360,9 @@ private:
       m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
 
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
-      m_scissor = m::extend(m_scissor, l_bounding_rect);
+#if APPLY_SCISSOR
+      m_scissor_indexes = m::extend(m_scissor_indexes, l_bounding_rect);
+#endif
 
       utils::rasterize_polygon_weighted(
           *l_polygon, l_bounding_rect,
@@ -392,8 +404,10 @@ private:
     rasterization_weight *l_visibility_weight;
     uimax *l_visibility_polygon;
 
-    for (auto y = m_scissor.min().y(); y < m_scissor.max().y(); ++y) {
-      for (auto x = m_scissor.min().x(); x < m_scissor.max().x(); ++x) {
+    for (auto y = m_scissor_indexes.min().y(); y <= m_scissor_indexes.max().y();
+         ++y) {
+      for (auto x = m_scissor_indexes.min().x();
+           x <= m_scissor_indexes.max().x(); ++x) {
         uimax l_pixel_index =
             (m_input.m_target_image_view.m_target_info.width * y) + x;
 
@@ -494,6 +508,35 @@ private:
 
   void __fragment() {
 
+    for (auto y = m_scissor_indexes.min().y(); y <= m_scissor_indexes.max().y();
+         ++y) {
+      for (auto x = m_scissor_indexes.min().x();
+           x <= m_scissor_indexes.max().x(); ++x) {
+        uimax l_pixel_index =
+            (m_input.m_target_image_view.m_target_info.width * y) + x;
+
+        ui8 *l_visibility_boolean;
+        m_heap.m_visibility_buffer.at(l_pixel_index, &l_visibility_boolean,
+                                      orm::none(), orm::none());
+        if (*l_visibility_boolean) {
+
+          for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
+               ++j) {
+            m_heap.m_vertex_output_interpolated_send_to_fragment_shader.at(j) =
+                m_heap.m_vertex_output_interpolated.at(j, l_pixel_index);
+          }
+
+          // TODO -> use the return of the fragment shader instead.
+          m::vec<f32, 3> *l_color_tmp =
+              (m::vec<f32, 3> *)m_heap
+                  .m_vertex_output_interpolated_send_to_fragment_shader.at(0);
+          m::vec<ui8, 3> l_color = (*l_color_tmp * 255).cast<ui8>();
+          m_input.m_target_image_view.set_pixel(l_pixel_index, l_color);
+        }
+      }
+    }
+
+#if 0
     for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
       ui8 *l_visibility_boolean;
       m_heap.m_visibility_buffer.at(i, &l_visibility_boolean, orm::none(),
@@ -514,6 +557,7 @@ private:
         m_input.m_target_image_view.set_pixel(i, l_color);
       }
     }
+#endif
   };
 };
 

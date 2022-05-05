@@ -73,11 +73,11 @@ m::rect_min_max<T> fit_into(const m::rect_min_max<T> &p_rect,
   }
 
   if (l_rect.max().x() >= p_into.extend().x()) {
-    l_rect.max().x() = p_into.extend().x() - TT(1);
+    l_rect.max().x() = p_into.extend().x();
   }
 
   if (l_rect.max().y() >= p_into.extend().y()) {
-    l_rect.max().y() = p_into.extend().y() - TT(1);
+    l_rect.max().y() = p_into.extend().y();
   }
   return l_rect;
 };
@@ -95,11 +95,11 @@ m::rect_min_max<T> extend(const m::rect_min_max<T> &p_rect,
   }
 
   if (p_other.max().x() > l_rect.max().x()) {
-    l_rect.max().x() = p_other.max().x() - TT(1);
+    l_rect.max().x() = p_other.max().x();
   }
 
   if (p_other.max().y() >= l_rect.max().y()) {
-    l_rect.max().y() = p_other.max().y() - TT(1);
+    l_rect.max().y() = p_other.max().y();
   }
   return l_rect;
 };
