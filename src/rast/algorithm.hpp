@@ -193,7 +193,8 @@ struct rasterize_unit {
   ui16 m_vertex_stride;
   uimax m_vertex_count;
   uimax m_polygon_count;
-  m::rect_min_max<ui16> m_scissor_indexes;
+
+  m::rect_min_max<ui16> m_rendered_rect;
 
   rasterize_unit(rasterize_heap &p_heap, const program &p_program,
                  m::rect_point_extend<ui16> &p_rect,
@@ -211,9 +212,6 @@ struct rasterize_unit {
         m_heap(p_heap){};
 
   void rasterize() {
-
-    m_scissor_indexes.min() = {0, 0};
-    m_scissor_indexes.max() = {0, 0};
 
     m_vertex_stride = m_input.m_vertex_layout.getStride();
     m_vertex_count = m_input.m_vertex_buffer.count() / m_vertex_stride;
@@ -237,6 +235,7 @@ struct rasterize_unit {
     });
 
     __vertex_v2();
+    __intialize_rendered_rect();
     __extract_screen_polygons();
     __calculate_visibility_buffer();
     __interpolate_vertex_output();
@@ -321,7 +320,12 @@ private:
     }
   };
 
-#define APPLY_SCISSOR 1
+  void __intialize_rendered_rect() {
+    pixel_coordinates *l_first_vertex_pixel_coordinates;
+    m_heap.m_per_vertices.at(0, &l_first_vertex_pixel_coordinates);
+    m_rendered_rect.min() = l_first_vertex_pixel_coordinates->cast<ui16>();
+    m_rendered_rect.max() = l_first_vertex_pixel_coordinates->cast<ui16>();
+  };
 
   // TODO -> should apply z clipping
   // TODO -> should apply depth comparison if needed.
@@ -335,23 +339,6 @@ private:
     l_visibility_range.m_count = m_input.m_target_image_view.pixel_count();
     l_visibility_range.zero();
 
-#if APPLY_SCISSOR
-    {
-      screen_polygon *l_polygon;
-      m_heap.m_per_polygons.at(0, &l_polygon, orm::none());
-      m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
-      l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
-      m_scissor_indexes.min() = l_bounding_rect.min().cast<ui16>();
-      m_scissor_indexes.max() = l_bounding_rect.max().cast<ui16>();
-    }
-#else
-    {
-      m_scissor.min() = {0, 0};
-      m_scissor.max() = {m_input.m_target_image_view.m_target_info.width,
-                         m_input.m_target_image_view.m_target_info.height};
-    }
-#endif
-
     for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
          ++l_polygon_it) {
       screen_polygon *l_polygon;
@@ -360,9 +347,7 @@ private:
       m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
 
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
-#if APPLY_SCISSOR
-      m_scissor_indexes = m::extend(m_scissor_indexes, l_bounding_rect);
-#endif
+      m_rendered_rect = m::extend(m_rendered_rect, l_bounding_rect);
 
       utils::rasterize_polygon_weighted(
           *l_polygon, l_bounding_rect,
@@ -404,10 +389,10 @@ private:
     rasterization_weight *l_visibility_weight;
     uimax *l_visibility_polygon;
 
-    for (auto y = m_scissor_indexes.min().y(); y <= m_scissor_indexes.max().y();
+    for (auto y = m_rendered_rect.min().y(); y <= m_rendered_rect.max().y();
          ++y) {
-      for (auto x = m_scissor_indexes.min().x();
-           x <= m_scissor_indexes.max().x(); ++x) {
+      for (auto x = m_rendered_rect.min().x(); x <= m_rendered_rect.max().x();
+           ++x) {
         uimax l_pixel_index =
             (m_input.m_target_image_view.m_target_info.width * y) + x;
 
@@ -456,62 +441,14 @@ private:
         }
       }
     }
-
-#if 0
-    for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
-      m_heap.m_visibility_buffer.at(i, &l_visibility_boolean,
-                                    &l_visibility_weight,
-                                    &l_visibility_polygon);
-      if (*l_visibility_boolean) {
-        polygon_vertex_indices *l_indices_polygon;
-        m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
-                                 &l_indices_polygon);
-
-        for (auto l_vertex_output_index = 0;
-             l_vertex_output_index < l_vertex_output_parameters.count();
-             ++l_vertex_output_index) {
-
-          shader_vertex_meta::output_parameter l_output_parameter_meta =
-              l_vertex_output_parameters.at(l_vertex_output_index);
-
-          if (l_output_parameter_meta.m_attrib_type ==
-              bgfx::AttribType::Float) {
-            if (l_output_parameter_meta.m_attrib_element_count == 3) {
-
-              m::polygon<m::vec<f32, 3>, 3> l_attribute_polygon;
-
-              l_attribute_polygon.p0() =
-                  *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
-                      l_vertex_output_index, l_indices_polygon->p0());
-
-              l_attribute_polygon.p1() =
-                  *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
-                      l_vertex_output_index, l_indices_polygon->p1());
-
-              l_attribute_polygon.p2() =
-                  *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
-                      l_vertex_output_index, l_indices_polygon->p2());
-
-              m::vec<f32, 3> *l_interpolated_vertex_output =
-                  (m::vec<f32, 3> *)m_heap.m_vertex_output_interpolated.at(
-                      l_vertex_output_index, i);
-
-              *l_interpolated_vertex_output =
-                  m::interpolate(l_attribute_polygon, *l_visibility_weight);
-            }
-          }
-        }
-      }
-    }
-#endif
   };
 
   void __fragment() {
 
-    for (auto y = m_scissor_indexes.min().y(); y <= m_scissor_indexes.max().y();
+    for (auto y = m_rendered_rect.min().y(); y <= m_rendered_rect.max().y();
          ++y) {
-      for (auto x = m_scissor_indexes.min().x();
-           x <= m_scissor_indexes.max().x(); ++x) {
+      for (auto x = m_rendered_rect.min().x(); x <= m_rendered_rect.max().x();
+           ++x) {
         uimax l_pixel_index =
             (m_input.m_target_image_view.m_target_info.width * y) + x;
 
@@ -535,29 +472,6 @@ private:
         }
       }
     }
-
-#if 0
-    for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
-      ui8 *l_visibility_boolean;
-      m_heap.m_visibility_buffer.at(i, &l_visibility_boolean, orm::none(),
-                                    orm::none());
-      if (*l_visibility_boolean) {
-
-        for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
-             ++j) {
-          m_heap.m_vertex_output_interpolated_send_to_fragment_shader.at(j) =
-              m_heap.m_vertex_output_interpolated.at(j, i);
-        }
-
-        // TODO -> use the return of the fragment shader instead.
-        m::vec<f32, 3> *l_color_tmp =
-            (m::vec<f32, 3> *)m_heap
-                .m_vertex_output_interpolated_send_to_fragment_shader.at(0);
-        m::vec<ui8, 3> l_color = (*l_color_tmp * 255).cast<ui8>();
-        m_input.m_target_image_view.set_pixel(i, l_color);
-      }
-    }
-#endif
   };
 };
 
