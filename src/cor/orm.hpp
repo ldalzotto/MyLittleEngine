@@ -756,6 +756,20 @@ private:
   using type_0 = Type0;                                                        \
   type_0 *m_col_0;
 
+#define table_cols_2(Type0, Type1)                                             \
+  using type_0 = Type0;                                                        \
+  using type_1 = Type1;                                                        \
+  type_0 *m_col_0;                                                             \
+  type_1 *m_col_1;
+
+#define table_cols_3(Type0, Type1, Type2)                                      \
+  using type_0 = Type0;                                                        \
+  using type_1 = Type1;                                                        \
+  using type_2 = Type2;                                                        \
+  type_0 *m_col_0;                                                             \
+  type_1 *m_col_1;                                                             \
+  type_2 *m_col_2;
+
 #define table_span_meta uimax m_meta;
 
 #define table_define_span_2                                                    \
@@ -818,12 +832,6 @@ private:
     return orm::details::__has_allocated_elements_vector(*this);               \
   };                                                                           \
   uimax element_count() { return orm::details::__element_count_vector(*this); };
-
-#define table_cols_2(Type0, Type1)                                             \
-  using type_0 = Type0;                                                        \
-  using type_1 = Type1;                                                        \
-  type_0 *m_col_0;                                                             \
-  type_1 *m_col_1;
 
 #define table_define_vector_2                                                  \
   void allocate(uimax p_capacity) {                                            \
