@@ -684,48 +684,6 @@ void __remove_at_heap_paged_3(TableType &p_table, uimax p_chunk_index) {
   l_meta.remove_chunk(p_chunk_index);
 };
 
-struct runtime_col {
-  uimax m_element_size;
-  ui8 *m_data;
-
-  void allocate(uimax p_element_size, uimax p_count) {
-    m_element_size = p_element_size;
-    m_data = (ui8 *)sys::malloc(m_element_size * p_count);
-  };
-
-  void free() { sys::free(m_data); };
-
-  void realloc(uimax p_count) {
-    m_data = (ui8 *)sys::realloc(m_data, p_count * m_element_size);
-  };
-
-  ui8 *at(uimax p_index) { return m_data + (m_element_size * p_index); };
-};
-
-struct runtime_multiple_col {
-  runtime_col *m_runtime_cols;
-
-  void allocate() { m_runtime_cols = (runtime_col *)sys::malloc(0); };
-
-  void free(uimax p_col_count) {
-    for (auto i = 0; i < p_col_count; ++i) {
-      m_runtime_cols[i].free();
-    }
-    sys::free(m_runtime_cols);
-  };
-
-  void realloc(uimax p_count) {
-    m_runtime_cols = (runtime_col *)sys::realloc(
-        m_runtime_cols, p_count * sizeof(*m_runtime_cols));
-  };
-
-  void realloc_cols(uimax p_count, uimax p_col_count) {
-    for (auto i = 0; i < p_col_count; ++i) {
-      m_runtime_cols[i].realloc(p_count);
-    }
-  };
-};
-
 }; // namespace details
 
 struct table_one_to_many {
