@@ -235,8 +235,15 @@ struct rasterize_unit {
     });
 
     __vertex_v2();
+
+    // TODO -> backface culling
+
     __intialize_rendered_rect();
     __extract_screen_polygons();
+
+    // TODO -> should apply z clipping
+    // TODO -> should apply depth comparison if needed.
+
     __calculate_visibility_buffer();
     __interpolate_vertex_output();
     __fragment();
@@ -326,8 +333,6 @@ private:
     m_rendered_rect.max() = l_first_vertex_pixel_coordinates->cast<ui16>();
   };
 
-  // TODO -> should apply z clipping
-  // TODO -> should apply depth comparison if needed.
   void __calculate_visibility_buffer() {
     m_heap.m_visibility_buffer.resize(
         m_input.m_target_image_view.pixel_count());
