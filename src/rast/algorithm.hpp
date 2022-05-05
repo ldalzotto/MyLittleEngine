@@ -256,7 +256,8 @@ private:
 
     assert_debug(m_input.m_program.m_vertex);
     auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_vertex);
-    shader_vertex_function l_vertex_function = *l_shader_view.get_function();
+    shader_vertex_function l_vertex_function =
+        *l_shader_view.get_vertex_function();
     auto &l_shader_header = l_shader_view.get_vertex_meta().get_header();
     auto l_output_parameters =
         l_shader_view.get_vertex_meta().get_output_parameters();
@@ -410,11 +411,21 @@ private:
   };
 
   void __fragment() {
+    assert_debug(m_input.m_program.m_fragment);
+
+    auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_fragment);
+    shader_fragment_function l_fragment =
+        *l_shader_view.get_fragment_function();
+
+    m::vec<f32, 3> l_color_buffer;
+
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       ui8 *l_visibility_boolean;
       m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
                                     orm::none(), orm::none());
       if (*l_visibility_boolean) {
+
+        l_color_buffer = {0, 0, 0}; // TODO -> is this really necessary ?
 
         for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
              ++j) {
@@ -422,11 +433,10 @@ private:
               m_heap.m_vertex_output_interpolated.at(j, p_pixel_index);
         }
 
-        // TODO -> use the return of the fragment shader instead.
-        m::vec<f32, 3> *l_color_tmp =
-            (m::vec<f32, 3> *)m_heap
-                .m_vertex_output_interpolated_send_to_fragment_shader.at(0);
-        m::vec<ui8, 3> l_color = (*l_color_tmp * 255).cast<ui8>();
+        l_fragment(m_heap.m_vertex_output_interpolated_send_to_fragment_shader,
+                   l_color_buffer);
+
+        m::vec<ui8, 3> l_color = (l_color_buffer * 255).cast<ui8>();
         m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
       }
     });

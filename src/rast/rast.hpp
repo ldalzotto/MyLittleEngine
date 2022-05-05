@@ -668,8 +668,8 @@ struct bgfx_impl {
         rast::algorithm::program l_rasterizer_program;
         l_rasterizer_program.m_vertex =
             l_program.VertexShader().m_shader->m_buffer->data;
-        l_rasterizer_program.m_fragment = 0;
-        // l_program.FragmentShader().m_shader->m_buffer->data;
+        l_rasterizer_program.m_fragment =
+            l_program.FragmentShader().m_shader->m_buffer->data;
 
         rast::algorithm::rasterize(
             m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,

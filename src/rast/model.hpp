@@ -155,6 +155,10 @@ using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         m::vec<f32, 4> &out_screen_position,
                                         container::span<ui8 *> &out_vertex);
 
+using shader_fragment_function =
+    void (*)(container::span<ui8 *> &p_vertex_output_interpolated,
+             m::vec<f32, 3> &out_color);
+
 struct vertex_shader {
   const shader_vertex_runtime_ctx &m_ctx;
 
@@ -164,20 +168,16 @@ struct vertex_shader {
   };
 };
 
-struct shader_utils {
-  template <typename T>
-  static const T &get_vertex(const shader_vertex_runtime_ctx &p_ctx,
-                             bgfx::Attrib::Enum p_attrib, const ui8 *p_vertex) {
-    return *(T *)(p_vertex + p_ctx.m_vertex_layout.m_offset[p_attrib]);
-  };
-};
-
 struct shader_view {
   static uimax vertex_shader_size_in_bytes(
       const container::range<shader_vertex_meta::output_parameter>
           &p_output_parameters) {
     return sizeof(shader_vertex_function) +
            shader_vertex_meta::size_in_bytes(p_output_parameters);
+  };
+
+  static uimax fragment_shader_size_in_bytes() {
+    return sizeof(shader_fragment_function);
   };
 
   ui8 *m_buffer;
@@ -192,8 +192,16 @@ struct shader_view {
         .initialize(p_output_parameters);
   };
 
-  shader_vertex_function *get_function() {
+  void initialize(shader_fragment_function *p_function) {
+    sys::memcpy(m_buffer, p_function, sizeof(*p_function));
+  };
+
+  shader_vertex_function *get_vertex_function() {
     return (shader_vertex_function *)m_buffer;
+  };
+
+  shader_fragment_function *get_fragment_function() {
+    return (shader_fragment_function *)m_buffer;
   };
 
   shader_vertex_meta::view get_vertex_meta() {
