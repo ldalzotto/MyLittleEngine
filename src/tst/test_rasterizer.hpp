@@ -122,8 +122,7 @@ struct rastzerizer_sandbox_test {
 
     rast::shader_vertex_function l_vertex_function =
         [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
-           m::vec<f32, 4> &out_screen_position,
-           container::span<ui8 *> &out_vertex) {
+           m::vec<f32, 4> &out_screen_position, ui8 **out_vertex) {
           rast::shader_vertex l_shader = {p_ctx};
           const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
               bgfx::Attrib::Enum::Position, p_vertex);
@@ -132,7 +131,7 @@ struct rastzerizer_sandbox_test {
           out_screen_position =
               p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
 
-          m::vec<f32, 3> *out_color = (m::vec<f32, 3> *)out_vertex.m_data[0];
+          m::vec<f32, 3> *out_color = (m::vec<f32, 3> *)out_vertex[0];
 
           out_color->x() = (ui8)(l_color >> 24);
           out_color->y() = (ui8)(l_color >> 16);
@@ -141,10 +140,9 @@ struct rastzerizer_sandbox_test {
         };
 
     rast::shader_fragment_function l_fragment_function =
-        [](container::span<ui8 *> &p_vertex_output_interpolated,
-           m::vec<f32, 3> &out_color) {
+        [](ui8 **p_vertex_output_interpolated, m::vec<f32, 3> &out_color) {
           const m::vec<f32, 3> &l_vertex_color =
-              *(m::vec<f32, 3> *)p_vertex_output_interpolated.at(0);
+              *(m::vec<f32, 3> *)p_vertex_output_interpolated[0];
           out_color = l_vertex_color;
         };
 
@@ -317,8 +315,7 @@ struct rastzerizer_cube_test {
 
     rast::shader_vertex_function l_vertex_function =
         [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
-           m::vec<f32, 4> &out_screen_position,
-           container::span<ui8 *> &out_vertex) {
+           m::vec<f32, 4> &out_screen_position, ui8 **out_vertex) {
           rast::shader_vertex l_shader = {p_ctx};
           const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
               bgfx::Attrib::Enum::Position, p_vertex);
@@ -327,7 +324,7 @@ struct rastzerizer_cube_test {
           out_screen_position =
               p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
 
-          m::vec<f32, 3> *out_color = (m::vec<f32, 3> *)out_vertex.m_data[0];
+          m::vec<f32, 3> *out_color = (m::vec<f32, 3> *)out_vertex[0];
 
           out_color->x() = (ui8)(l_color >> 24);
           out_color->y() = (ui8)(l_color >> 16);
@@ -336,10 +333,9 @@ struct rastzerizer_cube_test {
         };
 
     rast::shader_fragment_function l_fragment_function =
-        [](container::span<ui8 *> &p_vertex_output_interpolated,
-           m::vec<f32, 3> &out_color) {
+        [](ui8 **p_vertex_output_interpolated, m::vec<f32, 3> &out_color) {
           m::vec<f32, 3> &l_vertex_color =
-              *(m::vec<f32, 3> *)p_vertex_output_interpolated.at(0);
+              *(m::vec<f32, 3> *)p_vertex_output_interpolated[0];
           out_color = l_vertex_color;
         };
 

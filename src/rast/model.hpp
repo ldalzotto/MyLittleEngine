@@ -81,11 +81,10 @@ struct shader_vertex_runtime_ctx {
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         const ui8 *p_vertex,
                                         m::vec<f32, 4> &out_screen_position,
-                                        container::span<ui8 *> &out_vertex);
+                                        ui8 **out_vertex);
 
-using shader_fragment_function =
-    void (*)(container::span<ui8 *> &p_vertex_output_interpolated,
-             m::vec<f32, 3> &out_color);
+using shader_fragment_function = void (*)(ui8 **p_vertex_output_interpolated,
+                                          m::vec<f32, 3> &out_color);
 
 struct shader_vertex {
   const shader_vertex_runtime_ctx &m_ctx;

@@ -288,7 +288,7 @@ private:
 
       m::vec<f32, 4> l_vertex_shader_out;
       l_vertex_function(l_ctx, l_vertex_bytes, l_vertex_shader_out,
-                        m_heap.m_vertex_output_send_to_vertex_shader);
+                        m_heap.m_vertex_output_send_to_vertex_shader.m_data);
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
@@ -439,8 +439,9 @@ private:
               m_heap.m_vertex_output_interpolated.at(j, p_pixel_index);
         }
 
-        l_fragment(m_heap.m_vertex_output_interpolated_send_to_fragment_shader,
-                   l_color_buffer);
+        l_fragment(
+            m_heap.m_vertex_output_interpolated_send_to_fragment_shader.m_data,
+            l_color_buffer);
 
         m::vec<ui8, 3> l_color = (l_color_buffer * 255).cast<ui8>();
         m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
