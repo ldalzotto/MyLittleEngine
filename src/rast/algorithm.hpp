@@ -158,11 +158,25 @@ private:
 
 // struct
 
+using polygon_vertex_indices = m::polygon<uimax, 3>;
+using pixel_coordinates = m::vec<i16, 2>;
+
 struct rasterize_heap {
-  container::span<m::vec<i16, 2>> m_screen_vertices;
+
+  struct per_vertices {
+    table_span_meta;
+    table_cols_1(pixel_coordinates);
+    table_define_span_1;
+  } m_per_vertices;
 
   container::span<screen_polygon> m_screen_polygons;
-  container::span<m::polygon<uimax, 3>> m_screen_polygon_indices;
+  container::span<polygon_vertex_indices> m_screen_polygon_indices;
+
+  struct per_polygons {
+    table_span_meta;
+    table_cols_2(screen_polygon, polygon_vertex_indices);
+    table_define_span_2;
+  } m_per_polygons;
 
   multi_buffer m_vertex_parameter_buffers;
   container::span<ui8 *> m_vertex_output_parameter_references;
@@ -184,7 +198,7 @@ struct rasterize_heap {
   container::span<ui8 *> m_interpolated_vertex_parameter_references;
 
   void allocate() {
-    m_screen_vertices.allocate(1024);
+    m_per_vertices.allocate(1024);
     m_screen_polygons.allocate(1024);
     m_screen_polygon_indices.allocate(1024);
     m_visibility_buffer.allocate(1024);
@@ -196,7 +210,6 @@ struct rasterize_heap {
   };
 
   void free() {
-    m_screen_vertices.free();
     m_screen_polygons.free();
     m_screen_polygon_indices.free();
     m_visibility_buffer.free();
@@ -205,6 +218,12 @@ struct rasterize_heap {
     m_vertex_output_parameter_tmp_references.free();
     m_interpolated_vertex_output.free();
     m_interpolated_vertex_parameter_references.free();
+  };
+
+  pixel_coordinates &get_pixel_coordinates(ui32 p_index) {
+    pixel_coordinates *l_pixel_coordinate;
+    m_per_vertices.at(p_index, &l_pixel_coordinate);
+    return *l_pixel_coordinate;
   };
 };
 
@@ -299,7 +318,7 @@ private:
   };
 
   void __vertex_v2() {
-    m_heap.m_screen_vertices.resize(m_vertex_count);
+    m_heap.m_per_vertices.resize(m_vertex_count);
 
     const shader_vertex_runtime_ctx l_ctx = shader_vertex_runtime_ctx(
         m_input.m_rect, m_input.m_proj, m_input.m_view, m_input.m_transform,
@@ -339,14 +358,14 @@ private:
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
-      m::vec<f32, 2> l_vertex_shader_out_2 =
+      m::vec<f32, 2> l_pixel_coordinates_f32 =
           m::vec<f32, 2>::make(l_vertex_shader_out);
 
-      l_vertex_shader_out_2 = (l_vertex_shader_out_2 + 1) * 0.5;
-      l_vertex_shader_out_2.y() = 1 - l_vertex_shader_out_2.y();
-      l_vertex_shader_out_2 *= (m_input.m_rect.extend() - 1);
+      l_pixel_coordinates_f32 = (l_pixel_coordinates_f32 + 1) * 0.5;
+      l_pixel_coordinates_f32.y() = 1 - l_pixel_coordinates_f32.y();
+      l_pixel_coordinates_f32 *= (m_input.m_rect.extend() - 1);
 
-      m_heap.m_screen_vertices.at(i) = l_vertex_shader_out_2.cast<i16>();
+      m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
 
       for (auto l_output_it = 0; l_output_it < l_shader_header.m_output_count;
            ++l_output_it) {
@@ -369,9 +388,9 @@ private:
       l_polygon_indices.p2() = m_input.m_index_buffer.at<ui16>(l_index_idx + 2);
 
       screen_polygon &l_polygon = m_heap.m_screen_polygons.at(i);
-      l_polygon.p0() = m_heap.m_screen_vertices.at(l_polygon_indices.p0());
-      l_polygon.p1() = m_heap.m_screen_vertices.at(l_polygon_indices.p1());
-      l_polygon.p2() = m_heap.m_screen_vertices.at(l_polygon_indices.p2());
+      l_polygon.p0() = m_heap.get_pixel_coordinates(l_polygon_indices.p0());
+      l_polygon.p1() = m_heap.get_pixel_coordinates(l_polygon_indices.p1());
+      l_polygon.p2() = m_heap.get_pixel_coordinates(l_polygon_indices.p2());
 
       l_index_idx += 3;
     }

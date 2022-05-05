@@ -157,6 +157,16 @@ using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         m::vec<f32, 4> &out_screen_position,
                                         container::span<ui8 *> &out_vertex);
 
+struct vertex_shader {
+  const shader_vertex_runtime_ctx& m_ctx;
+
+  template <typename T>
+  const T &get_vertex(bgfx::Attrib::Enum p_attrib, const ui8 *p_vertex) {
+    return *(T *)(p_vertex + m_ctx.m_vertex_layout.m_offset[p_attrib]);
+  };
+  
+};
+
 struct shader_utils {
   template <typename T>
   static const T &get_vertex(const shader_vertex_runtime_ctx &p_ctx,
