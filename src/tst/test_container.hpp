@@ -110,33 +110,10 @@ struct tests {
     entry_heap_table.free();
     entry_to_int.free();
   };
-
-  inline static void runtime() {
-
-    struct runtime_table {
-      table_runtime_cols_span_meta;
-      table_runtime_cols_span_cols_0;
-      table_define_runtime_cols_span_0;
-    } l_runtime_table;
-
-    l_runtime_table.allocate();
-    l_runtime_table.push_column(sizeof(f32));
-    l_runtime_table.push_column(sizeof(ui8));
-    l_runtime_table.resize(10);
-    f32 *l_value = (f32 *)l_runtime_table.at(0, 0);
-    *l_value = 0;
-    l_value = (f32 *)l_runtime_table.at(0, 1);
-    *l_value = 1;
-    l_value = (f32 *)l_runtime_table.at(0, 2);
-    *l_value = 2;
-    sys::sassert(*(f32 *)l_runtime_table.at(0, 1) == 1);
-    l_runtime_table.free();
-  };
 };
 } // namespace
 
 static inline void test_container() {
   tests::containers();
   tests::relational();
-  tests::runtime();
 };

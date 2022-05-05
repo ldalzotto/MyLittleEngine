@@ -425,7 +425,7 @@ struct rastzerizer_cube_test {
 inline int test_rasterizer() {
 
   rastzerizer_sandbox_test{}();
-  // rastzerizer_cube_test{}();
+  rastzerizer_cube_test{}();
   return 0;
 
   // TODO -> memleak in containers (maybe as an option ?) extended container

@@ -726,70 +726,6 @@ struct runtime_multiple_col {
   };
 };
 
-struct runtime_span_meta {
-  uimax m_runtime_col_begin;
-  uimax m_runtime_col_end;
-  uimax m_count;
-
-  static runtime_span_meta default_value() {
-    runtime_span_meta l_meta;
-    l_meta.m_runtime_col_begin = 0;
-    l_meta.m_runtime_col_end = 0;
-    l_meta.m_count = 0;
-    return l_meta;
-  };
-};
-
-template <typename TableType>
-void __allocate_runtime_cols_span_0(TableType &p_table) {
-  runtime_span_meta &l_meta = p_table.m_meta;
-  l_meta = runtime_span_meta::default_value();
-
-  runtime_multiple_col &l_runtime_cols = p_table.m_runtime_cols;
-  l_runtime_cols.allocate();
-};
-
-template <typename TableType>
-void __free_runtime_cols_span_0(TableType &p_table) {
-  runtime_span_meta &l_meta = p_table.m_meta;
-  runtime_multiple_col &l_runtime_cols = p_table.m_runtime_cols;
-  l_runtime_cols.free(l_meta.m_runtime_col_end - l_meta.m_runtime_col_begin);
-};
-
-template <typename TableType>
-ui8 *__at_runtime_cols_span(TableType &p_table, uimax p_col_index,
-                            uimax p_index) {
-  runtime_span_meta &l_meta = p_table.m_meta;
-  runtime_multiple_col &l_runtime_cols = p_table.m_runtime_cols;
-  assert_debug(p_index < l_meta.m_count);
-  assert_debug(p_col_index < l_meta.m_runtime_col_end);
-  return l_runtime_cols.m_runtime_cols[p_col_index].at(p_index);
-};
-
-template <typename TableType>
-void __push_column_runtime_cols_span(TableType &p_table, uimax p_element_size) {
-  runtime_span_meta &l_meta = p_table.m_meta;
-  runtime_multiple_col &l_runtime_cols = p_table.m_runtime_cols;
-  l_meta.m_runtime_col_end += 1;
-  l_runtime_cols.realloc(l_meta.m_runtime_col_end - l_meta.m_runtime_col_begin);
-  l_runtime_cols
-      .m_runtime_cols[(l_meta.m_runtime_col_end - l_meta.m_runtime_col_begin) -
-                      1]
-      .allocate(p_element_size, l_meta.m_count);
-};
-
-template <typename TableType>
-void __resize_runtime_cols_span(TableType &p_table, uimax p_count) {
-  runtime_span_meta &l_meta = p_table.m_meta;
-
-  if (p_count > l_meta.m_count) {
-    runtime_multiple_col &l_runtime_cols = p_table.m_runtime_cols;
-    l_meta.m_count = p_count;
-    l_runtime_cols.realloc_cols(p_count, l_meta.m_runtime_col_end -
-                                             l_meta.m_runtime_col_begin);
-  }
-};
-
 }; // namespace details
 
 struct table_one_to_many {
@@ -1118,22 +1054,6 @@ private:
   };                                                                           \
   bool has_allocated_elements() {                                              \
     return orm::details::__has_allocated_elements_heap_paged(*this);           \
-  };
-
-#define table_runtime_cols_span_meta orm::details::runtime_span_meta m_meta;
-#define table_runtime_cols_span_cols_0                                         \
-  orm::details::runtime_multiple_col m_runtime_cols;
-#define table_define_runtime_cols_span_0                                       \
-  void allocate() { orm::details::__allocate_runtime_cols_span_0(*this); };    \
-  void free() { orm::details::__free_runtime_cols_span_0(*this); };            \
-  void push_column(uimax p_element_size) {                                     \
-    orm::details::__push_column_runtime_cols_span(*this, p_element_size);      \
-  };                                                                           \
-  void resize(uimax p_count) {                                                 \
-    orm::details::__resize_runtime_cols_span(*this, p_count);                  \
-  };                                                                           \
-  ui8 *at(uimax p_col_index, uimax p_index) {                                  \
-    return orm::details::__at_runtime_cols_span(*this, p_col_index, p_index);  \
   };
 
 }; // namespace orm

@@ -663,58 +663,94 @@ private:
   };
 };
 
-#if 0
+struct runtime_buffer {
+  uimax m_element_size;
+  ui8 *m_data;
+  uimax m_byte_capacity;
 
-struct map_intrusive {
-  uimax m_capacity;
+  void allocate() {
+    m_element_size = 0;
+    m_byte_capacity = 0;
+    m_data = (ui8 *)sys::malloc(m_byte_capacity);
+  };
 
-ui8 *m_is_free;
-container::vector<uimax> m_original_indices;
+  void free() { sys::free(m_data); };
 
-  void allocate(uimax p_capacity) {
-    m_capacity = p_capacity;
-    m_original_indices.allocate(0);
-    m_is_free = (ui8 *)sys::malloc(sizeof(*m_is_free) * m_capacity);
-    for (auto i = 0; i < m_capacity; ++i) {
-      m_is_free[i] = 1;
+  void resize(uimax p_count) {
+    if ((p_count * m_element_size) > m_byte_capacity) {
+      m_byte_capacity = (p_count * m_element_size);
+      m_data = (ui8 *)sys::realloc(m_data, m_byte_capacity);
     }
   };
 
-  void free() {
-    m_original_indices.free();
-    sys::free(m_is_free);
-  };
-
-  ui8 find_next_realloc(uimax p_key, uimax *out_index) {
-    while (is_key_allocated(p_key)) {
-      __realloc();
+  void resize(uimax p_count, uimax p_element_size) {
+    m_element_size = p_element_size;
+    if ((p_count * m_element_size) > m_byte_capacity) {
+      m_byte_capacity = (p_count * m_element_size);
+      m_data = (ui8 *)sys::realloc(m_data, m_byte_capacity);
     }
   };
 
-  ui8 is_key_allocated(uimax p_key) { return m_is_free[p_key % m_capacity]; };
+  ui8 *at(uimax p_index) { return m_data + (m_element_size * p_index); };
+};
 
-private:
-  void __realloc() {
-    ui8 *l_next_is_free =
-        (ui8 *)sys::malloc(sizeof(l_next_is_free) * m_capacity);
+struct runtime_multiple_buffer {
+  runtime_buffer *m_runtime_buffers;
 
+  void allocate() { m_runtime_buffers = (runtime_buffer *)sys::malloc(0); };
 
+  void free(uimax p_col_count) {
+    for (auto i = 0; i < p_col_count; ++i) {
+      m_runtime_buffers[i].free();
+    }
+    sys::free(m_runtime_buffers);
+  };
 
+  void realloc(uimax p_count) {
+    m_runtime_buffers = (runtime_buffer *)sys::realloc(
+        m_runtime_buffers, p_count * sizeof(*m_runtime_buffers));
+  };
 
-    sys::free(m_is_free);
-    m_is_free = l_next_is_free;
+  void realloc_cols(uimax p_count, uimax p_col_count) {
+    for (auto i = 0; i < p_col_count; ++i) {
+      m_runtime_buffers[i].resize(p_count);
+    }
   };
 };
 
-template <typename T> struct map {
-  map_intrusive m_intrusive;
-  T *m_data;
+struct mult_span_byte_buffer {
 
-  void allocate(uimax p_capacity) { m_intrusive.allocate(p_capacity); };
+  uimax m_col_count;
+  runtime_multiple_buffer m_cols;
 
-  void free() { m_intrusive.free(); };
+  void allocate() {
+    m_col_count = 0;
+    m_cols.allocate();
+  };
+
+  void free() { m_cols.free(m_col_count); };
+
+  ui8 *at(uimax p_col_index, uimax p_index) {
+    assert_debug(p_col_index < m_col_count);
+    return m_cols.m_runtime_buffers[p_col_index].at(p_index);
+  };
+
+  void resize_col_capacity(uimax p_count) {
+    if (p_count > m_col_count) {
+      m_cols.realloc(p_count);
+
+      for (auto l_col_it = m_col_count; l_col_it < p_count; l_col_it++) {
+        m_cols.m_runtime_buffers[l_col_it].allocate();
+      }
+
+      m_col_count = p_count;
+    }
+  };
+
+  runtime_buffer &col(uimax p_index) {
+    assert_debug(p_index < m_col_count);
+    return m_cols.m_runtime_buffers[p_index];
+  };
 };
-
-#endif
 
 } // namespace container

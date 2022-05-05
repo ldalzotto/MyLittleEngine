@@ -12,68 +12,6 @@
 namespace rast {
 namespace algorithm {
 
-// TODO -> adding a buffer struct in core containers ?
-
-struct multi_buffer {
-
-  container::span<container::span<ui8>> m_buffers;
-  container::vector<uimax> m_locked_buffers;
-  void allocate() {
-    m_buffers.allocate(0);
-    m_locked_buffers.allocate(0);
-  };
-
-  void free() {
-    assert_debug(m_locked_buffers.count() == 0);
-    __for_each_buffer(
-        [](container::span<ui8> &p_buffer, auto) { p_buffer.free(); });
-    m_buffers.free();
-    m_locked_buffers.free();
-  };
-
-  void resize(uimax p_count) {
-    uimax l_count_before = m_buffers.count();
-    m_buffers.resize(p_count);
-    for (auto i = l_count_before; i < m_buffers.count(); ++i) {
-      m_buffers.at(i).allocate(0);
-    }
-  };
-
-  container::span<ui8> &borrow_buffer() {
-    uimax l_index = -1;
-    for (auto l_buffer_iter = 0; l_buffer_iter < m_buffers.count();
-         ++l_buffer_iter) {
-      if (!__is_buffer_locked(l_buffer_iter)) {
-        l_index = l_buffer_iter;
-        m_locked_buffers.push_back(l_index);
-        break;
-      }
-    }
-    return m_buffers.at(l_index);
-  };
-
-  void release_all() { m_locked_buffers.clear(); };
-
-private:
-  template <typename CallbacFunc>
-  void __for_each_buffer(const CallbacFunc &p_callback) {
-    for (auto i = 0; i < m_buffers.count(); ++i) {
-      p_callback(m_buffers.at(i), i);
-    }
-  };
-
-  ui8 __is_buffer_locked(uimax p_buffer_index) {
-    for (auto l_locked_buffer_iter = 0;
-         l_locked_buffer_iter < m_locked_buffers.count();
-         ++l_locked_buffer_iter) {
-      if (m_locked_buffers.at(l_locked_buffer_iter) == p_buffer_index) {
-        return 1;
-      }
-    }
-    return 0;
-  }
-};
-
 struct index_buffer_const_view {
   ui8 m_index_byte_size;
   uimax m_index_count;
@@ -177,14 +115,8 @@ struct rasterize_heap {
     table_define_span_2;
   } m_per_polygons;
 
-  struct vertex_output {
-
-  } m_vertex_output;
-
-  multi_buffer m_vertex_output_parameter_buffers;
-  container::span<ui8 *> m_vertex_output_parameter_references;
-  container::span<ui8 *>
-      m_vertex_output_parameter_tmp_references; // TODO -> remove this ?
+  container::mult_span_byte_buffer m_vertex_output;
+  container::span<ui8 *> m_vertex_output_send_to_vertex_shader;
 
   struct visiblity {
     table_span_meta;
@@ -197,30 +129,29 @@ struct rasterize_heap {
     table_define_span_3;
   } m_visibility_buffer;
 
-  // container::span<ui8> m_visibility_.buffer;
-  multi_buffer m_interpolated_vertex_output;
-  container::span<ui8 *> m_interpolated_vertex_parameter_references;
+  container::mult_span_byte_buffer m_vertex_output_interpolated;
+  container::span<ui8 *> m_vertex_output_interpolated_send_to_fragment_shader;
 
   void allocate() {
     m_per_vertices.allocate(1024);
     m_per_polygons.allocate(1024);
     m_visibility_buffer.allocate(1024);
-    m_vertex_output_parameter_buffers.allocate();
-    m_vertex_output_parameter_references.allocate(0);
-    m_vertex_output_parameter_tmp_references.allocate(0);
-    m_interpolated_vertex_output.allocate();
-    m_interpolated_vertex_parameter_references.allocate(0);
+    m_vertex_output.allocate();
+    m_vertex_output_interpolated.allocate();
+
+    m_vertex_output_send_to_vertex_shader.allocate(128);
+    m_vertex_output_interpolated_send_to_fragment_shader.allocate(128);
   };
 
   void free() {
     m_per_vertices.free();
     m_per_polygons.free();
     m_visibility_buffer.free();
-    m_vertex_output_parameter_buffers.free();
-    m_vertex_output_parameter_references.free();
-    m_vertex_output_parameter_tmp_references.free();
-    m_interpolated_vertex_output.free();
-    m_interpolated_vertex_parameter_references.free();
+    m_vertex_output.free();
+    m_vertex_output_interpolated.free();
+
+    m_vertex_output_send_to_vertex_shader.free();
+    m_vertex_output_interpolated_send_to_fragment_shader.free();
   };
 
   pixel_coordinates &get_pixel_coordinates(ui32 p_index) {
@@ -315,10 +246,7 @@ struct rasterize_unit {
   };
 
 private:
-  void __terminate() {
-    m_heap.m_vertex_output_parameter_buffers.release_all();
-    m_heap.m_interpolated_vertex_output.release_all();
-  };
+  void __terminate(){};
 
   void __vertex_v2() {
     m_heap.m_per_vertices.resize(m_vertex_count);
@@ -334,31 +262,27 @@ private:
     auto l_output_parameters =
         l_shader_view.get_vertex_meta().get_output_parameters();
 
-    m_heap.m_vertex_output_parameter_buffers.resize(
-        l_shader_header.m_output_count);
-    m_heap.m_vertex_output_parameter_references.resize(
-        l_shader_header.m_output_count);
-    m_heap.m_vertex_output_parameter_tmp_references.resize(
-        l_shader_header.m_output_count);
-
-    for (auto i = 0; i < l_shader_header.m_output_count; ++i) {
-      container::span<ui8> &l_output_buffer =
-          m_heap.m_vertex_output_parameter_buffers.borrow_buffer();
-      l_output_buffer.resize(l_output_parameters.at(i).m_single_element_size *
-                             m_vertex_count);
-      m_heap.m_vertex_output_parameter_references.at(i) =
-          l_output_buffer.m_data;
-      m_heap.m_vertex_output_parameter_tmp_references.at(i) =
-          l_output_buffer.m_data;
+    m_heap.m_vertex_output.resize_col_capacity(l_shader_header.m_output_count);
+    for (auto l_col_it = 0; l_col_it < m_heap.m_vertex_output.m_col_count;
+         l_col_it++) {
+      m_heap.m_vertex_output.col(l_col_it).resize(
+          m_vertex_count,
+          l_output_parameters.at(l_col_it).m_single_element_size);
     }
 
     for (auto i = 0; i < m_vertex_count; ++i) {
       ui8 *l_vertex_bytes =
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
-      m::vec<f32, 4> l_vertex_shader_out;
 
+      for (auto l_output_it = 0; l_output_it < l_shader_header.m_output_count;
+           ++l_output_it) {
+        m_heap.m_vertex_output_send_to_vertex_shader.at(l_output_it) =
+            m_heap.m_vertex_output.at(l_output_it, i);
+      }
+
+      m::vec<f32, 4> l_vertex_shader_out;
       l_vertex_function(l_ctx, l_vertex_bytes, l_vertex_shader_out,
-                        m_heap.m_vertex_output_parameter_tmp_references);
+                        m_heap.m_vertex_output_send_to_vertex_shader);
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
@@ -370,12 +294,6 @@ private:
       l_pixel_coordinates_f32 *= (m_input.m_rect.extend() - 1);
 
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
-
-      for (auto l_output_it = 0; l_output_it < l_shader_header.m_output_count;
-           ++l_output_it) {
-        m_heap.m_vertex_output_parameter_tmp_references.at(l_output_it) +=
-            l_output_parameters.at(l_output_it).m_single_element_size;
-      }
     }
   };
 
@@ -447,22 +365,18 @@ private:
     auto l_vertex_output_parameters =
         l_shader_view.get_vertex_meta().get_output_parameters();
 
-    // Vertex output initialization
-    m_heap.m_interpolated_vertex_output.resize(
+    m_heap.m_vertex_output_interpolated.resize_col_capacity(
         l_vertex_output_parameters.count());
-    m_heap.m_interpolated_vertex_parameter_references.resize(
-        l_vertex_output_parameters.count());
-    for (auto i = 0; i < l_vertex_output_parameters.count(); ++i) {
-      container::span<ui8> &l_vertex_output =
-          m_heap.m_interpolated_vertex_output.borrow_buffer();
-      l_vertex_output.resize(l_shader_view.get_vertex_meta()
-                                 .get_output_parameters()
-                                 .at(i)
-                                 .m_single_element_size *
-                             m_input.m_target_image_view.pixel_count());
-      m_heap.m_interpolated_vertex_parameter_references.at(i) =
-          l_vertex_output.m_data;
+    for (auto l_col_it = 0;
+         l_col_it < m_heap.m_vertex_output_interpolated.m_col_count;
+         ++l_col_it) {
+      m_heap.m_vertex_output_interpolated.col(l_col_it).resize(
+          m_input.m_target_image_view.pixel_count(),
+          l_vertex_output_parameters.at(l_col_it).m_single_element_size);
     }
+
+    m_heap.m_vertex_output_interpolated_send_to_fragment_shader.resize(
+        l_vertex_output_parameters.count());
 
     ui8 *l_visibility_boolean;
     m::vec<f32, 3> *l_visibility_weight;
@@ -476,37 +390,34 @@ private:
         m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
                                  &l_indices_polygon);
 
-        for (auto j = 0; j < l_vertex_output_parameters.count(); ++j) {
+        for (auto l_vertex_output_index = 0;
+             l_vertex_output_index < l_vertex_output_parameters.count();
+             ++l_vertex_output_index) {
+
           shader_vertex_meta::output_parameter l_output_parameter_meta =
-              l_vertex_output_parameters.at(j);
+              l_vertex_output_parameters.at(l_vertex_output_index);
 
           if (l_output_parameter_meta.m_attrib_type ==
               bgfx::AttribType::Float) {
             if (l_output_parameter_meta.m_attrib_element_count == 3) {
 
-              m::vec<f32, 3> *l_interpolated_vertex_output =
-                  (m::vec<f32, 3>
-                       *)(m_heap.m_interpolated_vertex_parameter_references.at(
-                              j) +
-                          (l_output_parameter_meta.m_single_element_size * i));
-
               m::polygon<m::vec<f32, 3>, 3> l_attribute_polygon;
 
-              ui8 *l_raw_ptr =
-                  m_heap.m_vertex_output_parameter_references.at(j);
+              l_attribute_polygon.p0() =
+                  *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
+                      l_vertex_output_index, l_indices_polygon->p0());
 
-              l_attribute_polygon.p0() = *(
-                  m::vec<f32, 3> *)(l_raw_ptr + l_output_parameter_meta
-                                                        .m_single_element_size *
-                                                    l_indices_polygon->p0());
-              l_attribute_polygon.p1() = *(
-                  m::vec<f32, 3> *)(l_raw_ptr + l_output_parameter_meta
-                                                        .m_single_element_size *
-                                                    l_indices_polygon->p1());
-              l_attribute_polygon.p2() = *(
-                  m::vec<f32, 3> *)(l_raw_ptr + l_output_parameter_meta
-                                                        .m_single_element_size *
-                                                    l_indices_polygon->p2());
+              l_attribute_polygon.p1() =
+                  *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
+                      l_vertex_output_index, l_indices_polygon->p1());
+
+              l_attribute_polygon.p2() =
+                  *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
+                      l_vertex_output_index, l_indices_polygon->p2());
+
+              m::vec<f32, 3> *l_interpolated_vertex_output =
+                  (m::vec<f32, 3> *)m_heap.m_vertex_output_interpolated.at(
+                      l_vertex_output_index, i);
 
               *l_interpolated_vertex_output =
                   m::interpolate(l_attribute_polygon, *l_visibility_weight);
@@ -519,26 +430,24 @@ private:
 
   void __fragment() {
 
-    auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_vertex);
-    auto l_vertex_output_parameters =
-        l_shader_view.get_vertex_meta().get_output_parameters();
-
     for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
       ui8 *l_visibility_boolean;
       m_heap.m_visibility_buffer.at(i, &l_visibility_boolean, orm::none(),
                                     orm::none());
       if (*l_visibility_boolean) {
 
-        for (auto j = 0; j < l_vertex_output_parameters.count(); ++j) {
-          m_heap.m_vertex_output_parameter_tmp_references.at(j) =
-              m_heap.m_interpolated_vertex_output.m_buffers.at(j).m_data +
-              (l_vertex_output_parameters.at(j).m_single_element_size * i);
+        for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
+             ++j) {
+          m_heap.m_vertex_output_interpolated_send_to_fragment_shader.at(j) =
+              m_heap.m_vertex_output_interpolated.at(j, i);
         }
 
         // TODO -> use the fragment shader instead.
+
         m::vec<f32, 3> *l_color_tmp =
-            (m::vec<f32, 3> *)
-                m_heap.m_vertex_output_parameter_tmp_references.at(0);
+            (m::vec<f32, 3> *)m_heap
+                .m_vertex_output_interpolated_send_to_fragment_shader.at(0);
+        // (*l_color_tmp * 255).cast_to<ui8>();
         m::vec<ui8, 3> l_color = {(ui8)(l_color_tmp->x() * 255),
                                   (ui8)(l_color_tmp->y() * 255),
                                   (ui8)(l_color_tmp->z() * 255)};
