@@ -12,6 +12,8 @@ template <typename T> struct rect_min_max {
 
   m::vec<T, 2> &min() { return m_min; };
   m::vec<T, 2> &max() { return m_max; };
+  const m::vec<T, 2> &min() const { return m_min; };
+  const m::vec<T, 2> &max() const { return m_max; };
 
   static rect_min_max bounding_box(container::range<m::vec<T, 2>> &p_points) {
     assert_debug(p_points.count() > 0);
@@ -71,11 +73,33 @@ m::rect_min_max<T> fit_into(const m::rect_min_max<T> &p_rect,
   }
 
   if (l_rect.max().x() >= p_into.extend().x()) {
-    l_rect.max().x() = p_into.extend().x() - TT(1);
+    l_rect.max().x() = p_into.extend().x();
   }
 
   if (l_rect.max().y() >= p_into.extend().y()) {
-    l_rect.max().y() = p_into.extend().y() - TT(1);
+    l_rect.max().y() = p_into.extend().y();
+  }
+  return l_rect;
+};
+
+template <typename T, typename TT>
+m::rect_min_max<T> extend(const m::rect_min_max<T> &p_rect,
+                          const m::rect_min_max<TT> &p_other) {
+  m::rect_min_max<T> l_rect = p_rect;
+  if (p_other.min().x() < l_rect.min().x()) {
+    l_rect.min().x() = p_other.min().x();
+  }
+
+  if (p_other.min().y() < l_rect.min().y()) {
+    l_rect.min().y() = p_other.min().y();
+  }
+
+  if (p_other.max().x() > l_rect.max().x()) {
+    l_rect.max().x() = p_other.max().x();
+  }
+
+  if (p_other.max().y() >= l_rect.max().y()) {
+    l_rect.max().y() = p_other.max().y();
   }
   return l_rect;
 };
