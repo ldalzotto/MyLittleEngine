@@ -124,11 +124,12 @@ struct rastzerizer_sandbox_test {
         [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
            m::vec<f32, 4> &out_screen_position,
            container::span<ui8 *> &out_vertex) {
-          const auto &l_vertex_pos =
-              rast::shader_utils::get_vertex<m::vec<f32, 3>>(
-                  p_ctx, bgfx::Attrib::Enum::Position, p_vertex);
-          const ui32 &l_color = rast::shader_utils::get_vertex<ui32>(
-              p_ctx, bgfx::Attrib::Enum::Color0, p_vertex);
+          rast::vertex_shader l_shader = {p_ctx};
+          const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
+              bgfx::Attrib::Enum::Position, p_vertex);
+          const ui32 &l_color =
+              l_shader.get_vertex<ui32>(bgfx::Attrib::Enum::Color0, p_vertex);
+
           out_screen_position =
               p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
 
@@ -138,9 +139,6 @@ struct rastzerizer_sandbox_test {
           out_color->y() = (ui8)(l_color >> 16);
           out_color->z() = (ui8)(l_color >> 8);
           *out_color = *out_color / (f32)255;
-
-          // *(m::vec<f32, 3> *)out_vertex.m_data[0] = m::vec<f32, 3>{0, 0.5,
-          // 1};
         };
 
     rast::shader_vertex_meta::output_parameter l_vertex_output_parameters[1] = {
@@ -328,18 +326,17 @@ struct rastzerizer_cube_test {
           // 1};
         };
 
-    rast::shader_vertex_meta::output_parameter l_vertex_output_parameters[1] = {
-        rast::shader_vertex_meta::output_parameter(bgfx::AttribType::Float, 3)};
-    auto l_vertex_output_parameters_slice =
-        container::range<rast::shader_vertex_meta::output_parameter>::make(
-            l_vertex_output_parameters, 1);
+    container::arr<rast::shader_vertex_meta::output_parameter, 1>
+        l_vertex_output_parameters = {
+            rast::shader_vertex_meta::output_parameter(bgfx::AttribType::Float,
+                                                       3)};
 
     uimax l_vertex_shader_size = rast::shader_view::vertex_shader_size_in_bytes(
-        l_vertex_output_parameters_slice);
+        l_vertex_output_parameters.range());
     const bgfx::Memory *l_vertex_shader_memory =
         bgfx::alloc(l_vertex_shader_size);
     rast::shader_view(l_vertex_shader_memory->data)
-        .initialize(&l_vertex_function, l_vertex_output_parameters_slice);
+        .initialize(&l_vertex_function, l_vertex_output_parameters.range());
 
     block_debug([&]() {
       auto l_function =

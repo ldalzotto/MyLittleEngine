@@ -220,6 +220,10 @@ template <typename T> struct vec<T, 3> {
   };
 
   static vec getZero() { return {0}; };
+
+  template <typename TT> vec<TT, 3> cast() {
+    return {TT(m_data[0]), TT(m_data[1]), TT(m_data[2])};
+  };
 };
 
 template <typename T> struct vec<T, 4> {

@@ -21,9 +21,13 @@ void __allocate_span_1(TableType &p_table, uimax p_capacity) {
       p_table.m_meta * sizeof(*p_table.m_col_0));
 };
 
+template <typename TableType> void __free_span_1(TableType &p_table) {
+  sys::free(p_table.m_col_0);
+};
+
 template <typename TableType>
 void __at_span_1(TableType &p_table, uimax p_index,
-                 const typename TableType::type_0 **out_0) {
+                 typename TableType::type_0 **out_0) {
   assert_debug(p_index < p_table.m_meta);
   *out_0 = &p_table.m_col_0[p_index];
 };
@@ -32,9 +36,16 @@ template <typename TableType>
 void __resize_span_1(TableType &p_table, uimax p_new_capacity) {
   if (p_new_capacity > p_table.m_meta) {
     p_table.m_meta = p_new_capacity;
-    p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(p_table.m_col_0 *
-                                                              p_new_capacity);
+    p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
+        p_table.m_col_0, sizeof(*p_table.m_col_0) * p_new_capacity);
   }
+};
+
+template <typename TableType>
+void __range_span_1(TableType &p_table,
+                    container::range<typename TableType::type_0> *out_0) {
+  *out_0 = container::range<typename TableType::type_0>::make(p_table.m_col_0,
+                                                              p_table.m_meta);
 };
 
 template <typename TableType>
@@ -771,6 +782,21 @@ private:
   type_2 *m_col_2;
 
 #define table_span_meta uimax m_meta;
+
+#define table_define_span_1                                                    \
+  void allocate(uimax p_capacity) {                                            \
+    orm::details::__allocate_span_1(*this, p_capacity);                        \
+  };                                                                           \
+  void free() { orm::details::__free_span_1(*this); };                         \
+  void at(uimax p_index, type_0 **out_0) {                                     \
+    orm::details::__at_span_1(*this, p_index, out_0);                          \
+  };                                                                           \
+  void resize(uimax p_new_capacity) {                                          \
+    orm::details::__resize_span_1(*this, p_new_capacity);                      \
+  };                                                                           \
+  void range(container::range<type_0> *out_0) {                                \
+    orm::details::__range_span_1(*this, out_0);                                \
+  };
 
 #define table_define_span_2                                                    \
   void allocate(uimax p_capacity) {                                            \
