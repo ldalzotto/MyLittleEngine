@@ -255,14 +255,20 @@ private:
         m_input.m_vertex_layout);
 
     assert_debug(m_input.m_program.m_vertex);
+    /*
     auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_vertex);
     shader_vertex_function l_vertex_function =
         *l_shader_view.get_vertex_function();
     auto &l_shader_header = l_shader_view.get_vertex_meta().get_header();
     auto l_output_parameters =
         l_shader_view.get_vertex_meta().get_output_parameters();
+*/
+    auto l_shader_view =
+        rast::shader_vertex_bytes::view{(ui8 *)m_input.m_program.m_vertex};
+    auto l_output_parameters = l_shader_view.output_parameters();
+    shader_vertex_function l_vertex_function = l_shader_view.function();
 
-    m_heap.m_vertex_output.resize_col_capacity(l_shader_header.m_output_count);
+    m_heap.m_vertex_output.resize_col_capacity(l_output_parameters.count());
     for (auto l_col_it = 0; l_col_it < m_heap.m_vertex_output.m_col_count;
          l_col_it++) {
       m_heap.m_vertex_output.col(l_col_it).resize(
@@ -274,7 +280,7 @@ private:
       ui8 *l_vertex_bytes =
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
 
-      for (auto l_output_it = 0; l_output_it < l_shader_header.m_output_count;
+      for (auto l_output_it = 0; l_output_it < l_output_parameters.count();
            ++l_output_it) {
         m_heap.m_vertex_output_send_to_vertex_shader.at(l_output_it) =
             m_heap.m_vertex_output.at(l_output_it, i);
@@ -369,9 +375,9 @@ private:
   };
 
   void __interpolate_vertex_output() {
-    auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_vertex);
     auto l_vertex_output_parameters =
-        l_shader_view.get_vertex_meta().get_output_parameters();
+        shader_vertex_bytes::view{(ui8 *)m_input.m_program.m_vertex}
+            .output_parameters();
 
     m_heap.m_vertex_output_interpolated.resize_col_capacity(
         l_vertex_output_parameters.count());
@@ -413,9 +419,9 @@ private:
   void __fragment() {
     assert_debug(m_input.m_program.m_fragment);
 
-    auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_fragment);
     shader_fragment_function l_fragment =
-        *l_shader_view.get_fragment_function();
+        shader_fragment_bytes::view{(ui8 *)m_input.m_program.m_fragment}
+            .fonction();
 
     m::vec<f32, 3> l_color_buffer;
 
@@ -456,7 +462,7 @@ private:
   };
 
   void __interpolate_vertex_output_single_value(
-      const container::range<shader_vertex_meta::output_parameter>
+      const container::range<shader_vertex_output_parameter>
           &p_vertex_shader_outputs_meta,
       uimax p_vertex_output_index,
       const polygon_vertex_indices &p_indices_polygon,
@@ -465,7 +471,7 @@ private:
     ui8 *l_interpolated_vertex_output = m_heap.m_vertex_output_interpolated.at(
         p_vertex_output_index, p_pixel_index);
 
-    shader_vertex_meta::output_parameter l_output_parameter_meta =
+    shader_vertex_output_parameter l_output_parameter_meta =
         p_vertex_shader_outputs_meta.at(p_vertex_output_index);
 
     if (l_output_parameter_meta.m_attrib_type == bgfx::AttribType::Float) {

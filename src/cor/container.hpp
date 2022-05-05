@@ -55,6 +55,10 @@ template <typename T> struct range {
     l_return.m_count = (m_count * sizeof(T)) / sizeof(TT);
     return l_return;
   };
+
+  template <typename TT> range<TT> cast_to() const {
+    return ((range *)this)->cast_to<TT>();
+  };
 };
 
 template <typename T, int N> struct arr {

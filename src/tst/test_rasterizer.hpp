@@ -124,7 +124,7 @@ struct rastzerizer_sandbox_test {
         [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
            m::vec<f32, 4> &out_screen_position,
            container::span<ui8 *> &out_vertex) {
-          rast::vertex_shader l_shader = {p_ctx};
+          rast::shader_vertex l_shader = {p_ctx};
           const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
               bgfx::Attrib::Enum::Position, p_vertex);
           const ui32 &l_color =
@@ -148,28 +148,27 @@ struct rastzerizer_sandbox_test {
           out_color = l_vertex_color;
         };
 
-    container::arr<rast::shader_vertex_meta::output_parameter, 1>
+    container::arr<rast::shader_vertex_output_parameter, 1>
         l_vertex_output_parameters = {
-            rast::shader_vertex_meta::output_parameter(bgfx::AttribType::Float,
-                                                       3)};
+            rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-    uimax l_vertex_shader_size = rast::shader_view::vertex_shader_size_in_bytes(
-        l_vertex_output_parameters.range());
+    uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(1);
     const bgfx::Memory *l_vertex_shader_memory =
         bgfx::alloc(l_vertex_shader_size);
-    rast::shader_view(l_vertex_shader_memory->data)
-        .initialize(&l_vertex_function, l_vertex_output_parameters.range());
+    rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(
+        l_vertex_output_parameters.range(), l_vertex_function);
 
     block_debug([&]() {
       auto l_function =
-          rast::shader_view(l_vertex_shader_memory->data).get_vertex_function();
+          rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}
+              .function();
       assert_debug(*l_function == l_vertex_function);
     });
 
     const bgfx::Memory *l_fragment_shader_memory =
-        bgfx::alloc(rast::shader_view::fragment_shader_size_in_bytes());
-    rast::shader_view(l_fragment_shader_memory->data)
-        .initialize(&l_fragment_function);
+        bgfx::alloc(rast::shader_fragment_bytes::byte_size());
+    rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
+        l_fragment_function);
 
     bgfx::ShaderHandle l_vertex = bgfx::createShader(l_vertex_shader_memory);
     bgfx::ShaderHandle l_fragment =
@@ -320,7 +319,7 @@ struct rastzerizer_cube_test {
         [](const rast::shader_vertex_runtime_ctx &p_ctx, const ui8 *p_vertex,
            m::vec<f32, 4> &out_screen_position,
            container::span<ui8 *> &out_vertex) {
-          rast::vertex_shader l_shader = {p_ctx};
+          rast::shader_vertex l_shader = {p_ctx};
           const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
               bgfx::Attrib::Enum::Position, p_vertex);
           const ui32 &l_color =
@@ -344,28 +343,29 @@ struct rastzerizer_cube_test {
           out_color = l_vertex_color;
         };
 
-    container::arr<rast::shader_vertex_meta::output_parameter, 1>
+    container::arr<rast::shader_vertex_output_parameter, 1>
         l_vertex_output_parameters = {
-            rast::shader_vertex_meta::output_parameter(bgfx::AttribType::Float,
-                                                       3)};
+            rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-    uimax l_vertex_shader_size = rast::shader_view::vertex_shader_size_in_bytes(
-        l_vertex_output_parameters.range());
+    uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(
+        l_vertex_output_parameters.range().count());
+
     const bgfx::Memory *l_vertex_shader_memory =
         bgfx::alloc(l_vertex_shader_size);
-    rast::shader_view(l_vertex_shader_memory->data)
-        .initialize(&l_vertex_function, l_vertex_output_parameters.range());
+    rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(
+        l_vertex_output_parameters.range(), l_vertex_function);
 
     block_debug([&]() {
       auto l_function =
-          rast::shader_view(l_vertex_shader_memory->data).get_vertex_function();
+          rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}
+              .function();
       assert_debug(*l_function == l_vertex_function);
     });
 
     const bgfx::Memory *l_fragment_shader_memory =
-        bgfx::alloc(rast::shader_view::fragment_shader_size_in_bytes());
-    rast::shader_view(l_fragment_shader_memory->data)
-        .initialize(&l_fragment_function);
+        bgfx::alloc(rast::shader_fragment_bytes::byte_size());
+    rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
+        l_fragment_function);
 
     bgfx::ShaderHandle l_vertex = bgfx::createShader(l_vertex_shader_memory);
     bgfx::ShaderHandle l_fragment =
