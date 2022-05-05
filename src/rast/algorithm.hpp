@@ -116,7 +116,7 @@ struct rasterize_heap {
     table_define_span_2;
   } m_per_polygons;
 
-  container::mult_span_byte_buffer m_vertex_output;
+  container::multi_byte_buffer m_vertex_output;
   container::span<ui8 *> m_vertex_output_send_to_vertex_shader;
 
   struct visiblity {
@@ -125,7 +125,7 @@ struct rasterize_heap {
     table_define_span_3;
   } m_visibility_buffer;
 
-  container::mult_span_byte_buffer m_vertex_output_interpolated;
+  container::multi_byte_buffer m_vertex_output_interpolated;
   container::span<ui8 *> m_vertex_output_interpolated_send_to_fragment_shader;
 
   void allocate() {

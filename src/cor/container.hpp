@@ -131,35 +131,6 @@ private:
   };
 };
 
-struct span_byte {
-  ui8 *m_data;
-  uimax m_count;
-  uimax m_element_size;
-
-  void allocate(uimax p_element_size, uimax p_capacity) {
-    m_element_size = p_element_size;
-    m_count = p_capacity;
-    m_data = (ui8 *)sys::malloc(m_count * m_element_size);
-  };
-
-  void free() { sys::free(m_data); };
-
-  template <typename T> T &at(uimax p_index) {
-    return *(T *)m_data[p_index * m_element_size];
-  };
-
-  void realloc(uimax p_new_count) {
-    m_count = p_new_count;
-    m_data = (ui8 *)sys::realloc(m_data, m_count * m_element_size);
-  };
-
-  void resize(uimax p_new_count) {
-    if (p_new_count > m_count) {
-      realloc(p_new_count);
-    }
-  };
-};
-
 struct vector_intrusive {
   uimax m_count;
   uimax m_capacity;
@@ -718,7 +689,7 @@ struct runtime_multiple_buffer {
   };
 };
 
-struct mult_span_byte_buffer {
+struct multi_byte_buffer {
 
   uimax m_col_count;
   runtime_multiple_buffer m_cols;
