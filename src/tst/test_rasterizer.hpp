@@ -326,18 +326,17 @@ struct rastzerizer_cube_test {
           // 1};
         };
 
-    rast::shader_vertex_meta::output_parameter l_vertex_output_parameters[1] = {
-        rast::shader_vertex_meta::output_parameter(bgfx::AttribType::Float, 3)};
-    auto l_vertex_output_parameters_slice =
-        container::range<rast::shader_vertex_meta::output_parameter>::make(
-            l_vertex_output_parameters, 1);
+    container::arr<rast::shader_vertex_meta::output_parameter, 1>
+        l_vertex_output_parameters = {
+            rast::shader_vertex_meta::output_parameter(bgfx::AttribType::Float,
+                                                       3)};
 
     uimax l_vertex_shader_size = rast::shader_view::vertex_shader_size_in_bytes(
-        l_vertex_output_parameters_slice);
+        l_vertex_output_parameters.range());
     const bgfx::Memory *l_vertex_shader_memory =
         bgfx::alloc(l_vertex_shader_size);
     rast::shader_view(l_vertex_shader_memory->data)
-        .initialize(&l_vertex_function, l_vertex_output_parameters_slice);
+        .initialize(&l_vertex_function, l_vertex_output_parameters.range());
 
     block_debug([&]() {
       auto l_function =

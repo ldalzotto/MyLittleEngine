@@ -51,10 +51,15 @@ template <typename T> struct range {
 
   template <typename TT> range<TT> cast_to() {
     range<TT> l_return;
-    l_return.m_begin = (TT*)m_begin;
+    l_return.m_begin = (TT *)m_begin;
     l_return.m_count = (m_count * sizeof(T)) / sizeof(TT);
     return l_return;
   };
+};
+
+template <typename T, int N> struct arr {
+  T m_data[N];
+  container::range<T> range() { return container::range<T>::make(m_data, N); };
 };
 
 template <typename T, typename AllocFunctions = malloc_free_functions>
@@ -123,6 +128,35 @@ private:
     sys::sassert(p_dst < l_end_excluded);
     sys::sassert(p_src + p_chunk_count < l_end_excluded);
     sys::sassert(p_dst + p_chunk_count < l_end_excluded);
+  };
+};
+
+struct span_byte {
+  ui8 *m_data;
+  uimax m_count;
+  uimax m_element_size;
+
+  void allocate(uimax p_element_size, uimax p_capacity) {
+    m_element_size = p_element_size;
+    m_count = p_capacity;
+    m_data = (ui8 *)sys::malloc(m_count * m_element_size);
+  };
+
+  void free() { sys::free(m_data); };
+
+  template <typename T> T &at(uimax p_index) {
+    return *(T *)m_data[p_index * m_element_size];
+  };
+
+  void realloc(uimax p_new_count) {
+    m_count = p_new_count;
+    m_data = (ui8 *)sys::realloc(m_data, m_count * m_element_size);
+  };
+
+  void resize(uimax p_new_count) {
+    if (p_new_count > m_count) {
+      realloc(p_new_count);
+    }
   };
 };
 

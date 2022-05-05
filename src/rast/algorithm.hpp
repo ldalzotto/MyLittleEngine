@@ -12,6 +12,8 @@
 namespace rast {
 namespace algorithm {
 
+// TODO -> adding a buffer struct in core containers ?
+
 struct multi_buffer {
 
   container::span<container::span<ui8>> m_buffers;
@@ -175,9 +177,14 @@ struct rasterize_heap {
     table_define_span_2;
   } m_per_polygons;
 
-  multi_buffer m_vertex_parameter_buffers;
+  struct vertex_output {
+
+  } m_vertex_output;
+
+  multi_buffer m_vertex_output_parameter_buffers;
   container::span<ui8 *> m_vertex_output_parameter_references;
-  container::span<ui8 *> m_vertex_output_parameter_tmp_references;
+  container::span<ui8 *>
+      m_vertex_output_parameter_tmp_references; // TODO -> remove this ?
 
   struct visiblity {
     table_span_meta;
@@ -198,7 +205,7 @@ struct rasterize_heap {
     m_per_vertices.allocate(1024);
     m_per_polygons.allocate(1024);
     m_visibility_buffer.allocate(1024);
-    m_vertex_parameter_buffers.allocate();
+    m_vertex_output_parameter_buffers.allocate();
     m_vertex_output_parameter_references.allocate(0);
     m_vertex_output_parameter_tmp_references.allocate(0);
     m_interpolated_vertex_output.allocate();
@@ -209,7 +216,7 @@ struct rasterize_heap {
     m_per_vertices.free();
     m_per_polygons.free();
     m_visibility_buffer.free();
-    m_vertex_parameter_buffers.free();
+    m_vertex_output_parameter_buffers.free();
     m_vertex_output_parameter_references.free();
     m_vertex_output_parameter_tmp_references.free();
     m_interpolated_vertex_output.free();
@@ -309,7 +316,7 @@ struct rasterize_unit {
 
 private:
   void __terminate() {
-    m_heap.m_vertex_parameter_buffers.release_all();
+    m_heap.m_vertex_output_parameter_buffers.release_all();
     m_heap.m_interpolated_vertex_output.release_all();
   };
 
@@ -327,7 +334,8 @@ private:
     auto l_output_parameters =
         l_shader_view.get_vertex_meta().get_output_parameters();
 
-    m_heap.m_vertex_parameter_buffers.resize(l_shader_header.m_output_count);
+    m_heap.m_vertex_output_parameter_buffers.resize(
+        l_shader_header.m_output_count);
     m_heap.m_vertex_output_parameter_references.resize(
         l_shader_header.m_output_count);
     m_heap.m_vertex_output_parameter_tmp_references.resize(
@@ -335,7 +343,7 @@ private:
 
     for (auto i = 0; i < l_shader_header.m_output_count; ++i) {
       container::span<ui8> &l_output_buffer =
-          m_heap.m_vertex_parameter_buffers.borrow_buffer();
+          m_heap.m_vertex_output_parameter_buffers.borrow_buffer();
       l_output_buffer.resize(l_output_parameters.at(i).m_single_element_size *
                              m_vertex_count);
       m_heap.m_vertex_output_parameter_references.at(i) =
@@ -502,8 +510,6 @@ private:
 
               *l_interpolated_vertex_output =
                   m::interpolate(l_attribute_polygon, *l_visibility_weight);
-
-              int l_debug = 10;
             }
           }
         }
