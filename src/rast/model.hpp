@@ -135,22 +135,19 @@ struct shader_vertex_meta {
 };
 
 struct shader_vertex_runtime_ctx {
-  m::rect_point_extend<ui16> &m_rect;
   const m::mat<f32, 4, 4> &m_proj;
   const m::mat<f32, 4, 4> &m_view;
   const m::mat<f32, 4, 4> &m_transform;
   const m::mat<f32, 4, 4> &m_local_to_unit;
   const bgfx::VertexLayout &m_vertex_layout;
 
-  shader_vertex_runtime_ctx(m::rect_point_extend<ui16> &p_rect,
-                            const m::mat<f32, 4, 4> &p_proj,
+  shader_vertex_runtime_ctx(const m::mat<f32, 4, 4> &p_proj,
                             const m::mat<f32, 4, 4> &p_view,
                             const m::mat<f32, 4, 4> &p_transform,
                             const m::mat<f32, 4, 4> &p_local_to_unit,
                             const bgfx::VertexLayout &p_vertex_layout)
-      : m_rect(p_rect), m_proj(p_proj), m_view(p_view),
-        m_transform(p_transform), m_local_to_unit(p_local_to_unit),
-        m_vertex_layout(p_vertex_layout){};
+      : m_proj(p_proj), m_view(p_view), m_transform(p_transform),
+        m_local_to_unit(p_local_to_unit), m_vertex_layout(p_vertex_layout){};
 };
 
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,

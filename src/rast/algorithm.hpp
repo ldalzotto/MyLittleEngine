@@ -193,6 +193,7 @@ struct rasterize_unit {
   ui16 m_vertex_stride;
   uimax m_vertex_count;
   uimax m_polygon_count;
+  m::rect_min_max<ui16> m_scissor;
 
   rasterize_unit(rasterize_heap &p_heap, const program &p_program,
                  m::rect_point_extend<ui16> &p_rect,
@@ -210,6 +211,9 @@ struct rasterize_unit {
         m_heap(p_heap){};
 
   void rasterize() {
+
+    m_scissor.min() = {0, 0};
+    m_scissor.max() = {0, 0};
 
     m_vertex_stride = m_input.m_vertex_layout.getStride();
     m_vertex_count = m_input.m_vertex_buffer.count() / m_vertex_stride;
@@ -248,8 +252,8 @@ private:
     m_heap.m_per_vertices.resize(m_vertex_count);
 
     const shader_vertex_runtime_ctx l_ctx = shader_vertex_runtime_ctx(
-        m_input.m_rect, m_input.m_proj, m_input.m_view, m_input.m_transform,
-        m_local_to_unit, m_input.m_vertex_layout);
+        m_input.m_proj, m_input.m_view, m_input.m_transform, m_local_to_unit,
+        m_input.m_vertex_layout);
 
     assert_debug(m_input.m_program.m_vertex);
     auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_vertex);
@@ -329,6 +333,15 @@ private:
     l_visibility_range.m_count = m_input.m_target_image_view.pixel_count();
     l_visibility_range.zero();
 
+    {
+      screen_polygon *l_polygon;
+      m_heap.m_per_polygons.at(0, &l_polygon, orm::none());
+      m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
+      l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
+      m_scissor.min() = l_bounding_rect.min().cast<ui16>();
+      m_scissor.max() = l_bounding_rect.max().cast<ui16>();
+    }
+
     for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
          ++l_polygon_it) {
       screen_polygon *l_polygon;
@@ -337,6 +350,7 @@ private:
       m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
 
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
+      m_scissor = m::extend(m_scissor, l_bounding_rect);
 
       utils::rasterize_polygon_weighted(
           *l_polygon, l_bounding_rect,
@@ -377,6 +391,59 @@ private:
     ui8 *l_visibility_boolean;
     rasterization_weight *l_visibility_weight;
     uimax *l_visibility_polygon;
+
+    for (auto y = m_scissor.min().y(); y < m_scissor.max().y(); ++y) {
+      for (auto x = m_scissor.min().x(); x < m_scissor.max().x(); ++x) {
+        uimax l_pixel_index =
+            (m_input.m_target_image_view.m_target_info.width * y) + x;
+
+        m_heap.m_visibility_buffer.at(l_pixel_index, &l_visibility_boolean,
+                                      &l_visibility_weight,
+                                      &l_visibility_polygon);
+        if (*l_visibility_boolean) {
+          polygon_vertex_indices *l_indices_polygon;
+          m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
+                                   &l_indices_polygon);
+
+          for (auto l_vertex_output_index = 0;
+               l_vertex_output_index < l_vertex_output_parameters.count();
+               ++l_vertex_output_index) {
+
+            shader_vertex_meta::output_parameter l_output_parameter_meta =
+                l_vertex_output_parameters.at(l_vertex_output_index);
+
+            if (l_output_parameter_meta.m_attrib_type ==
+                bgfx::AttribType::Float) {
+              if (l_output_parameter_meta.m_attrib_element_count == 3) {
+
+                m::polygon<m::vec<f32, 3>, 3> l_attribute_polygon;
+
+                l_attribute_polygon.p0() =
+                    *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
+                        l_vertex_output_index, l_indices_polygon->p0());
+
+                l_attribute_polygon.p1() =
+                    *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
+                        l_vertex_output_index, l_indices_polygon->p1());
+
+                l_attribute_polygon.p2() =
+                    *(m::vec<f32, 3> *)m_heap.m_vertex_output.at(
+                        l_vertex_output_index, l_indices_polygon->p2());
+
+                m::vec<f32, 3> *l_interpolated_vertex_output =
+                    (m::vec<f32, 3> *)m_heap.m_vertex_output_interpolated.at(
+                        l_vertex_output_index, l_pixel_index);
+
+                *l_interpolated_vertex_output =
+                    m::interpolate(l_attribute_polygon, *l_visibility_weight);
+              }
+            }
+          }
+        }
+      }
+    }
+
+#if 0
     for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
       m_heap.m_visibility_buffer.at(i, &l_visibility_boolean,
                                     &l_visibility_weight,
@@ -422,6 +489,7 @@ private:
         }
       }
     }
+#endif
   };
 
   void __fragment() {
