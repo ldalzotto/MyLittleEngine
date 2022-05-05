@@ -62,78 +62,6 @@ struct image_view {
   };
 };
 
-// TODO -> having a generic structure that handle bytes buffer ?
-struct shader_vertex_meta {
-  struct header {
-    uimax m_output_offset;
-    uimax m_output_count;
-    uimax m_output_byte_size;
-  };
-
-  struct output_parameter {
-    bgfx::AttribType::Enum m_attrib_type;
-    ui8 m_attrib_element_count;
-    ui16 m_single_element_size;
-
-    output_parameter() = default;
-    output_parameter(bgfx::AttribType::Enum p_attrib_type,
-                     ui8 p_attrib_element_count) {
-      m_attrib_type = p_attrib_type;
-      m_attrib_element_count = p_attrib_element_count;
-      m_single_element_size = 0;
-      switch (p_attrib_type) {
-      case bgfx::AttribType::Float:
-        m_single_element_size = sizeof(f32);
-        break;
-      default:
-        m_single_element_size = 0;
-        break;
-      }
-      m_single_element_size *= p_attrib_element_count;
-    };
-  };
-
-  static uimax
-  size_in_bytes(const container::range<output_parameter> &p_output_parameters) {
-    return sizeof(header) +
-           +(p_output_parameters.count() * sizeof(output_parameter));
-  };
-
-  struct view {
-    ui8 *m_buffer;
-
-    view(ui8 *p_buffer) : m_buffer(p_buffer){};
-
-    void
-    initialize(const container::range<output_parameter> &p_output_parameters) {
-      header l_header;
-      l_header.m_output_offset = sizeof(l_header);
-      l_header.m_output_count = p_output_parameters.count();
-      l_header.m_output_byte_size =
-          l_header.m_output_count * sizeof(output_parameter);
-
-      *(header *)m_buffer = l_header;
-
-      auto l_output_paramters_range =
-          container::range<ui8>::make(m_buffer + l_header.m_output_offset,
-                                      l_header.m_output_byte_size)
-              .cast_to<output_parameter>();
-      l_output_paramters_range.copy_from(p_output_parameters);
-    };
-
-    header &get_header() { return *(header *)m_buffer; };
-
-    container::range<output_parameter> get_output_parameters() {
-      container::range<output_parameter> l_return;
-      header &l_header = get_header();
-      l_return.m_count = l_header.m_output_count;
-      l_return.m_begin =
-          (output_parameter *)(m_buffer + l_header.m_output_offset);
-      return l_return;
-    };
-  };
-};
-
 struct shader_vertex_runtime_ctx {
   const m::mat<f32, 4, 4> &m_proj;
   const m::mat<f32, 4, 4> &m_view;
@@ -153,9 +81,12 @@ struct shader_vertex_runtime_ctx {
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         const ui8 *p_vertex,
                                         m::vec<f32, 4> &out_screen_position,
-                                        container::span<ui8 *> &out_vertex);
+                                        ui8 **out_vertex);
 
-struct vertex_shader {
+using shader_fragment_function = void (*)(ui8 **p_vertex_output_interpolated,
+                                          m::vec<f32, 3> &out_color);
+
+struct shader_vertex {
   const shader_vertex_runtime_ctx &m_ctx;
 
   template <typename T>
@@ -164,40 +95,99 @@ struct vertex_shader {
   };
 };
 
-struct shader_utils {
-  template <typename T>
-  static const T &get_vertex(const shader_vertex_runtime_ctx &p_ctx,
-                             bgfx::Attrib::Enum p_attrib, const ui8 *p_vertex) {
-    return *(T *)(p_vertex + p_ctx.m_vertex_layout.m_offset[p_attrib]);
+struct shader_vertex_output_parameter {
+  bgfx::AttribType::Enum m_attrib_type;
+  ui8 m_attrib_element_count;
+  ui16 m_single_element_size;
+
+  shader_vertex_output_parameter() = default;
+  shader_vertex_output_parameter(bgfx::AttribType::Enum p_attrib_type,
+                                 ui8 p_attrib_element_count) {
+    m_attrib_type = p_attrib_type;
+    m_attrib_element_count = p_attrib_element_count;
+    m_single_element_size = 0;
+    switch (p_attrib_type) {
+    case bgfx::AttribType::Float:
+      m_single_element_size = sizeof(f32);
+      break;
+    default:
+      m_single_element_size = 0;
+      break;
+    }
+    m_single_element_size *= p_attrib_element_count;
   };
 };
 
-struct shader_view {
-  static uimax vertex_shader_size_in_bytes(
-      const container::range<shader_vertex_meta::output_parameter>
-          &p_output_parameters) {
-    return sizeof(shader_vertex_function) +
-           shader_vertex_meta::size_in_bytes(p_output_parameters);
+struct shader_vertex_bytes {
+
+  struct table {
+    uimax m_output_parameters_byte_size;
   };
 
-  ui8 *m_buffer;
-
-  shader_view(ui8 *p_buffer) : m_buffer(p_buffer){};
-
-  void initialize(shader_vertex_function *p_function,
-                  const container::range<shader_vertex_meta::output_parameter>
-                      &p_output_parameters) {
-    sys::memcpy(m_buffer, p_function, sizeof(*p_function));
-    shader_vertex_meta::view(m_buffer + sizeof(p_function))
-        .initialize(p_output_parameters);
+  static uimax byte_size(uimax p_output_parameter_count) {
+    return sizeof(table) + sizeof(uimax) +
+           (sizeof(shader_vertex_output_parameter) * p_output_parameter_count) +
+           sizeof(shader_vertex_function);
   };
 
-  shader_vertex_function *get_function() {
-    return (shader_vertex_function *)m_buffer;
-  };
+  struct view {
+    ui8 *m_data;
 
-  shader_vertex_meta::view get_vertex_meta() {
-    return shader_vertex_meta::view(m_buffer + sizeof(shader_vertex_function));
+    void fill(const container::range<shader_vertex_output_parameter>
+                  &p_output_parameters,
+              shader_vertex_function p_function) {
+      table *l_table = (table *)m_data;
+      l_table->m_output_parameters_byte_size = p_output_parameters.size_of();
+
+      uimax *l_output_parameters_count = (uimax *)(m_data + sizeof(table));
+      *l_output_parameters_count = p_output_parameters.count();
+
+      container::range<shader_vertex_output_parameter> l_byte_output_parameters;
+      l_byte_output_parameters.m_begin =
+          (shader_vertex_output_parameter *)(m_data + sizeof(table) +
+                                             sizeof(uimax));
+      l_byte_output_parameters.m_count = p_output_parameters.count();
+
+      p_output_parameters.copy_to(l_byte_output_parameters);
+
+      shader_vertex_function *l_function =
+          (shader_vertex_function *)(m_data + sizeof(table) + sizeof(uimax) +
+                                     l_table->m_output_parameters_byte_size);
+      *l_function = p_function;
+    };
+
+    container::range<shader_vertex_output_parameter> output_parameters() {
+      container::range<shader_vertex_output_parameter> l_range;
+      l_range.m_begin =
+          (shader_vertex_output_parameter *)(m_data + sizeof(table) +
+                                             sizeof(uimax));
+      l_range.m_count = *(uimax *)(m_data + sizeof(table));
+      return l_range;
+    };
+
+    shader_vertex_function function() {
+      table *l_table = (table *)m_data;
+      return *(
+          shader_vertex_function *)(m_data + sizeof(table) + sizeof(uimax) +
+                                    l_table->m_output_parameters_byte_size);
+    };
+  };
+};
+
+struct shader_fragment_bytes {
+
+  static uimax byte_size() { return sizeof(shader_fragment_function); };
+
+  struct view {
+    ui8 *m_data;
+
+    void fill(shader_fragment_function p_function) {
+      *(shader_fragment_function *)m_data = p_function;
+    };
+
+    shader_fragment_function fonction() {
+      return *(shader_fragment_function *)m_data;
+    };
   };
 };
 
