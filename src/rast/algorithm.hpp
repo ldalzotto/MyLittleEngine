@@ -169,9 +169,6 @@ struct rasterize_heap {
     table_define_span_1;
   } m_per_vertices;
 
-  container::span<screen_polygon> m_screen_polygons;
-  container::span<polygon_vertex_indices> m_screen_polygon_indices;
-
   struct per_polygons {
     table_span_meta;
     table_cols_2(screen_polygon, polygon_vertex_indices);
@@ -199,8 +196,7 @@ struct rasterize_heap {
 
   void allocate() {
     m_per_vertices.allocate(1024);
-    m_screen_polygons.allocate(1024);
-    m_screen_polygon_indices.allocate(1024);
+    m_per_polygons.allocate(1024);
     m_visibility_buffer.allocate(1024);
     m_vertex_parameter_buffers.allocate();
     m_vertex_output_parameter_references.allocate(0);
@@ -210,8 +206,8 @@ struct rasterize_heap {
   };
 
   void free() {
-    m_screen_polygons.free();
-    m_screen_polygon_indices.free();
+    m_per_vertices.free();
+    m_per_polygons.free();
     m_visibility_buffer.free();
     m_vertex_parameter_buffers.free();
     m_vertex_output_parameter_references.free();
@@ -376,21 +372,24 @@ private:
   };
 
   void __extract_screen_polygons() {
-    m_heap.m_screen_polygons.resize(m_polygon_count);
-    m_heap.m_screen_polygon_indices.resize(m_polygon_count);
+    m_heap.m_per_polygons.resize(m_polygon_count);
 
     uimax l_index_idx = 0;
     for (auto i = 0; i < m_polygon_count; ++i) {
-      m::polygon<uimax, 3> &l_polygon_indices =
-          m_heap.m_screen_polygon_indices.at(i);
-      l_polygon_indices.p0() = m_input.m_index_buffer.at<ui16>(l_index_idx);
-      l_polygon_indices.p1() = m_input.m_index_buffer.at<ui16>(l_index_idx + 1);
-      l_polygon_indices.p2() = m_input.m_index_buffer.at<ui16>(l_index_idx + 2);
+      polygon_vertex_indices *l_polygon_indices;
+      screen_polygon *l_polygon;
 
-      screen_polygon &l_polygon = m_heap.m_screen_polygons.at(i);
-      l_polygon.p0() = m_heap.get_pixel_coordinates(l_polygon_indices.p0());
-      l_polygon.p1() = m_heap.get_pixel_coordinates(l_polygon_indices.p1());
-      l_polygon.p2() = m_heap.get_pixel_coordinates(l_polygon_indices.p2());
+      m_heap.m_per_polygons.at(i, &l_polygon, &l_polygon_indices);
+
+      l_polygon_indices->p0() = m_input.m_index_buffer.at<ui16>(l_index_idx);
+      l_polygon_indices->p1() =
+          m_input.m_index_buffer.at<ui16>(l_index_idx + 1);
+      l_polygon_indices->p2() =
+          m_input.m_index_buffer.at<ui16>(l_index_idx + 2);
+
+      l_polygon->p0() = m_heap.get_pixel_coordinates(l_polygon_indices->p0());
+      l_polygon->p1() = m_heap.get_pixel_coordinates(l_polygon_indices->p1());
+      l_polygon->p2() = m_heap.get_pixel_coordinates(l_polygon_indices->p2());
 
       l_index_idx += 3;
     }
@@ -410,14 +409,15 @@ private:
 
     for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
          ++l_polygon_it) {
-      screen_polygon &l_polygon = m_heap.m_screen_polygons.at(l_polygon_it);
+      screen_polygon *l_polygon;
+      m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, orm::none());
 
-      m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(l_polygon);
+      m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
 
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
 
       utils::rasterize_polygon_weighted(
-          l_polygon, l_bounding_rect,
+          *l_polygon, l_bounding_rect,
           [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
             ui8 *l_visibility_boolean;
             m::vec<f32, 3> *l_visibility_weight;
@@ -464,9 +464,9 @@ private:
                                     &l_visibility_weight,
                                     &l_visibility_polygon);
       if (*l_visibility_boolean) {
-
-        m::polygon<uimax, 3> &l_indices_polygon =
-            m_heap.m_screen_polygon_indices.at(*l_visibility_polygon);
+        polygon_vertex_indices *l_indices_polygon;
+        m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
+                                 &l_indices_polygon);
 
         for (auto j = 0; j < l_vertex_output_parameters.count(); ++j) {
           shader_vertex_meta::output_parameter l_output_parameter_meta =
@@ -490,15 +490,15 @@ private:
               l_attribute_polygon.p0() = *(
                   m::vec<f32, 3> *)(l_raw_ptr + l_output_parameter_meta
                                                         .m_single_element_size *
-                                                    l_indices_polygon.p0());
+                                                    l_indices_polygon->p0());
               l_attribute_polygon.p1() = *(
                   m::vec<f32, 3> *)(l_raw_ptr + l_output_parameter_meta
                                                         .m_single_element_size *
-                                                    l_indices_polygon.p1());
+                                                    l_indices_polygon->p1());
               l_attribute_polygon.p2() = *(
                   m::vec<f32, 3> *)(l_raw_ptr + l_output_parameter_meta
                                                         .m_single_element_size *
-                                                    l_indices_polygon.p2());
+                                                    l_indices_polygon->p2());
 
               *l_interpolated_vertex_output =
                   m::interpolate(l_attribute_polygon, *l_visibility_weight);
