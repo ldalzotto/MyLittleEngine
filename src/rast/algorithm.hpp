@@ -255,14 +255,6 @@ private:
         m_input.m_vertex_layout);
 
     assert_debug(m_input.m_program.m_vertex);
-    /*
-    auto l_shader_view = shader_view((ui8 *)m_input.m_program.m_vertex);
-    shader_vertex_function l_vertex_function =
-        *l_shader_view.get_vertex_function();
-    auto &l_shader_header = l_shader_view.get_vertex_meta().get_header();
-    auto l_output_parameters =
-        l_shader_view.get_vertex_meta().get_output_parameters();
-*/
     auto l_shader_view =
         rast::shader_vertex_bytes::view{(ui8 *)m_input.m_program.m_vertex};
     auto l_output_parameters = l_shader_view.output_parameters();
