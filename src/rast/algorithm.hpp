@@ -100,6 +100,7 @@ private:
 
 using polygon_vertex_indices = m::polygon<uimax, 3>;
 using pixel_coordinates = m::vec<i16, 2>;
+using rasterization_weight = m::vec<f32, 3>;
 
 struct rasterize_heap {
 
@@ -120,12 +121,7 @@ struct rasterize_heap {
 
   struct visiblity {
     table_span_meta;
-    using type_0 = ui8;
-    using type_1 = m::vec<f32, 3>;
-    using type_2 = uimax;
-    type_0 *m_col_0;
-    type_1 *m_col_1;
-    type_2 *m_col_2;
+    table_cols_3(ui8, rasterization_weight, uimax);
     table_define_span_3;
   } m_visibility_buffer;
 
@@ -346,7 +342,7 @@ private:
           *l_polygon, l_bounding_rect,
           [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
             ui8 *l_visibility_boolean;
-            m::vec<f32, 3> *l_visibility_weight;
+            rasterization_weight *l_visibility_weight;
             uimax *l_polyton_index;
             auto l_visibility_index =
                 (y * m_input.m_target_image_view.m_target_info.width) + x;
@@ -379,7 +375,7 @@ private:
         l_vertex_output_parameters.count());
 
     ui8 *l_visibility_boolean;
-    m::vec<f32, 3> *l_visibility_weight;
+    rasterization_weight *l_visibility_weight;
     uimax *l_visibility_polygon;
     for (auto i = 0; i < m_input.m_target_image_view.pixel_count(); ++i) {
       m_heap.m_visibility_buffer.at(i, &l_visibility_boolean,
@@ -442,15 +438,11 @@ private:
               m_heap.m_vertex_output_interpolated.at(j, i);
         }
 
-        // TODO -> use the fragment shader instead.
-
+        // TODO -> use the return of the fragment shader instead.
         m::vec<f32, 3> *l_color_tmp =
             (m::vec<f32, 3> *)m_heap
                 .m_vertex_output_interpolated_send_to_fragment_shader.at(0);
-        // (*l_color_tmp * 255).cast_to<ui8>();
-        m::vec<ui8, 3> l_color = {(ui8)(l_color_tmp->x() * 255),
-                                  (ui8)(l_color_tmp->y() * 255),
-                                  (ui8)(l_color_tmp->z() * 255)};
+        m::vec<ui8, 3> l_color = (*l_color_tmp * 255).cast<ui8>();
         m_input.m_target_image_view.set_pixel(i, l_color);
       }
     }

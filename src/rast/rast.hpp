@@ -243,6 +243,7 @@ struct bgfx_impl {
       indexbuffer_table.free();
       shader_table.free();
       program_table.free();
+      framebuffer_table.free();
     };
 
     bgfx::Memory *allocate_buffer(uimax p_size) {
@@ -668,7 +669,7 @@ struct bgfx_impl {
         l_rasterizer_program.m_vertex =
             l_program.VertexShader().m_shader->m_buffer->data;
         l_rasterizer_program.m_fragment = 0;
-            // l_program.FragmentShader().m_shader->m_buffer->data;
+        // l_program.FragmentShader().m_shader->m_buffer->data;
 
         rast::algorithm::rasterize(
             m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,
