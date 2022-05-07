@@ -17,6 +17,9 @@ void sys::memcpy(void *p_dest, void *p_src, uimax p_n) {
 void sys::memset(void *p_dest, ui32 p_value, uimax p_n) {
   ::memset(p_dest, p_value, p_n);
 };
+ui8 sys::memcmp(void *p_left, void *p_right, uimax p_n) {
+  return ::memcmp(p_left, p_right, p_n);
+};
 void sys::sassert(bool p_condition) {
   if (!p_condition) {
     std::abort();

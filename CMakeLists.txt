@@ -3,11 +3,12 @@ cmake_minimum_required(VERSION 3.16)
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
-set(ENABLE_SAFETY_CHECKS true)
+# set(ENABLE_SAFETY_CHECKS true)
 # set(ENABLE_ADDRESS true)
 # set(ENABLE_UNDEFINED true)
 
 add_compile_options(-fPIC)
+
 if(ENABLE_SAFETY_CHECKS)
     add_compile_definitions(DEBUG_PREPROCESS=1)
 else()
@@ -31,6 +32,9 @@ target_include_directories(BGFX_API INTERFACE ./tp/bgfx_api/)
 add_library(STB INTERFACE)
 target_include_directories(STB INTERFACE ./tp/stb/)
 
+add_library(DOCTEST INTERFACE)
+target_include_directories(DOCTEST INTERFACE ./tp/doctest/)
+
 add_library(WholeProject INTERFACE)
 target_include_directories(WholeProject INTERFACE ./src/)
 target_link_libraries(WholeProject INTERFACE BGFX_API)
@@ -49,7 +53,8 @@ add_library(API SHARED ./src/eng/api.cpp)
 target_link_libraries(API PUBLIC SYS)
 target_link_libraries(API PUBLIC WIN)
 
-add_executable(TESTS ./src/tst/tests.cpp)
+add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer.cpp)
 target_link_libraries(TESTS PUBLIC SYS)
 target_link_libraries(TESTS PUBLIC WIN)
 target_link_libraries(TESTS PUBLIC STB)
+target_link_libraries(TESTS PUBLIC DOCTEST)

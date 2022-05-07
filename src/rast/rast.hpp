@@ -346,6 +346,10 @@ struct bgfx_impl {
     bgfx::VertexBufferHandle
     allocate_vertex_buffer(const bgfx::Memory *p_memory,
                            const bgfx::VertexLayout &p_layout) {
+
+      assert_debug((p_memory->size % p_layout.getStride()) == 0);
+      assert_debug((p_memory->size % 2) == 0); // memory is aligned
+
       VertexBuffer l_vertex_buffer;
       l_vertex_buffer.layout = p_layout;
       l_vertex_buffer.memory = p_memory;
@@ -544,6 +548,12 @@ struct bgfx_impl {
       return RenderPassProxy(m_heap, l_render_pass);
     };
 
+    TextureProxy Texture(bgfx::TextureHandle p_handle) {
+      struct Texture *l_texture;
+      m_heap.texture_table.at(p_handle.idx, &l_texture);
+      return TextureProxy{.m_heap = m_heap, .m_value = l_texture};
+    };
+
     template <typename Callback>
     void for_each_renderpass(const Callback &p_cb) {
       for (auto i = 0; i < m_heap.renderpass_table.m_meta.m_count; ++i) {
@@ -569,6 +579,14 @@ struct bgfx_impl {
     return heap.allocate_texture(l_texture_info);
   };
 
+  void read_texture(bgfx::TextureHandle p_texture, ui8 *out) {
+    container::range<ui8> l_texture_range =
+        proxy().Texture(p_texture).value()->range();
+    container::range<ui8> l_target_range =
+        container::range<ui8>::make(out, l_texture_range.count());
+    l_texture_range.copy_to(l_target_range);
+  };
+
   bgfx::FrameBufferHandle
   allocate_frame_buffer(uint16_t p_width, uint16_t p_height,
                         bgfx::TextureFormat::Enum p_format,
@@ -576,6 +594,10 @@ struct bgfx_impl {
     auto l_texture =
         allocate_texture(p_width, p_height, 0, 0, p_format, p_textureFlags);
     return heap.allocate_frame_buffer(l_texture);
+  };
+
+  bgfx::TextureHandle get_texture(bgfx::FrameBufferHandle p_frame_buffer) {
+    return proxy().FrameBuffer(p_frame_buffer).m_value->texture;
   };
 
   bgfx::ProgramHandle allocate_program(bgfx::ShaderHandle p_vertex,
@@ -715,7 +737,7 @@ private:
   };
 };
 
-static bgfx_impl bgfx_impl;
+extern bgfx_impl s_bgfx_impl;
 
 namespace bgfx {
 
@@ -736,91 +758,10 @@ inline VertexLayout &VertexLayout::begin(RendererType::Enum _renderer) {
   return *this;
 };
 
-struct VertexSingleLayoutBitsMask {
-
-  static const ui8 BITS_COUNT = 9;
-
-  static const ui8 NUM_OFFSET = 0;
-  static const auto NUM_MASK = 0b1111;
-
-  static const ui8 TYPE_OFFSET = 4;
-  static const auto TYPE_MASK = 0b111;
-
-  static const ui8 NORMALIZED_OFFSET = 7;
-  static const auto NORMALIZED_MASK = 0b1;
-
-  static const ui8 AS_INT_OFFSET = 8;
-  static const auto AS_INT_MASK = 0b1;
+inline void VertexLayout::end() {
+  // Add additional size to make the memory a power of two
+  m_stride += (m_stride % 2);
 };
-
-struct VertexSingleLayoutBits {
-
-  ui8 m_byte_offset;
-  ui32 &m_bits;
-
-  VertexSingleLayoutBits(ui32 &p_bits, ui8 p_array_index) : m_bits(p_bits) {
-    m_byte_offset = VertexSingleLayoutBitsMask::BITS_COUNT * p_array_index;
-  };
-
-  void set_num(ui8 p_num) {
-    m_bits = m_bits |
-             (VertexSingleLayoutBitsMask::NUM_MASK & p_num)
-                 << (m_byte_offset + VertexSingleLayoutBitsMask::NUM_OFFSET);
-  };
-  void set_type(ui8 p_type) {
-    m_bits = m_bits |
-             (VertexSingleLayoutBitsMask::TYPE_MASK & p_type)
-                 << (m_byte_offset + VertexSingleLayoutBitsMask::TYPE_OFFSET);
-  };
-  void set_normalized(ui8 p_num) {
-    m_bits = m_bits | (VertexSingleLayoutBitsMask::NORMALIZED_MASK & p_num)
-                          << (m_byte_offset +
-                              VertexSingleLayoutBitsMask::NORMALIZED_OFFSET);
-  };
-  void set_as_int(ui8 p_num) {
-    m_bits = m_bits |
-             (VertexSingleLayoutBitsMask::AS_INT_MASK & p_num)
-                 << (m_byte_offset + VertexSingleLayoutBitsMask::AS_INT_OFFSET);
-  };
-};
-
-struct VertexSingleLayoutBitsReadonly {
-
-  ui8 m_byte_offset;
-  const ui32 &m_bits;
-
-  VertexSingleLayoutBitsReadonly(const ui32 &p_bits, ui8 p_array_index)
-      : m_bits(p_bits) {
-    m_byte_offset = VertexSingleLayoutBitsMask::BITS_COUNT * p_array_index;
-  };
-
-  ui8 get_num() {
-    return (m_bits &
-            VertexSingleLayoutBitsMask::NUM_MASK
-                << (m_byte_offset + VertexSingleLayoutBitsMask::NUM_OFFSET)) >>
-           (m_byte_offset + VertexSingleLayoutBitsMask::NUM_OFFSET);
-  };
-  ui8 get_type() {
-    return (m_bits &
-            VertexSingleLayoutBitsMask::TYPE_MASK
-                << (m_byte_offset + VertexSingleLayoutBitsMask::TYPE_OFFSET)) >>
-           (m_byte_offset + VertexSingleLayoutBitsMask::TYPE_OFFSET);
-  };
-  ui8 get_normalized() {
-    return (m_bits & VertexSingleLayoutBitsMask::NORMALIZED_MASK
-                         << (m_byte_offset +
-                             VertexSingleLayoutBitsMask::NORMALIZED_OFFSET)) >>
-           (m_byte_offset + VertexSingleLayoutBitsMask::NORMALIZED_OFFSET);
-  };
-  ui8 get_as_int() {
-    return (m_bits & VertexSingleLayoutBitsMask::AS_INT_MASK
-                         << (m_byte_offset +
-                             VertexSingleLayoutBitsMask::AS_INT_OFFSET)) >>
-           (m_byte_offset + VertexSingleLayoutBitsMask::AS_INT_OFFSET);
-  };
-};
-
-inline void VertexLayout::end(){};
 
 inline VertexLayout &VertexLayout::add(Attrib::Enum _attrib, uint8_t _num,
                                        AttribType::Enum _type, bool _normalized,
@@ -829,137 +770,153 @@ inline VertexLayout &VertexLayout::add(Attrib::Enum _attrib, uint8_t _num,
   m_attributes[_attrib] = _attrib;
   m_offset[_attrib] = m_stride;
   m_stride += bgfx_impl::AttribType::get_size(_type) * _num;
-
-  VertexSingleLayoutBits l_entry(m_hash, _attrib);
-  l_entry.set_num(_num);
-  l_entry.set_type(_type);
-  l_entry.set_normalized(_normalized);
-  l_entry.set_as_int(_asInt);
   return *this;
 };
 
 inline void VertexLayout::decode(Attrib::Enum _attrib, uint8_t &_num,
                                  AttribType::Enum &_type, bool &_normalized,
                                  bool &_asInt) const {
-  VertexSingleLayoutBitsReadonly l_entry(m_hash, _attrib);
-  _num = l_entry.get_num();
-  _type = (AttribType::Enum)l_entry.get_type();
-  _normalized = l_entry.get_normalized();
-  _asInt = l_entry.get_as_int();
+  switch (_attrib) {
+  case Attrib::Enum::Position:
+    _num = 3;
+    _type = AttribType::Enum::Float;
+    break;
+  case Attrib::Enum::Color0:
+    _num = 4;
+    _type = AttribType::Enum::Uint8;
+    break;
+  default:
+    _num = 0;
+    _type = AttribType::Enum::Count;
+  }
+
+  _normalized = 0;
+  _asInt = 0;
 };
 
 inline bool init(const Init &p_init) {
-  bgfx_impl.initialize();
+  s_bgfx_impl.initialize();
   return 1;
 };
 
-inline void shutdown() { bgfx_impl.terminate(); };
+inline void shutdown() { s_bgfx_impl.terminate(); };
 
 inline const Memory *alloc(uint32_t _size) {
-  return bgfx_impl.heap.allocate_buffer(uimax(_size));
+  return s_bgfx_impl.heap.allocate_buffer(uimax(_size));
 };
 
 inline const Memory *makeRef(const void *_data, uint32_t _size,
                              ReleaseFn _releaseFn, void *_userData) {
-  return bgfx_impl.heap.allocate_ref(_data, _size);
+  return s_bgfx_impl.heap.allocate_ref(_data, _size);
 };
 
 inline TextureHandle createTexture2D(uint16_t _width, uint16_t _height,
                                      bool _hasMips, uint16_t _numLayers,
                                      TextureFormat::Enum _format,
                                      uint64_t _flags, const Memory *_mem) {
-  return bgfx_impl.allocate_texture(_width, _height, _hasMips, _numLayers,
-                                    _format, _flags);
+  return s_bgfx_impl.allocate_texture(_width, _height, _hasMips, _numLayers,
+                                      _format, _flags);
+};
+
+inline uint32_t readTexture(TextureHandle _handle, void *_data, uint8_t _mip) {
+  s_bgfx_impl.read_texture(_handle, (ui8 *)_data);
+  return 0;
 };
 
 inline FrameBufferHandle createFrameBuffer(uint16_t _width, uint16_t _height,
                                            TextureFormat::Enum _format,
                                            uint64_t _textureFlags) {
-  return bgfx_impl.allocate_frame_buffer(_width, _height, _format,
-                                         _textureFlags);
+  return s_bgfx_impl.allocate_frame_buffer(_width, _height, _format,
+                                           _textureFlags);
+};
+
+inline TextureHandle getTexture(FrameBufferHandle _handle,
+                                uint8_t _attachment) {
+  return s_bgfx_impl.get_texture(_handle);
+  // return bgfx_impl.proxy().FrameBuffer(_handle).m_value->texture;
 };
 
 inline VertexBufferHandle createVertexBuffer(const Memory *_mem,
                                              const VertexLayout &_layout,
                                              uint16_t _flags) {
-  return bgfx_impl.heap.allocate_vertex_buffer(_mem, _layout);
+  return s_bgfx_impl.heap.allocate_vertex_buffer(_mem, _layout);
 };
 
 inline void destroy(VertexBufferHandle _handle) {
-  return bgfx_impl.heap.free_vertex_buffer(_handle);
+  return s_bgfx_impl.heap.free_vertex_buffer(_handle);
 };
 
 inline IndexBufferHandle createIndexBuffer(const Memory *_mem,
                                            uint16_t _flags) {
-  return bgfx_impl.heap.allocate_index_buffer(_mem);
+  return s_bgfx_impl.heap.allocate_index_buffer(_mem);
 };
 
 inline void destroy(IndexBufferHandle _handle) {
-  return bgfx_impl.heap.free_index_buffer(_handle);
+  return s_bgfx_impl.heap.free_index_buffer(_handle);
 };
 
 inline ShaderHandle createShader(const Memory *_mem) {
-  return bgfx_impl.heap.allocate_shader(_mem);
+  return s_bgfx_impl.heap.allocate_shader(_mem);
 };
 
 inline void destroy(ShaderHandle _handle) {
-  bgfx_impl.heap.free_shader(_handle);
+  s_bgfx_impl.heap.free_shader(_handle);
 };
 
 inline ProgramHandle createProgram(ShaderHandle _vsh, ShaderHandle _fsh,
                                    bool _destroyShaders) {
-  return bgfx_impl.allocate_program(_vsh, _fsh);
+  return s_bgfx_impl.allocate_program(_vsh, _fsh);
 };
 
 inline void destroy(ProgramHandle _handle) {
-  bgfx_impl.heap.free_program(_handle);
+  s_bgfx_impl.heap.free_program(_handle);
 };
 
 inline void setViewRect(ViewId _id, uint16_t _x, uint16_t _y, uint16_t _width,
                         uint16_t _height) {
-  bgfx_impl.view_set_rect(_id, _x, _y, _width, _height);
+  s_bgfx_impl.view_set_rect(_id, _x, _y, _width, _height);
 };
 
 inline void setViewFrameBuffer(ViewId _id, FrameBufferHandle _handle) {
-  bgfx_impl.view_set_framebuffer(_id, _handle);
+  s_bgfx_impl.view_set_framebuffer(_id, _handle);
 };
 
 inline void setViewClear(ViewId _id, uint16_t _flags, uint32_t _rgba,
                          float _depth, uint8_t _stencil) {
-  bgfx_impl.view_set_clear(_id, _flags, _rgba, _depth);
+  s_bgfx_impl.view_set_clear(_id, _flags, _rgba, _depth);
 };
 
 inline void setViewTransform(ViewId _id, const void *_view, const void *_proj) {
-  bgfx_impl.view_set_transform(_id, *(const m::mat<f32, 4, 4> *)_view,
-                               *(const m::mat<f32, 4, 4> *)_proj);
+  s_bgfx_impl.view_set_transform(_id, *(const m::mat<f32, 4, 4> *)_view,
+                                 *(const m::mat<f32, 4, 4> *)_proj);
 };
 
 inline uint32_t setTransform(const void *_mtx, uint16_t _num) {
-  bgfx_impl.set_transform(*(const m::mat<f32, 4, 4> *)_mtx);
+  s_bgfx_impl.set_transform(*(const m::mat<f32, 4, 4> *)_mtx);
   return -1;
 };
 
 inline void setVertexBuffer(uint8_t _stream, VertexBufferHandle _handle) {
-  bgfx_impl.set_vertex_buffer(_handle);
+  s_bgfx_impl.set_vertex_buffer(_handle);
 };
 
 inline void setIndexBuffer(IndexBufferHandle _handle) {
-  bgfx_impl.set_index_buffer(_handle);
+  s_bgfx_impl.set_index_buffer(_handle);
 };
 
 inline void setState(uint64_t _state, uint32_t _rgba) {
-  bgfx_impl.set_state(_state, _rgba);
+  s_bgfx_impl.set_state(_state, _rgba);
 };
 
 inline void touch(ViewId _id){/* bgfx_impl.view_submit(_id); */};
 
 inline void submit(ViewId _id, ProgramHandle _program, uint32_t _depth,
                    uint8_t _flags) {
-  bgfx_impl.view_submit(_id, _program);
+  s_bgfx_impl.view_submit(_id, _program);
 };
 
 inline uint32_t frame(bool _capture) {
-  bgfx_impl.frame();
+  s_bgfx_impl.frame();
   return 0;
 };
 
