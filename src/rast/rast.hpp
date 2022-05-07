@@ -10,8 +10,6 @@
 
 struct bgfx_impl {
 
-  ~bgfx_impl() {}
-
   struct MemoryReference {
     uimax m_buffer_index;
     ui8 is_ref() { return m_buffer_index == -1; };
@@ -350,6 +348,7 @@ struct bgfx_impl {
                            const bgfx::VertexLayout &p_layout) {
 
       assert_debug((p_memory->size % p_layout.getStride()) == 0);
+      assert_debug((p_memory->size % 2) == 0); // memory is aligned
 
       VertexBuffer l_vertex_buffer;
       l_vertex_buffer.layout = p_layout;

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <bgfx/bgfx.h>
-#include <cmath>
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
 #include <m/mat.hpp>
@@ -474,11 +473,6 @@ private:
       const polygon_vertex_indices &p_indices_polygon,
       const rasterization_weight &p_polygon_weight, uimax p_pixel_index) {
 
-    /*
-        ui8 *l_interpolated_vertex_output =
-       m_heap.m_vertex_output_interpolated.at( p_vertex_output_index,
-       p_pixel_index);
-    */
     shader_vertex_output_parameter l_output_parameter_meta =
         p_vertex_shader_outputs_meta.at(p_vertex_output_index);
 
