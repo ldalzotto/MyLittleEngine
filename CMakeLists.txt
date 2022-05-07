@@ -5,7 +5,7 @@ set(CMAKE_CXX_STANDARD 17)
 
 set(ENABLE_SAFETY_CHECKS true)
 set(ENABLE_ADDRESS true)
-# set(ENABLE_UNDEFINED true)
+set(ENABLE_UNDEFINED true)
 
 add_compile_options(-fPIC)
 if(ENABLE_SAFETY_CHECKS)

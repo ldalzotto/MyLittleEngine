@@ -181,29 +181,29 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
       .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Uint8)
       .end();
 
-  container::arr<ui8, ((sizeof(f32) * 3) + (sizeof(ui8) * 3)) * 3>
-      l_triangle_vertices;
+  // l_vertex_layout.getStride();
 
-  l_triangle_vertices.range()
-      .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
-      .stream(m::vec<ui8, 3>{0, 0, 0})
-      .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
-      .stream(m::vec<ui8, 3>{0, 255, 0})
-      .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
-      .stream(m::vec<ui8, 3>{255, 255, 0});
+  container::span<ui8> l_triangle_vertices;
+  l_triangle_vertices.allocate(l_vertex_layout.getSize(3));
 
-  m::vec<f32, 3> *l_value = (m::vec<f32, 3> *)l_triangle_vertices.data();
+  {
+    l_triangle_vertices.range()
+        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{0, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(1))
+        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(2))
+        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 255, 0});
+  }
 
-  /*
-    container::arr<vertex_type, 3> l_triangle_vertices = {
-        .m_data = {{0.0, 0.0, 0.0, 0, 0, 0, 0},
-                   {1.0, 0.0, 0.0, 255, 0, 0, 0},
-                   {0.0, 1.0, 0.0, 255, 255, 0, 0}}};
-                   */
   container::arr<ui16, 3> l_triangle_indices = {0, 1, 2};
 
   const bgfx::Memory *l_vertex_memory =
-      bgfx::makeRef(l_triangle_vertices.data(), sizeof(l_triangle_vertices));
+      bgfx::makeRef(l_triangle_vertices.data(), l_triangle_vertices.size_of());
   const bgfx::Memory *l_index_memory =
       bgfx::makeRef(l_triangle_indices.data(), sizeof(l_triangle_indices));
 
@@ -260,6 +260,8 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+
+  l_triangle_vertices.free();
 
   bgfx::shutdown();
 }

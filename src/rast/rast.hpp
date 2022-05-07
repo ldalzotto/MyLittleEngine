@@ -759,7 +759,10 @@ inline VertexLayout &VertexLayout::begin(RendererType::Enum _renderer) {
   return *this;
 };
 
-inline void VertexLayout::end(){};
+inline void VertexLayout::end() {
+  // Add additional size to make the memory a power of two
+  m_stride += (m_stride % 2);
+};
 
 inline VertexLayout &VertexLayout::add(Attrib::Enum _attrib, uint8_t _num,
                                        AttribType::Enum _type, bool _normalized,

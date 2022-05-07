@@ -102,6 +102,9 @@ struct span {
   void free() { AllocFunctions::free(m_data); };
 
   uimax &count() { return m_count; };
+  T *&data() { return m_data; };
+
+  uimax size_of() const { return m_count * sizeof(T); };
 
   void realloc(uimax p_new_count) {
     m_count = p_new_count;
