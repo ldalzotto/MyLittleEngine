@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
 
-      - name: Node setup
+      - name: Deno setup
         uses: denoland/setup-deno@v1
         with:
           node-version: v1.x
@@ -38,4 +38,4 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@master
       
       - name: Build and run native
-        run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts
+        run: bash ${GITHUB_WORKSPACE}/scripts/build.sh
