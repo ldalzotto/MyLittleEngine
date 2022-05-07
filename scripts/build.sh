@@ -1,1 +1,0 @@
-deno run --allow-run --allow-read --allow-write ../scripts/build.ts
