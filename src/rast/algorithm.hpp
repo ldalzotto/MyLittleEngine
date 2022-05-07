@@ -1,6 +1,7 @@
 #pragma once
 
 #include <bgfx/bgfx.h>
+#include <cmath>
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
 #include <m/mat.hpp>
@@ -8,6 +9,8 @@
 #include <m/rect.hpp>
 #include <m/vec.hpp>
 #include <rast/model.hpp>
+
+#define TODO_NEAR_FAR_CLIPPING 0
 
 namespace rast {
 namespace algorithm {
@@ -291,6 +294,11 @@ private:
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
+#if TODO_NEAR_FAR_CLIPPING
+      if (l_vertex_shader_out.z() > 1.0f || l_vertex_shader_out.z() < 0.0f) {
+      }
+#endif
+
       m::vec<f32, 2> l_pixel_coordinates_f32 =
           m::vec<f32, 2>::make(l_vertex_shader_out);
 
@@ -466,9 +474,11 @@ private:
       const polygon_vertex_indices &p_indices_polygon,
       const rasterization_weight &p_polygon_weight, uimax p_pixel_index) {
 
-    ui8 *l_interpolated_vertex_output = m_heap.m_vertex_output_interpolated.at(
-        p_vertex_output_index, p_pixel_index);
-
+    /*
+        ui8 *l_interpolated_vertex_output =
+       m_heap.m_vertex_output_interpolated.at( p_vertex_output_index,
+       p_pixel_index);
+    */
     shader_vertex_output_parameter l_output_parameter_meta =
         p_vertex_shader_outputs_meta.at(p_vertex_output_index);
 
@@ -514,3 +524,5 @@ rasterize(rasterize_heap &p_heap, const program &p_program,
 
 } // namespace algorithm
 } // namespace rast
+
+#undef TODO_NEAR_FAR_CLIPPING

@@ -9,6 +9,7 @@ struct sys {
   static void memmove(void *p_dest, void *p_src, uimax p_n);
   static void memcpy(void *p_dest, void *p_src, uimax p_n);
   static void memset(void *p_dest, ui32 p_value, uimax p_n);
+  static ui8 memcmp(void* p_left, void* p_right, uimax p_n);
 
   template <typename T>
   inline static void memmove_up_t(T *p_ptr, uimax p_break_index,

@@ -42,11 +42,28 @@ template <typename T> struct range {
     sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
   };
 
+  template <typename TT> void copy_from(const TT &p_value) {
+    assert_debug(sizeof(TT) <= m_count);
+    sys::memcpy(m_begin, (void *)&p_value, sizeof(TT));
+  };
+
   void zero() { sys::memset(m_begin, 0, m_count * sizeof(T)); };
 
   range<T> slide(uimax p_count) {
     assert_debug(m_count >= p_count);
     return range<T>::make(m_begin + p_count, m_count - p_count);
+  };
+
+  void slide_self(uimax p_count) {
+    assert_debug(m_count >= p_count);
+    m_begin += p_count;
+    m_count -= p_count;
+  };
+
+  template <typename TT> range &stream(const TT &p_value) {
+    copy_from(p_value);
+    slide_self(sizeof(p_value));
+    return *this;
   };
 
   template <typename TT> range<TT> cast_to() {
@@ -59,11 +76,17 @@ template <typename T> struct range {
   template <typename TT> range<TT> cast_to() const {
     return ((range *)this)->cast_to<TT>();
   };
+
+  ui8 is_contained_by(const range<T> &p_other) const {
+    return sys::memcmp(m_begin, p_other.m_begin, size_of()) == 0;
+  };
 };
 
 template <typename T, int N> struct arr {
   T m_data[N];
   container::range<T> range() { return container::range<T>::make(m_data, N); };
+  T *data() { return m_data; };
+  const T *data() const { return m_data; };
 };
 
 template <typename T, typename AllocFunctions = malloc_free_functions>

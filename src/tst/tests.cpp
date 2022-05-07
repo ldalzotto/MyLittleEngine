@@ -1,12 +1,7 @@
-#include <tst/test_container.hpp>
-#include <tst/test_math.hpp>
-#include <tst/test_rasterizer.hpp>
-#include <tst/test_window.hpp>
 
-i32 main() {
-  test_container();
-  test_window();
-  test_math();
-  test_rasterizer();
-  return 0;
-};
+#include <rast/rast.hpp>
+
+#define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <doctest.h>
+
+bgfx_impl s_bgfx_impl = bgfx_impl();
