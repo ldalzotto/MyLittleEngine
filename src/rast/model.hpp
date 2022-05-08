@@ -39,6 +39,16 @@ struct image_view {
   ui8 *at(ui16 r, ui16 c) { return &m_buffer.at(get_buffer_index(r, c)); };
   ui8 *at(ui16 p) { return &m_buffer.at(get_buffer_index(p)); };
 
+  template <typename T> T *at(ui16 r, ui16 c) {
+    assert_debug(m_target_info.bitsPerPixel == sizeof(T));
+    return (T *)at(r, c);
+  };
+
+  template <typename T> T *at(ui16 p) {
+    assert_debug(m_target_info.bitsPerPixel == sizeof(T));
+    return (T *)at(p);
+  };
+
   void set_pixel(ui16 r, ui16 c, const m::vec<ui8, 3> &p_pixel) {
     assert_debug(sizeof(p_pixel) == m_target_info.bitsPerPixel);
     *(m::vec<ui8, 3> *)at(r, c) = p_pixel;

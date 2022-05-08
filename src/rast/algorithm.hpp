@@ -18,6 +18,7 @@ namespace algorithm {
 struct render_state {
   enum class depth_test { Undefined = 0, Less = 1 } m_depth;
   ui8 m_interpolate_depth;
+  ui8 m_compare_depth;
 
   static render_state from_int(ui64 p_state) {
     render_state l_state;
@@ -26,8 +27,10 @@ struct render_state {
     if (p_state & BGFX_STATE_DEPTH_TEST_LESS) {
       l_state.m_depth = depth_test::Less;
       l_state.m_interpolate_depth = 1;
+      l_state.m_compare_depth = 1;
     } else {
       l_state.m_depth = depth_test::Undefined;
+      l_state.m_compare_depth = 0;
     }
     return l_state;
   };
@@ -280,6 +283,7 @@ struct rasterize_unit {
     });
 
     __initialize_layouts();
+    __resize_buffers();
     __vertex_v2();
 
     // TODO -> backface culling
@@ -288,9 +292,14 @@ struct rasterize_unit {
     __extract_screen_polygons();
 
     // TODO -> should apply z clipping
-    // TODO -> should apply depth comparison if needed.
 
     __calculate_visibility_buffer();
+
+    if (m_state.m_interpolate_depth) {
+      __interpolate_depth();
+      __apply_depth_value();
+    }
+
     __interpolate_vertex_output();
     __fragment();
 
@@ -339,6 +348,37 @@ private:
     }
   };
 
+  void __resize_buffers() {
+
+    m_heap.m_vertex_output.resize_col_capacity(
+        m_heap.m_vertex_output_layout.m_col_count);
+
+    for (auto l_col_it = 0;
+         l_col_it < m_heap.m_vertex_output_layout.m_col_count; l_col_it++) {
+      m_heap.m_vertex_output.col(l_col_it).resize(
+          m_vertex_count,
+          m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
+    }
+
+    m_heap.m_per_polygons.resize(m_polygon_count);
+
+    m_heap.m_visibility_buffer.resize(
+        m_input.m_target_image_view.pixel_count());
+
+    m_heap.m_vertex_output_interpolated.resize_col_capacity(
+        m_heap.m_vertex_output_layout.m_col_count);
+
+    for (auto l_col_it = 0;
+         l_col_it < m_heap.m_vertex_output_layout.m_col_count; ++l_col_it) {
+      m_heap.m_vertex_output_interpolated.col(l_col_it).resize(
+          m_input.m_target_image_view.pixel_count(),
+          m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
+    }
+
+    m_heap.m_vertex_output_interpolated_send_to_fragment_shader.resize(
+        m_heap.m_vertex_output_layout.m_col_count);
+  };
+
   void __vertex_v2() {
     m_heap.m_per_vertices.resize(m_vertex_count);
 
@@ -351,16 +391,6 @@ private:
         rast::shader_vertex_bytes::view{(ui8 *)m_input.m_program.m_vertex};
     auto l_output_parameters = l_shader_view.output_parameters();
     shader_vertex_function l_vertex_function = l_shader_view.function();
-
-    m_heap.m_vertex_output.resize_col_capacity(
-        m_heap.m_vertex_output_layout.m_col_count);
-
-    for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_layout.m_col_count; l_col_it++) {
-      m_heap.m_vertex_output.col(l_col_it).resize(
-          m_vertex_count,
-          m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
-    }
 
     for (auto i = 0; i < m_vertex_count; ++i) {
       ui8 *l_vertex_bytes =
@@ -401,7 +431,6 @@ private:
   };
 
   void __extract_screen_polygons() {
-    m_heap.m_per_polygons.resize(m_polygon_count);
 
     uimax l_index_idx = 0;
     for (auto i = 0; i < m_polygon_count; ++i) {
@@ -432,8 +461,6 @@ private:
   };
 
   void __calculate_visibility_buffer() {
-    m_heap.m_visibility_buffer.resize(
-        m_input.m_target_image_view.pixel_count());
 
     container::range<ui8> l_visibility_range;
     m_heap.m_visibility_buffer.range(&l_visibility_range, orm::none(),
@@ -469,44 +496,41 @@ private:
     }
   };
 
-  void __interpolate_vertex_output() {
+  void __interpolate_depth() {
+    assert_debug(m_state.m_interpolate_depth);
+    __interpolate_vertex_output_range(
+        m_heap.m_vertex_output_layout.m_internal_start_index,
+        m_heap.m_vertex_output_layout.m_internal_start_index + 1);
+  };
 
-    m_heap.m_vertex_output_interpolated.resize_col_capacity(
-        m_heap.m_vertex_output_layout.m_col_count);
-
-    for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_layout.m_col_count; ++l_col_it) {
-      m_heap.m_vertex_output_interpolated.col(l_col_it).resize(
-          m_input.m_target_image_view.pixel_count(),
-          m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
-    }
-
-    m_heap.m_vertex_output_interpolated_send_to_fragment_shader.resize(
-        m_heap.m_vertex_output_layout.m_col_count);
-
+  void __apply_depth_value() {
+    assert_debug(m_state.m_interpolate_depth);
+    assert_debug(m_state.m_compare_depth);
+    // TODO -> only interpolate depth if there is depth comparison
+    // And set the visibility value
+    container::runtime_buffer &l_buffer =
+        m_heap.m_vertex_output_interpolated.col(
+            m_heap.m_vertex_output_layout.m_internal_start_index);
     ui8 *l_visibility_boolean;
-    rasterization_weight *l_visibility_weight;
-    uimax *l_visibility_polygon;
-
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
-                                    &l_visibility_weight,
-                                    &l_visibility_polygon);
+                                    orm::none(), orm::none());
       if (*l_visibility_boolean) {
-        polygon_vertex_indices *l_indices_polygon;
-        m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
-                                 &l_indices_polygon);
-
-        for (auto l_vertex_output_index = 0;
-             l_vertex_output_index < m_heap.m_vertex_output_layout.m_col_count;
-             ++l_vertex_output_index) {
-          __interpolate_vertex_output_single_value(
-              m_heap.m_vertex_output_layout.m_layout.range(),
-              l_vertex_output_index, *l_indices_polygon, *l_visibility_weight,
-              p_pixel_index);
+        f32 *l_depth_value = (f32 *)l_buffer.at(p_pixel_index * sizeof(f32));
+        f32 *l_depth_buffer_value =
+            m_input.m_target_depth_view.at<f32>(p_pixel_index);
+        if (*l_depth_value >= *l_depth_buffer_value) {
+          *l_visibility_boolean = false;
         }
+        // TODO
+        // sample the depth frame buffer
       }
     });
+  };
+
+  void __interpolate_vertex_output() {
+    __interpolate_vertex_output_range(
+        0, m_heap.m_vertex_output_layout.m_internal_start_index);
   };
 
   void __fragment() {
@@ -555,6 +579,31 @@ private:
         p_callback(l_pixel_index);
       }
     }
+  };
+
+  void __interpolate_vertex_output_range(ui8 p_begin_index, ui8 p_end_index) {
+    ui8 *l_visibility_boolean;
+    rasterization_weight *l_visibility_weight;
+    uimax *l_visibility_polygon;
+
+    __for_each_rendered_pixels([&](uimax p_pixel_index) {
+      m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
+                                    &l_visibility_weight,
+                                    &l_visibility_polygon);
+      if (*l_visibility_boolean) {
+        polygon_vertex_indices *l_indices_polygon;
+        m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
+                                 &l_indices_polygon);
+
+        for (auto l_vertex_output_index = p_begin_index;
+             l_vertex_output_index < p_end_index; ++l_vertex_output_index) {
+          __interpolate_vertex_output_single_value(
+              m_heap.m_vertex_output_layout.m_layout.range(),
+              l_vertex_output_index, *l_indices_polygon, *l_visibility_weight,
+              p_pixel_index);
+        }
+      }
+    });
   };
 
   void __interpolate_vertex_output_single_value(
