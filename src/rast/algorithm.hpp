@@ -456,7 +456,6 @@ private:
     m_rendered_rect.max() = l_first_vertex_pixel_coordinates->cast<ui16>();
   };
 
-  // TODO -> add more composition to facilitate depth read/write
   void __calculate_visibility_buffer() {
 
     container::range<ui8> l_visibility_range;
@@ -640,8 +639,6 @@ private:
 
         m::vec<ui8, 3> l_color = (l_color_buffer * 255).cast<ui8>();
         m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
-
-        // TODO -> write to the depth buffer if necessary
       }
     });
   };
