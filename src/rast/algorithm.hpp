@@ -132,14 +132,15 @@ private:
 
 using polygon_vertex_indices = m::polygon<uimax, 3>;
 using pixel_coordinates = m::vec<i16, 2>;
+using homogeneous_coordinates = m::vec<f32, 3>;
 using rasterization_weight = m::vec<f32, 3>;
 
 struct rasterize_heap {
 
   struct per_vertices {
     table_span_meta;
-    table_cols_1(pixel_coordinates);
-    table_define_span_1;
+    table_cols_2(pixel_coordinates, homogeneous_coordinates);
+    table_define_span_2;
   } m_per_vertices;
 
   struct per_polygons {
@@ -148,8 +149,6 @@ struct rasterize_heap {
     table_define_span_2;
   } m_per_polygons;
 
-  // TODO -> no, the depth should be passed to the vertex_output
-  // TODO -> the depth vertex output should be stored as a column index
   container::multi_byte_buffer m_vertex_output;
   container::span<ui8 *> m_vertex_output_send_to_vertex_shader;
 
@@ -168,7 +167,6 @@ struct rasterize_heap {
     };
 
     container::span<layout> m_layout;
-    ui8 m_interpolation_end_index;
     ui8 m_col_count;
   } m_vertex_output_layout;
 
@@ -201,8 +199,14 @@ struct rasterize_heap {
 
   pixel_coordinates &get_pixel_coordinates(ui32 p_index) {
     pixel_coordinates *l_pixel_coordinate;
-    m_per_vertices.at(p_index, &l_pixel_coordinate);
+    m_per_vertices.at(p_index, &l_pixel_coordinate, orm::none());
     return *l_pixel_coordinate;
+  };
+
+  homogeneous_coordinates &get_vertex_homogenous(ui32 p_index) {
+    homogeneous_coordinates *l_homogeneous_coordinates;
+    m_per_vertices.at(p_index, orm::none(), &l_homogeneous_coordinates);
+    return *l_homogeneous_coordinates;
   };
 };
 
@@ -320,33 +324,15 @@ private:
     auto l_output_parameters = l_shader_view.output_parameters();
 
     uimax l_vertex_output_col_count = l_output_parameters.count();
-    if (m_state.m_depth_read) {
-      l_vertex_output_col_count += 1;
-    }
-    m_heap.m_vertex_output_layout.m_interpolation_end_index =
-        l_output_parameters.count();
+    m_heap.m_vertex_output_layout.m_col_count = l_output_parameters.count();
 
     for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_layout.m_interpolation_end_index;
-         l_col_it++) {
+         l_col_it < m_heap.m_vertex_output_layout.m_col_count; l_col_it++) {
       const auto &l_input_meta = l_output_parameters.at(l_col_it);
       auto &l_layout = m_heap.m_vertex_output_layout.m_layout.at(l_col_it);
       l_layout.m_element_size = l_input_meta.m_single_element_size;
       l_layout.m_attrib_type = l_input_meta.m_attrib_type;
       l_layout.m_attrib_element_count = l_input_meta.m_attrib_element_count;
-    }
-
-    m_heap.m_vertex_output_layout.m_col_count =
-        m_heap.m_vertex_output_layout.m_interpolation_end_index;
-
-    if (m_state.m_depth_read) {
-      auto &l_layout = m_heap.m_vertex_output_layout.m_layout.at(
-          m_heap.m_vertex_output_layout.m_interpolation_end_index);
-      l_layout.m_element_size = sizeof(f32);
-      l_layout.m_attrib_type = bgfx::AttribType::Float;
-      l_layout.m_attrib_element_count = 1;
-
-      m_heap.m_vertex_output_layout.m_col_count += 1;
     }
   };
 
@@ -368,18 +354,17 @@ private:
         m_input.m_target_image_view.pixel_count());
 
     m_heap.m_vertex_output_interpolated.resize_col_capacity(
-        m_heap.m_vertex_output_layout.m_interpolation_end_index);
+        m_heap.m_vertex_output_layout.m_col_count);
 
     for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_layout.m_interpolation_end_index;
-         ++l_col_it) {
+         l_col_it < m_heap.m_vertex_output_layout.m_col_count; ++l_col_it) {
       m_heap.m_vertex_output_interpolated.col(l_col_it).resize(
           m_input.m_target_image_view.pixel_count(),
           m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
     }
 
     m_heap.m_vertex_output_interpolated_send_to_fragment_shader.resize(
-        m_heap.m_vertex_output_layout.m_interpolation_end_index);
+        m_heap.m_vertex_output_layout.m_col_count);
   };
 
   void __vertex_v2() {
@@ -400,8 +385,7 @@ private:
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
 
       for (auto l_output_it = 0;
-           l_output_it <
-           m_heap.m_vertex_output_layout.m_interpolation_end_index;
+           l_output_it < m_heap.m_vertex_output_layout.m_col_count;
            ++l_output_it) {
         m_heap.m_vertex_output_send_to_vertex_shader.at(l_output_it) =
             m_heap.m_vertex_output.at(l_output_it, i);
@@ -426,10 +410,12 @@ private:
       l_pixel_coordinates_f32 *= (m_input.m_rect.extend() - 1);
 
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
+
       if (m_state.m_depth_read) {
-        *(f32 *)m_heap.m_vertex_output.at(
-            m_heap.m_vertex_output_layout.m_interpolation_end_index, i) =
-            l_vertex_shader_out.z();
+        homogeneous_coordinates *l_homogeneous_coordinates;
+        m_heap.m_per_vertices.at(i, orm::none(), &l_homogeneous_coordinates);
+        *l_homogeneous_coordinates =
+            homogeneous_coordinates::make(l_vertex_shader_out);
       }
     }
   };
@@ -459,7 +445,7 @@ private:
 
   void __intialize_rendered_rect() {
     pixel_coordinates *l_first_vertex_pixel_coordinates;
-    m_heap.m_per_vertices.at(0, &l_first_vertex_pixel_coordinates);
+    m_heap.m_per_vertices.at(0, &l_first_vertex_pixel_coordinates, orm::none());
     m_rendered_rect.min() = l_first_vertex_pixel_coordinates->cast<ui16>();
     m_rendered_rect.max() = l_first_vertex_pixel_coordinates->cast<ui16>();
   };
@@ -501,15 +487,12 @@ private:
               rasterization_weight l_weight = {w0, w1, w2};
               m::polygon<f32, 3> l_attribute_polygon;
 
-              l_attribute_polygon.p0() = *(f32 *)m_heap.m_vertex_output.at(
-                  m_heap.m_vertex_output_layout.m_interpolation_end_index,
-                  l_polygon_indices->p0());
-              l_attribute_polygon.p1() = *(f32 *)m_heap.m_vertex_output.at(
-                  m_heap.m_vertex_output_layout.m_interpolation_end_index,
-                  l_polygon_indices->p1());
-              l_attribute_polygon.p2() = *(f32 *)m_heap.m_vertex_output.at(
-                  m_heap.m_vertex_output_layout.m_interpolation_end_index,
-                  l_polygon_indices->p2());
+              l_attribute_polygon.p0() =
+                  m_heap.get_vertex_homogenous(l_polygon_indices->p0()).z();
+              l_attribute_polygon.p1() =
+                  m_heap.get_vertex_homogenous(l_polygon_indices->p1()).z();
+              l_attribute_polygon.p2() =
+                  m_heap.get_vertex_homogenous(l_polygon_indices->p2()).z();
 
               f32 l_interpolated_depth =
                   m::interpolate(l_attribute_polygon, l_weight);
@@ -547,7 +530,7 @@ private:
 
   void __interpolate_vertex_output() {
     __interpolate_vertex_output_range(
-        0, m_heap.m_vertex_output_layout.m_interpolation_end_index);
+        0, m_heap.m_vertex_output_layout.m_col_count);
   };
 
   void __fragment() {

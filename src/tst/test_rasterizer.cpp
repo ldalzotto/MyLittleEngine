@@ -276,7 +276,7 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   bgfx::shutdown();
 }
 
-TEST_CASE("rast.depth_comparison") {
+TEST_CASE("rast.depth.comparison") {
 
   bgfx::init();
 
