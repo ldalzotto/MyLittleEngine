@@ -148,6 +148,11 @@ struct rasterize_heap {
     table_define_span_3;
   } m_visibility_buffer;
 
+  struct vertex_output_layout {
+    container::span<ui16> m_element_size;
+    ui8 m_internal_start_index;
+  } m_vertex_output_layout;
+
   container::multi_byte_buffer m_vertex_output_interpolated;
   container::span<ui8 *> m_vertex_output_interpolated_send_to_fragment_shader;
 
@@ -160,6 +165,7 @@ struct rasterize_heap {
 
     m_vertex_output_send_to_vertex_shader.allocate(128);
     m_vertex_output_interpolated_send_to_fragment_shader.allocate(128);
+    m_vertex_output_layout.m_element_size.allocate(128);
   };
 
   void free() {
@@ -171,6 +177,7 @@ struct rasterize_heap {
 
     m_vertex_output_send_to_vertex_shader.free();
     m_vertex_output_interpolated_send_to_fragment_shader.free();
+    m_vertex_output_layout.m_element_size.free();
   };
 
   pixel_coordinates &get_pixel_coordinates(ui32 p_index) {
@@ -220,9 +227,6 @@ struct rasterize_unit {
   ui16 m_vertex_stride;
   uimax m_vertex_count;
 
-  uimax m_vertex_output_col_count;
-  uimax m_vertex_depth_output_col_index;
-
   uimax m_polygon_count;
 
   m::rect_min_max<ui16> m_rendered_rect;
@@ -267,6 +271,7 @@ struct rasterize_unit {
       assert_debug(!l_position_as_int);
     });
 
+    __initialize_layouts();
     __vertex_v2();
 
     // TODO -> backface culling
@@ -287,6 +292,32 @@ struct rasterize_unit {
 private:
   void __terminate(){};
 
+  void __initialize_layouts() {
+
+    assert_debug(m_input.m_program.m_vertex);
+    auto l_shader_view =
+        rast::shader_vertex_bytes::view{(ui8 *)m_input.m_program.m_vertex};
+    auto l_output_parameters = l_shader_view.output_parameters();
+
+    uimax l_vertex_output_col_count = l_output_parameters.count();
+    if (m_state.m_interpolate_depth) {
+      l_vertex_output_col_count += 1;
+    }
+    m_heap.m_vertex_output_layout.m_internal_start_index =
+        l_output_parameters.count();
+
+    for (auto l_col_it = 0;
+         l_col_it < m_heap.m_vertex_output_layout.m_internal_start_index;
+         l_col_it++) {
+      m_heap.m_vertex_output_layout.m_element_size.at(l_col_it) =
+          l_output_parameters.at(l_col_it).m_single_element_size;
+    }
+    if (m_state.m_interpolate_depth) {
+      m_heap.m_vertex_output_layout.m_element_size.at(
+          m_heap.m_vertex_output_layout.m_internal_start_index) = sizeof(f32);
+    }
+  };
+
   void __vertex_v2() {
     m_heap.m_per_vertices.resize(m_vertex_count);
 
@@ -300,29 +331,15 @@ private:
     auto l_output_parameters = l_shader_view.output_parameters();
     shader_vertex_function l_vertex_function = l_shader_view.function();
 
-    m_vertex_output_col_count = l_output_parameters.count();
-    uimax l_vertex_output_col_count_from_layout = m_vertex_output_col_count;
+    m_heap.m_vertex_output.resize_col_capacity(
+        m_heap.m_vertex_output_layout.m_element_size.count());
 
-    if (m_state.m_interpolate_depth) {
-      m_vertex_output_col_count += 1;
-      m_vertex_depth_output_col_index = m_vertex_output_col_count - 1;
-    }
-
-    m_heap.m_vertex_output.resize_col_capacity(m_vertex_output_col_count);
-
-    // TODO -> making this more straightforward by having an array
-    {
-      for (auto l_col_it = 0; l_col_it < l_vertex_output_col_count_from_layout;
-           l_col_it++) {
-        m_heap.m_vertex_output.col(l_col_it).resize(
-            m_vertex_count,
-            l_output_parameters.at(l_col_it).m_single_element_size);
-      }
-
-      if (m_state.m_interpolate_depth) {
-        m_heap.m_vertex_output.col(m_vertex_depth_output_col_index)
-            .resize(m_vertex_count, sizeof(f32));
-      }
+    for (auto l_col_it = 0;
+         l_col_it < m_heap.m_vertex_output_layout.m_element_size.count();
+         l_col_it++) {
+      m_heap.m_vertex_output.col(l_col_it).resize(
+          m_vertex_count,
+          m_heap.m_vertex_output_layout.m_element_size.at(l_col_it));
     }
 
     for (auto i = 0; i < m_vertex_count; ++i) {
@@ -330,7 +347,8 @@ private:
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
 
       for (auto l_output_it = 0;
-           l_output_it < l_vertex_output_col_count_from_layout; ++l_output_it) {
+           l_output_it < m_heap.m_vertex_output_layout.m_internal_start_index;
+           ++l_output_it) {
         m_heap.m_vertex_output_send_to_vertex_shader.at(l_output_it) =
             m_heap.m_vertex_output.at(l_output_it, i);
       }
@@ -355,7 +373,8 @@ private:
 
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
       if (m_state.m_interpolate_depth) {
-        *(f32 *)m_heap.m_vertex_output.at(m_vertex_depth_output_col_index, i) =
+        *(f32 *)m_heap.m_vertex_output.at(
+            m_heap.m_vertex_output_layout.m_internal_start_index, i) =
             l_vertex_shader_out.z();
       }
     }

@@ -148,6 +148,7 @@ TEST_CASE("rast.single_triangle.visibility") {
   bgfx::setTransform(l_indentity.m_data);
   bgfx::setIndexBuffer(l_index_buffer);
   bgfx::setVertexBuffer(0, l_vertex_buffer);
+  bgfx::setState(0);
 
   bgfx::submit(0, l_program);
 
@@ -240,6 +241,7 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   bgfx::setIndexBuffer(l_index_buffer);
   bgfx::setVertexBuffer(0, l_vertex_buffer);
+  bgfx::setState(0);
 
   bgfx::submit(0, l_program);
 
@@ -344,6 +346,7 @@ TEST_CASE("rast.depth_comparison") {
 
   bgfx::setIndexBuffer(l_index_buffer);
   bgfx::setVertexBuffer(0, l_vertex_buffer);
+  bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS);
 
   bgfx::submit(0, l_program);
 
