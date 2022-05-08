@@ -475,48 +475,44 @@ private:
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
       m_rendered_rect = m::extend(m_rendered_rect, l_bounding_rect);
 
+      // Resetting the bouding rect visibility buffer
+      container::range<ui8> l_boudingrect_visibility_range;
+      m_heap.m_rasterizationrect_visibility_buffer.range(
+          &l_boudingrect_visibility_range, orm::none(), orm::none());
+      auto l_bounding_rect_diff =
+          (l_bounding_rect.max() - l_bounding_rect.min()) + 1;
+      l_boudingrect_visibility_range.count() =
+          l_bounding_rect_diff.x() * l_bounding_rect_diff.y();
+      l_boudingrect_visibility_range.zero();
+
+      utils::rasterize_polygon_weighted(
+          *l_polygon, l_bounding_rect,
+          [&](i16 x, i16 y, f32 w0, f32 w1, f32 w2) {
+            ui8 *l_visibility_boolean;
+            rasterization_weight *l_visibility_weight;
+            uimax *l_polygon_index;
+
+            m::vec<i16, 2> l_point = {x, y};
+            l_point -= l_bounding_rect.min();
+
+            auto l_boudingrect_visibility_index =
+                (l_point.y() * l_bounding_rect_diff.x()) + l_point.x();
+
+            assert_debug(l_boudingrect_visibility_index <
+                         l_boudingrect_visibility_range.count());
+
+            m_heap.m_rasterizationrect_visibility_buffer.at(
+                l_boudingrect_visibility_index, &l_visibility_boolean,
+                &l_visibility_weight, &l_polygon_index);
+
+            rasterization_weight l_weight = {w0, w1, w2};
+
+            *l_visibility_boolean = 1;
+            *l_visibility_weight = l_weight;
+            *l_polygon_index = l_polygon_it;
+          });
+
       if (m_state.m_depth_read) {
-
-        // Resetting the bouding rect visibility buffer
-        container::range<ui8> l_boudingrect_visibility_range;
-        m_heap.m_rasterizationrect_visibility_buffer.range(
-            &l_boudingrect_visibility_range, orm::none(), orm::none());
-        auto l_bounding_rect_diff =
-            (l_bounding_rect.max() - l_bounding_rect.min()) + 1;
-        l_boudingrect_visibility_range.count() =
-            l_bounding_rect_diff.x() * l_bounding_rect_diff.y();
-        l_boudingrect_visibility_range.zero();
-
-        // TODO -> the call to utils::rasterize_polygon_weighted can be done
-        // outside of the ifs by having an input rect as parameter and a
-        // function to reposition the index. Instead of returning (x,y), we have
-        // a buffer index instead.
-        utils::rasterize_polygon_weighted(
-            *l_polygon, l_bounding_rect,
-            [&](i16 x, i16 y, f32 w0, f32 w1, f32 w2) {
-              ui8 *l_visibility_boolean;
-              rasterization_weight *l_visibility_weight;
-              uimax *l_polygon_index;
-
-              m::vec<i16, 2> l_point = {x, y};
-              l_point -= l_bounding_rect.min();
-
-              auto l_boudingrect_visibility_index =
-                  (l_point.y() * l_bounding_rect_diff.x()) + l_point.x();
-
-              assert_debug(l_boudingrect_visibility_index <
-                           l_boudingrect_visibility_range.count());
-
-              m_heap.m_rasterizationrect_visibility_buffer.at(
-                  l_boudingrect_visibility_index, &l_visibility_boolean,
-                  &l_visibility_weight, &l_polygon_index);
-
-              rasterization_weight l_weight = {w0, w1, w2};
-
-              *l_visibility_boolean = 1;
-              *l_visibility_weight = l_weight;
-              *l_polygon_index = l_polygon_it;
-            });
 
         m::polygon<f32, 3> l_attribute_polygon;
 
@@ -527,32 +523,14 @@ private:
         l_attribute_polygon.p2() =
             m_heap.get_vertex_homogenous(l_polygon_indices->p2()).z();
 
-        for (auto y = 0; y <= l_bounding_rect_diff.y(); ++y) {
-          for (auto x = 0; x <= l_bounding_rect_diff.x(); ++x) {
-            auto l_boudingrect_visibility_index =
-                (y * l_bounding_rect_diff.x()) + x;
-
-            ui8 *l_boundingrect_visibility_boolean;
-            rasterization_weight *l_boundingrect_visibility_weight;
-            uimax *l_boundingrect_polygon_index;
-
-            m_heap.m_rasterizationrect_visibility_buffer.at(
-                l_boudingrect_visibility_index,
-                &l_boundingrect_visibility_boolean,
-                &l_boundingrect_visibility_weight,
-                &l_boundingrect_polygon_index);
-
-            if (*l_boundingrect_visibility_boolean) {
-
+        __for_each_bounding_rasterized_pixels(
+            l_bounding_rect_diff, l_bounding_rect,
+            [&](ui8 *l_boundingrect_visibility_boolean,
+                rasterization_weight *l_boundingrect_visibility_weight,
+                uimax *l_boundingrect_polygon_index, i16 l_visibility_index) {
               ui8 *l_visibility_boolean;
               rasterization_weight *l_visibility_weight;
               uimax *l_polygon_index;
-
-              auto l_visibility_index =
-                  ((y + l_bounding_rect.min().y()) *
-                   m_input.m_target_image_view.m_target_info.width) +
-                  (x + l_bounding_rect.min().x());
-
               m_heap.m_visibility_buffer.at(
                   l_visibility_index, &l_visibility_boolean,
                   &l_visibility_weight, &l_polygon_index);
@@ -572,26 +550,57 @@ private:
                   *l_buffer_depth = l_interpolated_depth;
                 }
               }
-            }
-          }
-        }
-
+            });
       } else {
-        utils::rasterize_polygon_weighted(
-            *l_polygon, l_bounding_rect,
-            [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
+        __for_each_bounding_rasterized_pixels(
+            l_bounding_rect_diff, l_bounding_rect,
+            [&](ui8 *l_boundingrect_visibility_boolean,
+                rasterization_weight *l_boundingrect_visibility_weight,
+                uimax *l_boundingrect_polygon_index, i16 l_visibility_index) {
               ui8 *l_visibility_boolean;
               rasterization_weight *l_visibility_weight;
-              uimax *l_polyton_index;
-              auto l_visibility_index =
-                  (y * m_input.m_target_image_view.m_target_info.width) + x;
+              uimax *l_polygon_index;
               m_heap.m_visibility_buffer.at(
                   l_visibility_index, &l_visibility_boolean,
-                  &l_visibility_weight, &l_polyton_index);
+                  &l_visibility_weight, &l_polygon_index);
+
               *l_visibility_boolean = 1;
-              *l_visibility_weight = {w0, w1, w2};
-              *l_polyton_index = l_polygon_it;
+              *l_visibility_weight = *l_boundingrect_visibility_weight;
+              *l_polygon_index = *l_boundingrect_polygon_index;
             });
+      }
+    }
+  };
+
+  template <typename CallbackFunc>
+  void __for_each_bounding_rasterized_pixels(
+      const m::vec<i16, 2> &p_bounding_rect_diff,
+      const m::rect_min_max<i16> &p_bounding_rect,
+      const CallbackFunc &p_callback) {
+    for (auto y = 0; y <= p_bounding_rect_diff.y(); ++y) {
+      for (auto x = 0; x <= p_bounding_rect_diff.x(); ++x) {
+        auto l_boudingrect_visibility_index =
+            (y * p_bounding_rect_diff.x()) + x;
+
+        ui8 *l_boundingrect_visibility_boolean;
+        rasterization_weight *l_boundingrect_visibility_weight;
+        uimax *l_boundingrect_polygon_index;
+
+        m_heap.m_rasterizationrect_visibility_buffer.at(
+            l_boudingrect_visibility_index, &l_boundingrect_visibility_boolean,
+            &l_boundingrect_visibility_weight, &l_boundingrect_polygon_index);
+
+        if (*l_boundingrect_visibility_boolean) {
+
+          auto l_visibility_index =
+              ((y + p_bounding_rect.min().y()) *
+               m_input.m_target_image_view.m_target_info.width) +
+              (x + p_bounding_rect.min().x());
+
+          p_callback(l_boundingrect_visibility_boolean,
+                     l_boundingrect_visibility_weight,
+                     l_boundingrect_polygon_index, l_visibility_index);
+        }
       }
     }
   };
