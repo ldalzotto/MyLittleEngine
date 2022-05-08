@@ -35,6 +35,20 @@ load_program(const container::range<rast::shader_vertex_output_parameter>
   bgfx::ShaderHandle l_fragment = bgfx::createShader(l_fragment_shader_memory);
   return bgfx::createProgram(l_vertex, l_fragment);
 };
+
+inline static void loadVertexIndex(const bgfx::VertexLayout &p_vertex_layout,
+                                   const container::range<ui8> &p_vertices,
+                                   const container::range<ui8> &p_indicex,
+                                   bgfx::VertexBufferHandle *out_vertex,
+                                   bgfx::IndexBufferHandle *out_index) {
+  const bgfx::Memory *l_vertex_memory =
+      bgfx::makeRef(p_vertices.data(), p_vertices.count());
+  const bgfx::Memory *l_index_memory =
+      bgfx::makeRef(p_indicex.data(), p_indicex.count());
+
+  *out_vertex = bgfx::createVertexBuffer(l_vertex_memory, p_vertex_layout);
+  *out_index = bgfx::createIndexBuffer(l_index_memory);
+};
 }; // namespace RasterizerTestToolbox
 
 struct WhiteShader {
@@ -108,15 +122,12 @@ TEST_CASE("rast.single_triangle.visibility") {
       .m_data = {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}}};
   container::arr<ui16, 3> l_triangle_indices = {0, 1, 2};
 
-  const bgfx::Memory *l_vertex_memory =
-      bgfx::makeRef(l_triangle_vertices.data(), sizeof(l_triangle_vertices));
-  const bgfx::Memory *l_index_memory =
-      bgfx::makeRef(l_triangle_indices.data(), sizeof(l_triangle_indices));
-
-  bgfx::VertexBufferHandle l_vertex_buffer =
-      bgfx::createVertexBuffer(l_vertex_memory, l_vertex_layout);
-  bgfx::IndexBufferHandle l_index_buffer =
-      bgfx::createIndexBuffer(l_index_memory);
+  bgfx::VertexBufferHandle l_vertex_buffer;
+  bgfx::IndexBufferHandle l_index_buffer;
+  RasterizerTestToolbox::loadVertexIndex(
+      l_vertex_layout, l_triangle_vertices.range().cast_to<ui8>(),
+      l_triangle_indices.range().cast_to<ui8>(), &l_vertex_buffer,
+      &l_index_buffer);
 
   constexpr ui16 l_width = 8, l_height = 8;
 
@@ -127,7 +138,7 @@ TEST_CASE("rast.single_triangle.visibility") {
 
   m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
 
-  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
   bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
   bgfx::setViewFrameBuffer(0, l_frame_buffer);
@@ -202,15 +213,12 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   container::arr<ui16, 3> l_triangle_indices = {0, 1, 2};
 
-  const bgfx::Memory *l_vertex_memory =
-      bgfx::makeRef(l_triangle_vertices.data(), l_triangle_vertices.size_of());
-  const bgfx::Memory *l_index_memory =
-      bgfx::makeRef(l_triangle_indices.data(), sizeof(l_triangle_indices));
-
-  bgfx::VertexBufferHandle l_vertex_buffer =
-      bgfx::createVertexBuffer(l_vertex_memory, l_vertex_layout);
-  bgfx::IndexBufferHandle l_index_buffer =
-      bgfx::createIndexBuffer(l_index_memory);
+  bgfx::VertexBufferHandle l_vertex_buffer;
+  bgfx::IndexBufferHandle l_index_buffer;
+  RasterizerTestToolbox::loadVertexIndex(
+      l_vertex_layout, l_triangle_vertices.range().cast_to<ui8>(),
+      l_triangle_indices.range().cast_to<ui8>(), &l_vertex_buffer,
+      &l_index_buffer);
 
   constexpr ui16 l_width = 8, l_height = 8;
 
@@ -221,7 +229,7 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
 
-  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
   bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
   bgfx::setViewFrameBuffer(0, l_frame_buffer);
