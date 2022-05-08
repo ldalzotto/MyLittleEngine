@@ -2,6 +2,11 @@
 #include <doctest.h>
 #include <rast/rast.hpp>
 
+#if 0
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_write.h>
+#endif
+
 namespace RasterizerTestToolbox {
 
 inline static container::range<m::vec<ui8, 3>>
@@ -368,6 +373,9 @@ TEST_CASE("rast.depth.comparison") {
       0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
       0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
       0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0};
+
+  auto *l_frame_texture =
+      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
 
   REQUIRE(l_frame_buffer_memory.is_contained_by(
       l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));

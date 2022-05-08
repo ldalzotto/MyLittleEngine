@@ -158,6 +158,8 @@ struct rasterize_heap {
     table_define_span_3;
   } m_visibility_buffer;
 
+  visiblity m_rasterizationrect_visibility_buffer;
+
   struct vertex_output_layout {
 
     struct layout {
@@ -177,6 +179,7 @@ struct rasterize_heap {
     m_per_vertices.allocate(1024);
     m_per_polygons.allocate(1024);
     m_visibility_buffer.allocate(1024);
+    m_rasterizationrect_visibility_buffer.allocate(1024);
     m_vertex_output.allocate();
     m_vertex_output_interpolated.allocate();
 
@@ -352,6 +355,8 @@ private:
 
     m_heap.m_visibility_buffer.resize(
         m_input.m_target_image_view.pixel_count());
+    m_heap.m_rasterizationrect_visibility_buffer.resize(
+        m_input.m_target_image_view.pixel_count());
 
     m_heap.m_vertex_output_interpolated.resize_col_capacity(
         m_heap.m_vertex_output_layout.m_col_count);
@@ -471,43 +476,106 @@ private:
       m_rendered_rect = m::extend(m_rendered_rect, l_bounding_rect);
 
       if (m_state.m_depth_read) {
+
+        // Resetting the bouding rect visibility buffer
+        container::range<ui8> l_boudingrect_visibility_range;
+        m_heap.m_rasterizationrect_visibility_buffer.range(
+            &l_boudingrect_visibility_range, orm::none(), orm::none());
+        auto l_bounding_rect_diff =
+            (l_bounding_rect.max() - l_bounding_rect.min()) + 1;
+        l_boudingrect_visibility_range.count() =
+            l_bounding_rect_diff.x() * l_bounding_rect_diff.y();
+        l_boudingrect_visibility_range.zero();
+
+        // TODO -> the call to utils::rasterize_polygon_weighted can be done
+        // outside of the ifs by having an input rect as parameter and a
+        // function to reposition the index. Instead of returning (x,y), we have
+        // a buffer index instead.
         utils::rasterize_polygon_weighted(
             *l_polygon, l_bounding_rect,
-            [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
+            [&](i16 x, i16 y, f32 w0, f32 w1, f32 w2) {
               ui8 *l_visibility_boolean;
               rasterization_weight *l_visibility_weight;
-              uimax *l_polyton_index;
+              uimax *l_polygon_index;
+
+              m::vec<i16, 2> l_point = {x, y};
+              l_point -= l_bounding_rect.min();
+
+              auto l_boudingrect_visibility_index =
+                  (l_point.y() * l_bounding_rect_diff.x()) + l_point.x();
+
+              assert_debug(l_boudingrect_visibility_index <
+                           l_boudingrect_visibility_range.count());
+
+              m_heap.m_rasterizationrect_visibility_buffer.at(
+                  l_boudingrect_visibility_index, &l_visibility_boolean,
+                  &l_visibility_weight, &l_polygon_index);
+
+              rasterization_weight l_weight = {w0, w1, w2};
+
+              *l_visibility_boolean = 1;
+              *l_visibility_weight = l_weight;
+              *l_polygon_index = l_polygon_it;
+            });
+
+        m::polygon<f32, 3> l_attribute_polygon;
+
+        l_attribute_polygon.p0() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p0()).z();
+        l_attribute_polygon.p1() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p1()).z();
+        l_attribute_polygon.p2() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p2()).z();
+
+        for (auto y = 0; y <= l_bounding_rect_diff.y(); ++y) {
+          for (auto x = 0; x <= l_bounding_rect_diff.x(); ++x) {
+            auto l_boudingrect_visibility_index =
+                (y * l_bounding_rect_diff.x()) + x;
+
+            ui8 *l_boundingrect_visibility_boolean;
+            rasterization_weight *l_boundingrect_visibility_weight;
+            uimax *l_boundingrect_polygon_index;
+
+            m_heap.m_rasterizationrect_visibility_buffer.at(
+                l_boudingrect_visibility_index,
+                &l_boundingrect_visibility_boolean,
+                &l_boundingrect_visibility_weight,
+                &l_boundingrect_polygon_index);
+
+            if (*l_boundingrect_visibility_boolean) {
+
+              ui8 *l_visibility_boolean;
+              rasterization_weight *l_visibility_weight;
+              uimax *l_polygon_index;
+
               auto l_visibility_index =
-                  (y * m_input.m_target_image_view.m_target_info.width) + x;
+                  ((y + l_bounding_rect.min().y()) *
+                   m_input.m_target_image_view.m_target_info.width) +
+                  (x + l_bounding_rect.min().x());
 
               m_heap.m_visibility_buffer.at(
                   l_visibility_index, &l_visibility_boolean,
-                  &l_visibility_weight, &l_polyton_index);
+                  &l_visibility_weight, &l_polygon_index);
 
-              rasterization_weight l_weight = {w0, w1, w2};
-              m::polygon<f32, 3> l_attribute_polygon;
-
-              l_attribute_polygon.p0() =
-                  m_heap.get_vertex_homogenous(l_polygon_indices->p0()).z();
-              l_attribute_polygon.p1() =
-                  m_heap.get_vertex_homogenous(l_polygon_indices->p1()).z();
-              l_attribute_polygon.p2() =
-                  m_heap.get_vertex_homogenous(l_polygon_indices->p2()).z();
-
-              f32 l_interpolated_depth =
-                  m::interpolate(l_attribute_polygon, l_weight);
+              f32 l_interpolated_depth = m::interpolate(
+                  l_attribute_polygon, *l_boundingrect_visibility_weight);
               f32 *l_buffer_depth =
                   m_input.m_target_depth_view.at<f32>(l_visibility_index);
 
               if (l_interpolated_depth < *l_buffer_depth) {
                 *l_visibility_boolean = 1;
-                *l_visibility_weight = l_weight;
-                *l_polyton_index = l_polygon_it;
+                *l_visibility_weight = *l_boundingrect_visibility_weight;
+                *l_polygon_index = *l_boundingrect_polygon_index;
+
+                // TODO -> move this to a more straightforward way
                 if (m_state.m_depth_write) {
                   *l_buffer_depth = l_interpolated_depth;
                 }
               }
-            });
+            }
+          }
+        }
+
       } else {
         utils::rasterize_polygon_weighted(
             *l_polygon, l_bounding_rect,
