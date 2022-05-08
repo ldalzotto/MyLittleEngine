@@ -192,6 +192,7 @@ struct rasterize_heap {
     m_per_vertices.free();
     m_per_polygons.free();
     m_visibility_buffer.free();
+    m_rasterizationrect_visibility_buffer.free();
     m_vertex_output.free();
     m_vertex_output_interpolated.free();
 
