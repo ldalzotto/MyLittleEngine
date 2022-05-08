@@ -357,17 +357,17 @@ TEST_CASE("rast.depth_comparison") {
   REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
 
   container::arr<ui8, 192> l_frame_expected = {
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 255, 255, 0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 170, 170, 0,
-      170, 233, 0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 85, 85,  0, 85, 148, 0, 85,  212, 0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 63, 0, 0,   127, 0,
-      0,   191, 0, 0,  255, 0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0};
+      0,   0,   0, 0,   0,   0, 0,   0,   0, 255, 0, 0, 0,   0, 0, 0,   0, 0,
+      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 255, 0, 0,
+      255, 0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
+      0,   255, 0, 255, 0,   0, 255, 0,   0, 255, 0, 0, 0,   0, 0, 0,   0, 0,
+      0,   0,   0, 0,   255, 0, 0,   255, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0,
+      255, 0,   0, 255, 0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
+      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
+      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
+      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
+      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
+      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0};
 
   REQUIRE(l_frame_buffer_memory.is_contained_by(
       l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
@@ -380,3 +380,19 @@ TEST_CASE("rast.depth_comparison") {
 
   bgfx::shutdown();
 }
+
+#if 0
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_write.h>
+
+  /*
+    auto *l_frame_texture =
+        s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
+
+    stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/test.png",
+                   l_frame_texture->info.width, l_frame_texture->info.height, 3,
+                   l_frame_texture->range().m_begin,
+                   l_frame_texture->info.bitsPerPixel *
+                       l_frame_texture->info.width);
+  */
+#endif

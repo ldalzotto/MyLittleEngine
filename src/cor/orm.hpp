@@ -167,6 +167,88 @@ void __resize_span_3(TableType &p_table, uimax p_new_capacity) {
 };
 
 template <typename TableType>
+void __allocate_span_4(TableType &p_table, uimax p_capacity) {
+  p_table.m_meta = p_capacity;
+  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::malloc(
+      p_table.m_meta * sizeof(*p_table.m_col_0));
+  p_table.m_col_1 = (decltype(p_table.m_col_1))sys::malloc(
+      p_table.m_meta * sizeof(*p_table.m_col_1));
+  p_table.m_col_2 = (decltype(p_table.m_col_2))sys::malloc(
+      p_table.m_meta * sizeof(*p_table.m_col_2));
+  p_table.m_col_3 = (decltype(p_table.m_col_3))sys::malloc(
+      p_table.m_meta * sizeof(*p_table.m_col_3));
+};
+
+template <typename TableType> void __free_span_4(TableType &p_table) {
+  sys::free(p_table.m_col_0);
+  sys::free(p_table.m_col_1);
+  sys::free(p_table.m_col_2);
+  sys::free(p_table.m_col_3);
+};
+
+template <typename TableType>
+void __at_span_4(TableType &p_table, uimax p_index,
+                 typename TableType::type_0 **out_0,
+                 typename TableType::type_1 **out_1,
+                 typename TableType::type_2 **out_2,
+                 typename TableType::type_3 **out_3) {
+  assert_debug(p_index < p_table.m_meta);
+  *out_0 = &p_table.m_col_0[p_index];
+  *out_1 = &p_table.m_col_1[p_index];
+  *out_2 = &p_table.m_col_2[p_index];
+  *out_3 = &p_table.m_col_3[p_index];
+};
+
+template <typename TableType>
+void __at_span_4(TableType &p_table, uimax p_index,
+                 typename TableType::type_0 **out_0,
+                 typename TableType::type_1 **out_1,
+                 typename TableType::type_2 **out_2, orm::none) {
+  assert_debug(p_index < p_table.m_meta);
+  *out_0 = &p_table.m_col_0[p_index];
+  *out_1 = &p_table.m_col_1[p_index];
+  *out_2 = &p_table.m_col_2[p_index];
+};
+
+template <typename TableType>
+void __at_span_4(TableType &p_table, uimax p_index,
+                 typename TableType::type_0 **out_0, orm::none, orm::none,
+                 orm::none) {
+  assert_debug(p_index < p_table.m_meta);
+  *out_0 = &p_table.m_col_0[p_index];
+};
+
+template <typename TableType>
+void __at_span_4(TableType &p_table, uimax p_index, orm::none,
+                 typename TableType::type_1 **out_1, orm::none, orm::none) {
+  assert_debug(p_index < p_table.m_meta);
+  *out_1 = &p_table.m_col_1[p_index];
+};
+
+template <typename TableType>
+void __range_span_4(TableType &p_table,
+                    container::range<typename TableType::type_0> *out_0,
+                    orm::none, orm::none, orm::none) {
+  *out_0 = container::range<typename TableType::type_0>::make(p_table.m_col_0,
+                                                              p_table.m_meta);
+};
+
+template <typename TableType>
+void __resize_span_4(TableType &p_table, uimax p_new_capacity) {
+  if (p_new_capacity > p_table.m_meta) {
+    p_table.m_meta = p_new_capacity;
+    p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
+        p_table.m_col_0, sizeof(*p_table.m_col_0) * p_new_capacity);
+    p_table.m_col_1 = (decltype(p_table.m_col_1))sys::realloc(
+        p_table.m_col_1, sizeof(*p_table.m_col_1) * p_new_capacity);
+    p_table.m_col_2 = (decltype(p_table.m_col_2))sys::realloc(
+        p_table.m_col_2, sizeof(*p_table.m_col_2) * p_new_capacity);
+    p_table.m_col_3 = (decltype(p_table.m_col_3))sys::realloc(
+        p_table.m_col_3, sizeof(*p_table.m_col_3) * p_new_capacity);
+  }
+};
+
+template <typename TableType>
 bool __has_allocated_elements_vector(TableType &p_table) {
   container::vector_intrusive &l_intrusive = p_table.m_meta;
   return l_intrusive.m_count > 0;
@@ -781,6 +863,16 @@ private:
   type_1 *m_col_1;                                                             \
   type_2 *m_col_2;
 
+#define table_cols_4(Type0, Type1, Type2, Type3)                               \
+  using type_0 = Type0;                                                        \
+  using type_1 = Type1;                                                        \
+  using type_2 = Type2;                                                        \
+  using type_3 = Type3;                                                        \
+  type_0 *m_col_0;                                                             \
+  type_1 *m_col_1;                                                             \
+  type_2 *m_col_2;                                                             \
+  type_3 *m_col_3;
+
 #define table_span_meta uimax m_meta;
 
 #define table_define_span_1                                                    \
@@ -836,6 +928,31 @@ private:
   void range(container::range<type_0> *out_0, orm::none out_1,                 \
              orm::none out_2) {                                                \
     orm::details::__range_span_3(*this, out_0, out_1, out_2);                  \
+  };
+
+#define table_define_span_4                                                    \
+  void allocate(uimax p_capacity) {                                            \
+    orm::details::__allocate_span_4(*this, p_capacity);                        \
+  };                                                                           \
+  void free() { orm::details::__free_span_4(*this); };                         \
+  void at(uimax p_index, type_0 **out_0, type_1 **out_1, type_2 **out_2,       \
+          type_3 **out_3) {                                                    \
+    orm::details::__at_span_4(*this, p_index, out_0, out_1, out_2, out_3);     \
+  };                                                                           \
+  void at(uimax p_index, type_0 **out_0, orm::none out_1, orm::none out_2,     \
+          orm::none out_3) {                                                   \
+    orm::details::__at_span_4(*this, p_index, out_0, out_1, out_2, out_3);     \
+  };                                                                           \
+  void at(uimax p_index, type_0 **out_0, type_1 **out_1, type_2 **out_2,       \
+          orm::none out_3) {                                                   \
+    orm::details::__at_span_4(*this, p_index, out_0, out_1, out_2, out_3);     \
+  };                                                                           \
+  void resize(uimax p_new_capacity) {                                          \
+    orm::details::__resize_span_4(*this, p_new_capacity);                      \
+  };                                                                           \
+  void range(container::range<type_0> *out_0, orm::none out_1,                 \
+             orm::none out_2, orm::none out_3) {                               \
+    orm::details::__range_span_4(*this, out_0, out_1, out_2, out_3);           \
   };
 
 #define table_vector_meta container::vector_intrusive m_meta;

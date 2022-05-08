@@ -160,7 +160,7 @@ struct rasterize_heap {
     };
 
     container::span<layout> m_layout;
-    ui8 m_internal_start_index;
+    ui8 m_interpolation_end_index;
     ui8 m_col_count;
   } m_vertex_output_layout;
 
@@ -295,11 +295,6 @@ struct rasterize_unit {
 
     __calculate_visibility_buffer();
 
-    if (m_state.m_interpolate_depth) {
-      __interpolate_depth();
-      __apply_depth_value();
-    }
-
     __interpolate_vertex_output();
     __fragment();
 
@@ -320,11 +315,11 @@ private:
     if (m_state.m_interpolate_depth) {
       l_vertex_output_col_count += 1;
     }
-    m_heap.m_vertex_output_layout.m_internal_start_index =
+    m_heap.m_vertex_output_layout.m_interpolation_end_index =
         l_output_parameters.count();
 
     for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_layout.m_internal_start_index;
+         l_col_it < m_heap.m_vertex_output_layout.m_interpolation_end_index;
          l_col_it++) {
       const auto &l_input_meta = l_output_parameters.at(l_col_it);
       auto &l_layout = m_heap.m_vertex_output_layout.m_layout.at(l_col_it);
@@ -335,16 +330,16 @@ private:
 
     if (m_state.m_interpolate_depth) {
       auto &l_layout = m_heap.m_vertex_output_layout.m_layout.at(
-          m_heap.m_vertex_output_layout.m_internal_start_index);
+          m_heap.m_vertex_output_layout.m_interpolation_end_index);
       l_layout.m_element_size = sizeof(f32);
       l_layout.m_attrib_type = bgfx::AttribType::Float;
       l_layout.m_attrib_element_count = 1;
 
       m_heap.m_vertex_output_layout.m_col_count =
-          m_heap.m_vertex_output_layout.m_internal_start_index + 1;
+          m_heap.m_vertex_output_layout.m_interpolation_end_index + 1;
     } else {
       m_heap.m_vertex_output_layout.m_col_count =
-          m_heap.m_vertex_output_layout.m_internal_start_index;
+          m_heap.m_vertex_output_layout.m_interpolation_end_index;
     }
   };
 
@@ -366,17 +361,18 @@ private:
         m_input.m_target_image_view.pixel_count());
 
     m_heap.m_vertex_output_interpolated.resize_col_capacity(
-        m_heap.m_vertex_output_layout.m_col_count);
+        m_heap.m_vertex_output_layout.m_interpolation_end_index);
 
     for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_layout.m_col_count; ++l_col_it) {
+         l_col_it < m_heap.m_vertex_output_layout.m_interpolation_end_index;
+         ++l_col_it) {
       m_heap.m_vertex_output_interpolated.col(l_col_it).resize(
           m_input.m_target_image_view.pixel_count(),
           m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
     }
 
     m_heap.m_vertex_output_interpolated_send_to_fragment_shader.resize(
-        m_heap.m_vertex_output_layout.m_col_count);
+        m_heap.m_vertex_output_layout.m_interpolation_end_index);
   };
 
   void __vertex_v2() {
@@ -397,7 +393,8 @@ private:
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
 
       for (auto l_output_it = 0;
-           l_output_it < m_heap.m_vertex_output_layout.m_internal_start_index;
+           l_output_it <
+           m_heap.m_vertex_output_layout.m_interpolation_end_index;
            ++l_output_it) {
         m_heap.m_vertex_output_send_to_vertex_shader.at(l_output_it) =
             m_heap.m_vertex_output.at(l_output_it, i);
@@ -424,7 +421,7 @@ private:
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
       if (m_state.m_interpolate_depth) {
         *(f32 *)m_heap.m_vertex_output.at(
-            m_heap.m_vertex_output_layout.m_internal_start_index, i) =
+            m_heap.m_vertex_output_layout.m_interpolation_end_index, i) =
             l_vertex_shader_out.z();
       }
     }
@@ -471,66 +468,77 @@ private:
     for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
          ++l_polygon_it) {
       screen_polygon *l_polygon;
-      m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, orm::none());
+      polygon_vertex_indices *l_polygon_indices;
+      m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, &l_polygon_indices);
 
       m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
 
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
       m_rendered_rect = m::extend(m_rendered_rect, l_bounding_rect);
 
-      utils::rasterize_polygon_weighted(
-          *l_polygon, l_bounding_rect,
-          [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
-            ui8 *l_visibility_boolean;
-            rasterization_weight *l_visibility_weight;
-            uimax *l_polyton_index;
-            auto l_visibility_index =
-                (y * m_input.m_target_image_view.m_target_info.width) + x;
-            m_heap.m_visibility_buffer.at(
-                l_visibility_index, &l_visibility_boolean, &l_visibility_weight,
-                &l_polyton_index);
-            *l_visibility_boolean = 1;
-            *l_visibility_weight = {w0, w1, w2};
-            *l_polyton_index = l_polygon_it;
-          });
-    }
-  };
+      if (m_state.m_compare_depth) {
+        utils::rasterize_polygon_weighted(
+            *l_polygon, l_bounding_rect,
+            [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
+              ui8 *l_visibility_boolean;
+              rasterization_weight *l_visibility_weight;
+              uimax *l_polyton_index;
+              auto l_visibility_index =
+                  (y * m_input.m_target_image_view.m_target_info.width) + x;
 
-  void __interpolate_depth() {
-    assert_debug(m_state.m_interpolate_depth);
-    __interpolate_vertex_output_range(
-        m_heap.m_vertex_output_layout.m_internal_start_index,
-        m_heap.m_vertex_output_layout.m_internal_start_index + 1);
-  };
+              m_heap.m_visibility_buffer.at(
+                  l_visibility_index, &l_visibility_boolean,
+                  &l_visibility_weight, &l_polyton_index);
 
-  void __apply_depth_value() {
-    assert_debug(m_state.m_interpolate_depth);
-    assert_debug(m_state.m_compare_depth);
-    // TODO -> only interpolate depth if there is depth comparison
-    // And set the visibility value
-    container::runtime_buffer &l_buffer =
-        m_heap.m_vertex_output_interpolated.col(
-            m_heap.m_vertex_output_layout.m_internal_start_index);
-    ui8 *l_visibility_boolean;
-    __for_each_rendered_pixels([&](uimax p_pixel_index) {
-      m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
-                                    orm::none(), orm::none());
-      if (*l_visibility_boolean) {
-        f32 *l_depth_value = (f32 *)l_buffer.at(p_pixel_index * sizeof(f32));
-        f32 *l_depth_buffer_value =
-            m_input.m_target_depth_view.at<f32>(p_pixel_index);
-        if (*l_depth_value >= *l_depth_buffer_value) {
-          *l_visibility_boolean = false;
-        }
-        // TODO
-        // sample the depth frame buffer
+              rasterization_weight l_weight = {w0, w1, w2};
+              m::polygon<f32, 3> l_attribute_polygon;
+
+              l_attribute_polygon.p0() = *(f32 *)m_heap.m_vertex_output.at(
+                  m_heap.m_vertex_output_layout.m_interpolation_end_index,
+                  l_polygon_indices->p0());
+              l_attribute_polygon.p1() = *(f32 *)m_heap.m_vertex_output.at(
+                  m_heap.m_vertex_output_layout.m_interpolation_end_index,
+                  l_polygon_indices->p1());
+              l_attribute_polygon.p2() = *(f32 *)m_heap.m_vertex_output.at(
+                  m_heap.m_vertex_output_layout.m_interpolation_end_index,
+                  l_polygon_indices->p2());
+
+              f32 l_interpolated_depth =
+                  m::interpolate(l_attribute_polygon, l_weight);
+              f32 *l_buffer_depth =
+                  m_input.m_target_depth_view.at<f32>(l_visibility_index);
+
+              if (l_interpolated_depth < *l_buffer_depth) {
+                *l_visibility_boolean = 1;
+                *l_visibility_weight = l_weight;
+                *l_polyton_index = l_polygon_it;
+                *l_buffer_depth = l_interpolated_depth;
+              }
+              
+            });
+      } else {
+        utils::rasterize_polygon_weighted(
+            *l_polygon, l_bounding_rect,
+            [&](auto x, auto y, f32 w0, f32 w1, f32 w2) {
+              ui8 *l_visibility_boolean;
+              rasterization_weight *l_visibility_weight;
+              uimax *l_polyton_index;
+              auto l_visibility_index =
+                  (y * m_input.m_target_image_view.m_target_info.width) + x;
+              m_heap.m_visibility_buffer.at(
+                  l_visibility_index, &l_visibility_boolean,
+                  &l_visibility_weight, &l_polyton_index);
+              *l_visibility_boolean = 1;
+              *l_visibility_weight = {w0, w1, w2};
+              *l_polyton_index = l_polygon_it;
+            });
       }
-    });
+    }
   };
 
   void __interpolate_vertex_output() {
     __interpolate_vertex_output_range(
-        0, m_heap.m_vertex_output_layout.m_internal_start_index);
+        0, m_heap.m_vertex_output_layout.m_interpolation_end_index);
   };
 
   void __fragment() {
