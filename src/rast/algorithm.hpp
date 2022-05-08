@@ -149,8 +149,16 @@ struct rasterize_heap {
   } m_visibility_buffer;
 
   struct vertex_output_layout {
-    container::span<ui16> m_element_size;
+
+    struct layout {
+      ui16 m_element_size;
+      bgfx::AttribType::Enum m_attrib_type;
+      ui8 m_attrib_element_count;
+    };
+
+    container::span<layout> m_layout;
     ui8 m_internal_start_index;
+    ui8 m_col_count;
   } m_vertex_output_layout;
 
   container::multi_byte_buffer m_vertex_output_interpolated;
@@ -165,7 +173,7 @@ struct rasterize_heap {
 
     m_vertex_output_send_to_vertex_shader.allocate(128);
     m_vertex_output_interpolated_send_to_fragment_shader.allocate(128);
-    m_vertex_output_layout.m_element_size.allocate(128);
+    m_vertex_output_layout.m_layout.allocate(128);
   };
 
   void free() {
@@ -177,7 +185,7 @@ struct rasterize_heap {
 
     m_vertex_output_send_to_vertex_shader.free();
     m_vertex_output_interpolated_send_to_fragment_shader.free();
-    m_vertex_output_layout.m_element_size.free();
+    m_vertex_output_layout.m_layout.free();
   };
 
   pixel_coordinates &get_pixel_coordinates(ui32 p_index) {
@@ -309,12 +317,25 @@ private:
     for (auto l_col_it = 0;
          l_col_it < m_heap.m_vertex_output_layout.m_internal_start_index;
          l_col_it++) {
-      m_heap.m_vertex_output_layout.m_element_size.at(l_col_it) =
-          l_output_parameters.at(l_col_it).m_single_element_size;
+      const auto &l_input_meta = l_output_parameters.at(l_col_it);
+      auto &l_layout = m_heap.m_vertex_output_layout.m_layout.at(l_col_it);
+      l_layout.m_element_size = l_input_meta.m_single_element_size;
+      l_layout.m_attrib_type = l_input_meta.m_attrib_type;
+      l_layout.m_attrib_element_count = l_input_meta.m_attrib_element_count;
     }
+
     if (m_state.m_interpolate_depth) {
-      m_heap.m_vertex_output_layout.m_element_size.at(
-          m_heap.m_vertex_output_layout.m_internal_start_index) = sizeof(f32);
+      auto &l_layout = m_heap.m_vertex_output_layout.m_layout.at(
+          m_heap.m_vertex_output_layout.m_internal_start_index);
+      l_layout.m_element_size = sizeof(f32);
+      l_layout.m_attrib_type = bgfx::AttribType::Float;
+      l_layout.m_attrib_element_count = 1;
+
+      m_heap.m_vertex_output_layout.m_col_count =
+          m_heap.m_vertex_output_layout.m_internal_start_index + 1;
+    } else {
+      m_heap.m_vertex_output_layout.m_col_count =
+          m_heap.m_vertex_output_layout.m_internal_start_index;
     }
   };
 
@@ -332,14 +353,13 @@ private:
     shader_vertex_function l_vertex_function = l_shader_view.function();
 
     m_heap.m_vertex_output.resize_col_capacity(
-        m_heap.m_vertex_output_layout.m_element_size.count());
+        m_heap.m_vertex_output_layout.m_col_count);
 
     for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_layout.m_element_size.count();
-         l_col_it++) {
+         l_col_it < m_heap.m_vertex_output_layout.m_col_count; l_col_it++) {
       m_heap.m_vertex_output.col(l_col_it).resize(
           m_vertex_count,
-          m_heap.m_vertex_output_layout.m_element_size.at(l_col_it));
+          m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
     }
 
     for (auto i = 0; i < m_vertex_count; ++i) {
@@ -450,26 +470,19 @@ private:
   };
 
   void __interpolate_vertex_output() {
-    auto l_vertex_output_parameters =
-        shader_vertex_bytes::view{(ui8 *)m_input.m_program.m_vertex}
-            .output_parameters();
 
     m_heap.m_vertex_output_interpolated.resize_col_capacity(
-        l_vertex_output_parameters.count());
-
-    assert_debug(l_vertex_output_parameters.count() ==
-                 m_heap.m_vertex_output_interpolated.m_col_count);
+        m_heap.m_vertex_output_layout.m_col_count);
 
     for (auto l_col_it = 0;
-         l_col_it < m_heap.m_vertex_output_interpolated.m_col_count;
-         ++l_col_it) {
+         l_col_it < m_heap.m_vertex_output_layout.m_col_count; ++l_col_it) {
       m_heap.m_vertex_output_interpolated.col(l_col_it).resize(
           m_input.m_target_image_view.pixel_count(),
-          l_vertex_output_parameters.at(l_col_it).m_single_element_size);
+          m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
     }
 
     m_heap.m_vertex_output_interpolated_send_to_fragment_shader.resize(
-        l_vertex_output_parameters.count());
+        m_heap.m_vertex_output_layout.m_col_count);
 
     ui8 *l_visibility_boolean;
     rasterization_weight *l_visibility_weight;
@@ -485,11 +498,12 @@ private:
                                  &l_indices_polygon);
 
         for (auto l_vertex_output_index = 0;
-             l_vertex_output_index < l_vertex_output_parameters.count();
+             l_vertex_output_index < m_heap.m_vertex_output_layout.m_col_count;
              ++l_vertex_output_index) {
           __interpolate_vertex_output_single_value(
-              l_vertex_output_parameters, l_vertex_output_index,
-              *l_indices_polygon, *l_visibility_weight, p_pixel_index);
+              m_heap.m_vertex_output_layout.m_layout.range(),
+              l_vertex_output_index, *l_indices_polygon, *l_visibility_weight,
+              p_pixel_index);
         }
       }
     });
@@ -544,15 +558,17 @@ private:
   };
 
   void __interpolate_vertex_output_single_value(
-      const container::range<shader_vertex_output_parameter>
+      const container::range<rasterize_heap::vertex_output_layout::layout>
           &p_vertex_shader_outputs_meta,
       uimax p_vertex_output_index,
       const polygon_vertex_indices &p_indices_polygon,
       const rasterization_weight &p_polygon_weight, uimax p_pixel_index) {
 
-    shader_vertex_output_parameter l_output_parameter_meta =
-        p_vertex_shader_outputs_meta.at(p_vertex_output_index);
+    const rasterize_heap::vertex_output_layout::layout
+        &l_output_parameter_meta =
+            p_vertex_shader_outputs_meta.at(p_vertex_output_index);
 
+    // TODO -> move this to a templated stuff ?
     if (l_output_parameter_meta.m_attrib_type == bgfx::AttribType::Float) {
       if (l_output_parameter_meta.m_attrib_element_count == 3) {
 
@@ -573,7 +589,25 @@ private:
 
         *l_interpolated_vertex_output =
             m::interpolate(l_attribute_polygon, p_polygon_weight);
-      }
+      } else if (l_output_parameter_meta.m_attrib_element_count == 1) {
+        m::polygon<f32, 3> l_attribute_polygon;
+
+        l_attribute_polygon.p0() = *(f32 *)m_heap.m_vertex_output.at(
+            p_vertex_output_index, p_indices_polygon.p0());
+
+        l_attribute_polygon.p1() = *(f32 *)m_heap.m_vertex_output.at(
+            p_vertex_output_index, p_indices_polygon.p1());
+
+        l_attribute_polygon.p2() = *(f32 *)m_heap.m_vertex_output.at(
+            p_vertex_output_index, p_indices_polygon.p2());
+
+        f32 *l_interpolated_vertex_output =
+            (f32 *)m_heap.m_vertex_output_interpolated.at(p_vertex_output_index,
+                                                          p_pixel_index);
+
+        *l_interpolated_vertex_output =
+            m::interpolate(l_attribute_polygon, p_polygon_weight);
+      };
     }
   };
 };
