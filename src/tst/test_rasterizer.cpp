@@ -346,7 +346,7 @@ TEST_CASE("rast.depth_comparison") {
 
   bgfx::setIndexBuffer(l_index_buffer);
   bgfx::setVertexBuffer(0, l_vertex_buffer);
-  bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS);
+  bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z);
 
   bgfx::submit(0, l_program);
 
