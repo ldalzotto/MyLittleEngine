@@ -4,6 +4,7 @@
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
 #include <cor/types.hpp>
+#include <m/color.hpp>
 #include <m/mat.hpp>
 #include <m/vec.hpp>
 #include <rast/algorithm.hpp>
@@ -106,13 +107,24 @@ struct bgfx_impl {
   };
 
   struct clear_state {
-    ui16 m_flags;
-    ui32 m_rgba;
+    struct flags {
+      union {
+        struct {
+          ui8 m_color : 1;
+          ui8 m_depth : 1;
+          ui8 m_stencil : 1;
+        };
+        ui16 m_int;
+      };
+    };
+
+    flags m_flags;
+    m::color_packed m_rgba;
     f32 m_depth;
 
     void reset() {
-      m_flags = 0;
-      m_rgba = 0;
+      m_flags.m_int = 0;
+      m_rgba.rgba = 0;
       m_depth = 0;
     };
   };
@@ -623,8 +635,8 @@ struct bgfx_impl {
   void view_set_clear(bgfx::ViewId p_id, ui16 p_flags, ui32 p_rgba,
                       f32 p_depth) {
     clear_state &l_clear = proxy().RenderPass(p_id).value()->clear;
-    l_clear.m_rgba = p_rgba;
-    l_clear.m_flags = p_flags;
+    l_clear.m_rgba.rgba = p_rgba;
+    l_clear.m_flags.m_int = p_flags;
     l_clear.m_depth = p_depth;
   };
 
@@ -671,15 +683,16 @@ struct bgfx_impl {
 
       // color clear
       {
-        ui32 l_rgba = p_render_pass.value()->clear.m_rgba;
-        m::vec<ui8, 3> l_clear_color;
-        l_clear_color.x() = (ui8)(l_rgba >> 24);
-        l_clear_color.y() = (ui8)(l_rgba >> 16);
-        l_clear_color.z() = (ui8)(l_rgba >> 8);
-        rast::image_view l_target_view(l_frame_texture.value()->info,
-                                       l_frame_texture_range);
-        l_target_view.for_each_pixels_rgb(
-            [&](m::vec<ui8, 3> &p_pixel) { p_pixel = l_clear_color; });
+        const clear_state &l_clear_state = p_render_pass.value()->clear;
+        if (l_clear_state.m_flags.m_color) {
+          rast::image_view l_target_view(l_frame_texture.value()->info,
+                                         l_frame_texture_range);
+          l_target_view.for_each_pixels_rgb([&](m::vec<ui8, 3> &p_pixel) {
+            p_pixel.x() = l_clear_state.m_rgba.r;
+            p_pixel.y() = l_clear_state.m_rgba.g;
+            p_pixel.z() = l_clear_state.m_rgba.b;
+          });
+        }
       }
 
       p_render_pass.for_each_commands([&](CommandDrawCall &p_command) {

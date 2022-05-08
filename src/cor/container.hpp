@@ -22,6 +22,7 @@ template <typename T> struct range {
     return l_range;
   };
 
+  const T *data() const { return (const T*)m_begin; };
   const uimax &count() const { return m_count; };
   uimax size_of() const { return sizeof(T) * m_count; };
 
