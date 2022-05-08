@@ -8,7 +8,7 @@ inline static container::range<m::vec<ui8, 3>>
 getFrameBuffer(bgfx::FrameBufferHandle p_frame_buffer) {
   return s_bgfx_impl.proxy()
       .FrameBuffer(p_frame_buffer)
-      .Texture()
+      .RGBTexture()
       .value()
       ->range()
       .cast_to<m::vec<ui8, 3>>();
@@ -230,6 +230,110 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
+  bgfx::setViewRect(0, 0, 0, l_width, l_height);
+  bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
+  bgfx::setViewFrameBuffer(0, l_frame_buffer);
+
+  bgfx::touch(0);
+
+  bgfx::setTransform(l_indentity.m_data);
+
+  bgfx::setIndexBuffer(l_index_buffer);
+  bgfx::setVertexBuffer(0, l_vertex_buffer);
+
+  bgfx::submit(0, l_program);
+
+  bgfx::frame();
+
+  container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
+      RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
+  REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
+
+  container::arr<ui8, 192> l_frame_expected = {
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 255, 255, 0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 170, 170, 0,
+      170, 233, 0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 85, 85,  0, 85, 148, 0, 85,  212, 0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 63, 0, 0,   127, 0,
+      0,   191, 0, 0,  255, 0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
+      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0};
+
+  REQUIRE(l_frame_buffer_memory.is_contained_by(
+      l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
+
+  bgfx::destroy(l_index_buffer);
+  bgfx::destroy(l_vertex_buffer);
+  bgfx::destroy(l_program);
+
+  l_triangle_vertices.free();
+
+  bgfx::shutdown();
+}
+
+TEST_CASE("rast.depth_comparison") {
+
+  bgfx::init();
+
+  bgfx::VertexLayout l_vertex_layout;
+  l_vertex_layout.begin()
+      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Uint8)
+      .end();
+
+  container::span<ui8> l_triangle_vertices;
+  l_triangle_vertices.allocate(l_vertex_layout.getSize(3) * 2);
+
+  {
+    l_triangle_vertices.range()
+        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(1))
+        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(2))
+        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(3))
+        .stream(m::vec<f32, 3>{-0.5, 0.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(4))
+        .stream(m::vec<f32, 3>{1.0, 0.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(5))
+        .stream(m::vec<f32, 3>{0.0, 1.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+  }
+
+  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+
+  bgfx::VertexBufferHandle l_vertex_buffer;
+  bgfx::IndexBufferHandle l_index_buffer;
+  RasterizerTestToolbox::loadVertexIndex(
+      l_vertex_layout, l_triangle_vertices.range().cast_to<ui8>(),
+      l_triangle_indices.range().cast_to<ui8>(), &l_vertex_buffer,
+      &l_index_buffer);
+
+  constexpr ui16 l_width = 8, l_height = 8;
+
+  bgfx::FrameBufferHandle l_frame_buffer =
+      bgfx::createFrameBuffer(0, l_width, l_height, bgfx::TextureFormat::RGB8,
+                              bgfx::TextureFormat::D32F);
+
+  bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
+
+  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
   bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
   bgfx::setViewFrameBuffer(0, l_frame_buffer);

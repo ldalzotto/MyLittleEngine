@@ -28,7 +28,10 @@ struct bgfx_impl {
   };
 
   struct FrameBuffer {
-    bgfx::TextureHandle texture;
+    bgfx::TextureHandle m_rgb;
+    bgfx::TextureHandle m_depth;
+
+    ui8 has_depth() const { return m_depth.idx != bgfx::kInvalidHandle; };
   };
 
   struct VertexBuffer {
@@ -334,9 +337,11 @@ struct bgfx_impl {
     };
 
     bgfx::FrameBufferHandle
-    allocate_frame_buffer(bgfx::TextureHandle p_texture) {
+    allocate_frame_buffer(bgfx::TextureHandle p_rgb_texture,
+                          bgfx::TextureHandle p_depth_texture) {
       FrameBuffer l_frame_buffer;
-      l_frame_buffer.texture = p_texture;
+      l_frame_buffer.m_rgb = p_rgb_texture;
+      l_frame_buffer.m_depth = p_depth_texture;
 
       bgfx::FrameBufferHandle l_handle;
       l_handle.idx = framebuffer_table.push_back(l_frame_buffer);
@@ -351,7 +356,10 @@ struct bgfx_impl {
 
     void free_frame_buffer(bgfx::FrameBufferHandle p_frame_buffer) {
       FrameBuffer *l_frame_buffer = get_frame_buffer(p_frame_buffer);
-      free_texture(l_frame_buffer->texture);
+      free_texture(l_frame_buffer->m_rgb);
+      if (l_frame_buffer->has_depth()) {
+        free_texture(l_frame_buffer->m_depth);
+      }
       framebuffer_table.remove_at(p_frame_buffer.idx);
     };
 
@@ -458,9 +466,15 @@ struct bgfx_impl {
     struct heap &m_heap;
     FrameBuffer *m_value;
 
-    TextureProxy Texture() {
+    TextureProxy RGBTexture() {
       struct Texture *l_texture;
-      m_heap.texture_table.at(m_value->texture.idx, &l_texture);
+      m_heap.texture_table.at(m_value->m_rgb.idx, &l_texture);
+      return {.m_heap = m_heap, .m_value = l_texture};
+    };
+
+    TextureProxy DepthTexture() {
+      struct Texture *l_texture;
+      m_heap.texture_table.at(m_value->m_depth.idx, &l_texture);
       return {.m_heap = m_heap, .m_value = l_texture};
     };
   };
@@ -588,6 +602,7 @@ struct bgfx_impl {
     l_texture_info.width = p_width;
     l_texture_info.height = p_height;
     l_texture_info.bitsPerPixel = get_pixel_size_from_texture_format(p_format);
+    assert_debug(l_texture_info.bitsPerPixel != 0);
     return heap.allocate_texture(l_texture_info);
   };
 
@@ -601,15 +616,27 @@ struct bgfx_impl {
 
   bgfx::FrameBufferHandle
   allocate_frame_buffer(uint16_t p_width, uint16_t p_height,
-                        bgfx::TextureFormat::Enum p_format,
+                        bgfx::TextureFormat::Enum p_rgb_format,
                         uint64_t p_textureFlags) {
     auto l_texture =
-        allocate_texture(p_width, p_height, 0, 0, p_format, p_textureFlags);
-    return heap.allocate_frame_buffer(l_texture);
+        allocate_texture(p_width, p_height, 0, 0, p_rgb_format, p_textureFlags);
+    return heap.allocate_frame_buffer(
+        l_texture, bgfx::TextureHandle{bgfx::kInvalidHandle});
+  };
+
+  bgfx::FrameBufferHandle
+  allocate_frame_buffer(uint16_t p_width, uint16_t p_height,
+                        bgfx::TextureFormat::Enum p_rgb_format,
+                        bgfx::TextureFormat::Enum p_depth_format) {
+    auto l_rgb_texture =
+        allocate_texture(p_width, p_height, 0, 0, p_rgb_format, 0);
+    auto l_depth_format =
+        allocate_texture(p_width, p_height, 0, 0, p_depth_format, 0);
+    return heap.allocate_frame_buffer(l_rgb_texture, l_depth_format);
   };
 
   bgfx::TextureHandle get_texture(bgfx::FrameBufferHandle p_frame_buffer) {
-    return proxy().FrameBuffer(p_frame_buffer).m_value->texture;
+    return proxy().FrameBuffer(p_frame_buffer).m_value->m_rgb;
   };
 
   bgfx::ProgramHandle allocate_program(bgfx::ShaderHandle p_vertex,
@@ -676,22 +703,43 @@ struct bgfx_impl {
   void frame() {
 
     proxy().for_each_renderpass([&](RenderPassProxy &p_render_pass) {
-      TextureProxy l_frame_texture = p_render_pass.FrameBuffer().Texture();
+      FrameBufferProxy l_frame_buffer = p_render_pass.FrameBuffer();
+      TextureProxy l_frame_rgb_texture = l_frame_buffer.RGBTexture();
+      container::range<ui8> l_frame_rgb_texture_range =
+          l_frame_rgb_texture.value()->range();
 
-      container::range<ui8> l_frame_texture_range =
-          l_frame_texture.value()->range();
+      container::range<ui8> l_frame_depth_texture_range;
+      bgfx::TextureInfo l_frame_depth_texture_info;
+
+      if (l_frame_buffer.m_value->has_depth()) {
+        TextureProxy l_frame_depth_texture =
+            p_render_pass.FrameBuffer().DepthTexture();
+        l_frame_depth_texture_range = l_frame_depth_texture.value()->range();
+        l_frame_depth_texture_info = l_frame_depth_texture.value()->info;
+      } else {
+        l_frame_depth_texture_range = container::range<ui8>::make(0, 0);
+        l_frame_depth_texture_info.bitsPerPixel = 0;
+      }
 
       // color clear
       {
         const clear_state &l_clear_state = p_render_pass.value()->clear;
         if (l_clear_state.m_flags.m_color) {
-          rast::image_view l_target_view(l_frame_texture.value()->info,
-                                         l_frame_texture_range);
+          rast::image_view l_target_view(l_frame_rgb_texture.value()->info,
+                                         l_frame_rgb_texture_range);
           l_target_view.for_each_pixels_rgb([&](m::vec<ui8, 3> &p_pixel) {
             p_pixel.x() = l_clear_state.m_rgba.r;
             p_pixel.y() = l_clear_state.m_rgba.g;
             p_pixel.z() = l_clear_state.m_rgba.b;
           });
+        }
+
+        if (l_clear_state.m_flags.m_depth) {
+          assert_debug(l_frame_buffer.m_value->has_depth());
+          rast::image_view l_depth_view(l_frame_depth_texture_info,
+                                        l_frame_depth_texture_range);
+          l_depth_view.for_each_pixels_depth(
+              [&](f32 &p_pixel) { p_pixel = l_clear_state.m_depth; });
         }
       }
 
@@ -712,7 +760,8 @@ struct bgfx_impl {
             l_draw_call.value()->transform, l_index_buffer->range(),
             l_vertex_buffer->layout, l_vertex_buffer->range(),
             l_draw_call.value()->state, l_draw_call.value()->rgba,
-            l_frame_texture.value()->info, l_frame_texture_range);
+            l_frame_rgb_texture.value()->info, l_frame_rgb_texture_range,
+            l_frame_depth_texture_info, l_frame_depth_texture_range);
       });
     });
 
@@ -738,13 +787,15 @@ private:
   ui8 get_pixel_size_from_texture_format(bgfx::TextureFormat::Enum p_format) {
     switch (p_format) {
     case bgfx::TextureFormat::Enum::R8:
-      return ui8(1);
+      return sizeof(ui8);
     case bgfx::TextureFormat::Enum::RG8:
-      return ui8(2);
+      return sizeof(ui8) * 2;
     case bgfx::TextureFormat::Enum::RGB8:
-      return ui8(3);
+      return sizeof(ui8) * 3;
     case bgfx::TextureFormat::Enum::RGBA8:
-      return ui8(4);
+      return sizeof(ui8) * 4;
+    case bgfx::TextureFormat::Enum::D32F:
+      return sizeof(f32);
     }
     return ui8(0);
   };
@@ -843,10 +894,17 @@ inline FrameBufferHandle createFrameBuffer(uint16_t _width, uint16_t _height,
                                            _textureFlags);
 };
 
+inline FrameBufferHandle createFrameBuffer(void *_nwh, uint16_t _width,
+                                           uint16_t _height,
+                                           TextureFormat::Enum _format,
+                                           TextureFormat::Enum _depthFormat) {
+  return s_bgfx_impl.allocate_frame_buffer(_width, _height, _format,
+                                           _depthFormat);
+};
+
 inline TextureHandle getTexture(FrameBufferHandle _handle,
                                 uint8_t _attachment) {
   return s_bgfx_impl.get_texture(_handle);
-  // return bgfx_impl.proxy().FrameBuffer(_handle).m_value->texture;
 };
 
 inline VertexBufferHandle createVertexBuffer(const Memory *_mem,

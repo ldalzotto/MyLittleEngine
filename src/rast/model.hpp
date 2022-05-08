@@ -60,6 +60,15 @@ struct image_view {
       p_cb(*(m::vec<ui8, 3> *)at(i));
     }
   };
+
+  template <typename Callback>
+  void for_each_pixels_depth(const Callback &p_cb) {
+    assert_debug(m_target_info.bitsPerPixel == sizeof(f32));
+    auto l_pix_count = pixel_count();
+    for (auto i = 0; i < l_pix_count; ++i) {
+      p_cb(*(f32 *)at(i));
+    }
+  };
 };
 
 struct shader_vertex_runtime_ctx {

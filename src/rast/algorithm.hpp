@@ -12,7 +12,26 @@
 #define TODO_NEAR_FAR_CLIPPING 0
 
 namespace rast {
+
 namespace algorithm {
+
+struct render_state {
+  enum class depth_test { Undefined = 0, Less = 1 } m_depth;
+  ui8 m_interpolate_depth;
+
+  static render_state from_int(ui64 p_state) {
+    render_state l_state;
+    l_state.m_interpolate_depth = 0;
+
+    if (p_state & BGFX_STATE_DEPTH_TEST_LESS) {
+      l_state.m_depth = depth_test::Less;
+      l_state.m_interpolate_depth = 1;
+    } else {
+      l_state.m_depth = depth_test::Undefined;
+    }
+    return l_state;
+  };
+};
 
 struct index_buffer_const_view {
   ui8 m_index_byte_size;
@@ -118,6 +137,8 @@ struct rasterize_heap {
     table_define_span_2;
   } m_per_polygons;
 
+  // TODO -> no, the depth should be passed to the vertex_output
+  // TODO -> the depth vertex output should be stored as a column index
   container::multi_byte_buffer m_vertex_output;
   container::span<ui8 *> m_vertex_output_send_to_vertex_shader;
 
@@ -173,7 +194,7 @@ struct rasterize_unit {
     ui64 m_state;
     ui32 m_rgba;
     image_view m_target_image_view;
-
+    image_view m_target_depth_view;
     input(const program &p_program, m::rect_point_extend<ui16> &p_rect,
           const m::mat<f32, 4, 4> &p_proj, const m::mat<f32, 4, 4> &p_view,
           const m::mat<f32, 4, 4> &p_transform,
@@ -181,19 +202,27 @@ struct rasterize_unit {
           bgfx::VertexLayout p_vertex_layout,
           const container::range<ui8> &p_vertex_buffer, ui64 p_state,
           ui32 p_rgba, const bgfx::TextureInfo &p_target_info,
-          container::range<ui8> &p_target_buffer)
+          container::range<ui8> &p_target_buffer,
+          const bgfx::TextureInfo &p_depth_info,
+          container::range<ui8> &p_depth_buffer)
         : m_program(p_program), m_rect(p_rect), m_proj(p_proj), m_view(p_view),
           m_transform(p_transform), m_index_buffer(p_index_buffer),
           m_vertex_layout(p_vertex_layout), m_vertex_buffer(p_vertex_buffer),
           m_state(p_state), m_rgba(p_rgba),
-          m_target_image_view(p_target_info, p_target_buffer){};
+          m_target_image_view(p_target_info, p_target_buffer),
+          m_target_depth_view(p_depth_info, p_depth_buffer){};
 
   } m_input;
 
   rasterize_heap &m_heap;
+  render_state m_state;
   m::mat<f32, 4, 4> m_local_to_unit;
   ui16 m_vertex_stride;
   uimax m_vertex_count;
+
+  uimax m_vertex_output_col_count;
+  uimax m_vertex_depth_output_col_index;
+
   uimax m_polygon_count;
 
   m::rect_min_max<ui16> m_rendered_rect;
@@ -207,14 +236,16 @@ struct rasterize_unit {
                  bgfx::VertexLayout p_vertex_layout,
                  const container::range<ui8> &p_vertex_buffer, ui64 p_state,
                  ui32 p_rgba, const bgfx::TextureInfo &p_target_info,
-                 container::range<ui8> &p_target_buffer)
+                 container::range<ui8> &p_target_buffer,
+                 const bgfx::TextureInfo &p_depth_info,
+                 container::range<ui8> &p_depth_buffer)
       : m_input(p_program, p_rect, p_proj, p_view, p_transform, p_index_buffer,
                 p_vertex_layout, p_vertex_buffer, p_state, p_rgba,
-                p_target_info, p_target_buffer),
+                p_target_info, p_target_buffer, p_depth_info, p_depth_buffer),
         m_heap(p_heap){};
 
   void rasterize() {
-
+    m_state = render_state::from_int(m_input.m_state);
     m_vertex_stride = m_input.m_vertex_layout.getStride();
     m_vertex_count = m_input.m_vertex_buffer.count() / m_vertex_stride;
     assert_debug(m_input.m_vertex_layout.getSize(m_vertex_count) ==
@@ -269,20 +300,37 @@ private:
     auto l_output_parameters = l_shader_view.output_parameters();
     shader_vertex_function l_vertex_function = l_shader_view.function();
 
-    m_heap.m_vertex_output.resize_col_capacity(l_output_parameters.count());
-    for (auto l_col_it = 0; l_col_it < m_heap.m_vertex_output.m_col_count;
-         l_col_it++) {
-      m_heap.m_vertex_output.col(l_col_it).resize(
-          m_vertex_count,
-          l_output_parameters.at(l_col_it).m_single_element_size);
+    m_vertex_output_col_count = l_output_parameters.count();
+    uimax l_vertex_output_col_count_from_layout = m_vertex_output_col_count;
+
+    if (m_state.m_interpolate_depth) {
+      m_vertex_output_col_count += 1;
+      m_vertex_depth_output_col_index = m_vertex_output_col_count - 1;
+    }
+
+    m_heap.m_vertex_output.resize_col_capacity(m_vertex_output_col_count);
+
+    // TODO -> making this more straightforward by having an array
+    {
+      for (auto l_col_it = 0; l_col_it < l_vertex_output_col_count_from_layout;
+           l_col_it++) {
+        m_heap.m_vertex_output.col(l_col_it).resize(
+            m_vertex_count,
+            l_output_parameters.at(l_col_it).m_single_element_size);
+      }
+
+      if (m_state.m_interpolate_depth) {
+        m_heap.m_vertex_output.col(m_vertex_depth_output_col_index)
+            .resize(m_vertex_count, sizeof(f32));
+      }
     }
 
     for (auto i = 0; i < m_vertex_count; ++i) {
       ui8 *l_vertex_bytes =
           m_input.m_vertex_buffer.m_begin + (i * m_vertex_stride);
 
-      for (auto l_output_it = 0; l_output_it < l_output_parameters.count();
-           ++l_output_it) {
+      for (auto l_output_it = 0;
+           l_output_it < l_vertex_output_col_count_from_layout; ++l_output_it) {
         m_heap.m_vertex_output_send_to_vertex_shader.at(l_output_it) =
             m_heap.m_vertex_output.at(l_output_it, i);
       }
@@ -306,6 +354,10 @@ private:
       l_pixel_coordinates_f32 *= (m_input.m_rect.extend() - 1);
 
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
+      if (m_state.m_interpolate_depth) {
+        *(f32 *)m_heap.m_vertex_output.at(m_vertex_depth_output_col_index, i) =
+            l_vertex_shader_out.z();
+      }
     }
   };
 
@@ -385,6 +437,10 @@ private:
 
     m_heap.m_vertex_output_interpolated.resize_col_capacity(
         l_vertex_output_parameters.count());
+
+    assert_debug(l_vertex_output_parameters.count() ==
+                 m_heap.m_vertex_output_interpolated.m_col_count);
+
     for (auto l_col_it = 0;
          l_col_it < m_heap.m_vertex_output_interpolated.m_col_count;
          ++l_col_it) {
@@ -449,6 +505,8 @@ private:
 
         m::vec<ui8, 3> l_color = (l_color_buffer * 255).cast<ui8>();
         m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
+
+        // TODO -> write to the depth buffer if necessary
       }
     });
   };
@@ -509,10 +567,13 @@ rasterize(rasterize_heap &p_heap, const program &p_program,
           bgfx::VertexLayout p_vertex_layout,
           const container::range<ui8> &p_vertex_buffer, ui64 p_state,
           ui32 p_rgba, const bgfx::TextureInfo &p_target_info,
-          container::range<ui8> &p_target_buffer) {
+          container::range<ui8> &p_target_buffer,
+          const bgfx::TextureInfo &p_depth_info,
+          container::range<ui8> &p_depth_buffer) {
   rasterize_unit(p_heap, p_program, p_rect, p_proj, p_view, p_transform,
                  p_index_buffer, p_vertex_layout, p_vertex_buffer, p_state,
-                 p_rgba, p_target_info, p_target_buffer)
+                 p_rgba, p_target_info, p_target_buffer, p_depth_info,
+                 p_depth_buffer)
       .rasterize();
 };
 
