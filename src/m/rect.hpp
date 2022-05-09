@@ -15,7 +15,9 @@ template <typename T> struct rect_min_max {
   const m::vec<T, 2> &min() const { return m_min; };
   const m::vec<T, 2> &max() const { return m_max; };
 
-  ui8 is_valid() { return m_min.x() <= m_max.x() && m_min.y() <= m_max.y(); };
+  ui8 is_valid() const {
+    return m_min.x() <= m_max.x() && m_min.y() <= m_max.y();
+  };
 
   static rect_min_max bounding_box(container::range<m::vec<T, 2>> &p_points) {
     assert_debug(p_points.count() > 0);
