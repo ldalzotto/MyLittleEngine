@@ -651,7 +651,7 @@ struct bgfx_impl {
                      uint16_t p_width, uint16_t p_height) {
     m::rect_point_extend<ui16> &l_view = proxy().RenderPass(p_id).value()->rect;
     l_view.point() = {p_x, p_y};
-    l_view.extend() = {p_width, p_height};
+    l_view.extend() = {ui16(p_width - 1), ui16(p_height - 1)};
   };
 
   void view_set_framebuffer(bgfx::ViewId p_id,

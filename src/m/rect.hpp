@@ -15,6 +15,8 @@ template <typename T> struct rect_min_max {
   const m::vec<T, 2> &min() const { return m_min; };
   const m::vec<T, 2> &max() const { return m_max; };
 
+  ui8 is_valid() { return m_min.x() <= m_max.x() && m_min.y() <= m_max.y(); };
+
   static rect_min_max bounding_box(container::range<m::vec<T, 2>> &p_points) {
     assert_debug(p_points.count() > 0);
 
@@ -68,16 +70,24 @@ m::rect_min_max<T> fit_into(const m::rect_min_max<T> &p_rect,
     l_rect.min().x() = p_into.point().x();
   }
 
+  if (l_rect.min().x() > (p_into.point().x() + p_into.extend().x())) {
+    l_rect.min().x() = (p_into.point().x() + p_into.extend().x());
+  }
+
   if (l_rect.min().y() < p_into.point().y()) {
     l_rect.min().y() = p_into.point().y();
   }
 
-  if (l_rect.max().x() >= p_into.extend().x()) {
-    l_rect.max().x() = p_into.extend().x();
+  if (l_rect.min().y() > (p_into.point().y() + p_into.extend().y())) {
+    l_rect.min().y() = (p_into.point().y() + p_into.extend().y());
   }
 
-  if (l_rect.max().y() >= p_into.extend().y()) {
-    l_rect.max().y() = p_into.extend().y();
+  if (l_rect.max().x() > (p_into.point().x() + p_into.extend().x())) {
+    l_rect.max().x() = (p_into.point().x() + p_into.extend().x());
+  }
+
+  if (l_rect.max().y() > (p_into.point().y() + p_into.extend().y())) {
+    l_rect.max().y() = (p_into.point().y() + p_into.extend().y());
   }
   return l_rect;
 };
