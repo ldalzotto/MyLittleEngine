@@ -551,7 +551,7 @@ private:
                 f32 l_interpolated_depth = m::interpolate(
                     l_attribute_polygon, *l_boundingrect_visibility_weight);
                 f32 *l_buffer_depth =
-                    m_input.m_target_depth_view.at<f32>(l_visibility_index);
+                    (f32 *)m_input.m_target_depth_view.at(l_visibility_index);
 
                 if (l_interpolated_depth < *l_buffer_depth) {
                   *l_visibility_boolean = 1;
@@ -579,7 +579,7 @@ private:
                 f32 l_interpolated_depth = m::interpolate(
                     l_attribute_polygon, *l_boundingrect_visibility_weight);
                 f32 *l_buffer_depth =
-                    m_input.m_target_depth_view.at<f32>(l_visibility_index);
+                    (f32 *)m_input.m_target_depth_view.at(l_visibility_index);
 
                 if (l_interpolated_depth < *l_buffer_depth) {
                   *l_visibility_boolean = 1;
