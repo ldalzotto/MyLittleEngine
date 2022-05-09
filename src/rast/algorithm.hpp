@@ -450,16 +450,11 @@ private:
   };
 
   void __intialize_rendered_rect() {
+    assert_debug(m_polygon_count >= 1);
     screen_polygon *l_polygon;
     pixel_coordinates *l_first_vertex_pixel_coordinates;
     m_heap.m_per_polygons.at(0, &l_polygon, orm::none());
-    auto l_bounding_rect = m::bounding_rect(*l_polygon);
-    l_bounding_rect.max() = l_bounding_rect.max() + 1;
-
-    l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
-
-    m_rendered_rect.m_min = l_bounding_rect.min().cast<ui16>();
-    m_rendered_rect.m_max = l_bounding_rect.max().cast<ui16>();
+    __update_rendered_rect(*l_polygon);
   };
 
   void __calculate_visibility_buffer() {
@@ -477,23 +472,7 @@ private:
       polygon_vertex_indices *l_polygon_indices;
       m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, &l_polygon_indices);
 
-      m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
-
-      l_bounding_rect.max() = l_bounding_rect.max() + 1;
-      l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
-
-      m_rendered_rect = m::extend(m_rendered_rect, l_bounding_rect);
-
-      assert_debug(l_bounding_rect.is_valid());
-      assert_debug(m_rendered_rect.is_valid());
-      assert_debug(l_bounding_rect.max().x() <=
-                   m_input.m_target_image_view.m_target_info.width);
-      assert_debug(l_bounding_rect.max().y() <=
-                   m_input.m_target_image_view.m_target_info.height);
-      assert_debug(m_rendered_rect.max().x() <=
-                   m_input.m_target_image_view.m_target_info.width);
-      assert_debug(m_rendered_rect.max().y() <=
-                   m_input.m_target_image_view.m_target_info.height);
+      m::rect_min_max<i16> l_bounding_rect = __update_rendered_rect(*l_polygon);
 
       // Resetting the bouding rect visibility buffer
       container::range<ui8> l_boudingrect_visibility_range;
@@ -669,6 +648,30 @@ private:
         m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
       }
     });
+  };
+
+  m::rect_min_max<i16>
+  __update_rendered_rect(screen_polygon &p_screen_polygon) {
+    m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(p_screen_polygon);
+    l_bounding_rect.max() = l_bounding_rect.max() + 1;
+
+    l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
+
+    m_rendered_rect.m_min = l_bounding_rect.min().cast<ui16>();
+    m_rendered_rect.m_max = l_bounding_rect.max().cast<ui16>();
+
+    assert_debug(l_bounding_rect.is_valid());
+    assert_debug(m_rendered_rect.is_valid());
+    assert_debug(l_bounding_rect.max().x() <=
+                 m_input.m_target_image_view.m_target_info.width);
+    assert_debug(l_bounding_rect.max().y() <=
+                 m_input.m_target_image_view.m_target_info.height);
+    assert_debug(m_rendered_rect.max().x() <=
+                 m_input.m_target_image_view.m_target_info.width);
+    assert_debug(m_rendered_rect.max().y() <=
+                 m_input.m_target_image_view.m_target_info.height);
+
+    return l_bounding_rect;
   };
 
   template <typename CallbackFunc>
