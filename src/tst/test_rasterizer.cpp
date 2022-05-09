@@ -424,6 +424,122 @@ TEST_CASE("rast.depth.comparison") {
   bgfx::shutdown();
 }
 
+TEST_CASE("rast.depth.comparison.readonly") {
+
+  bgfx::init();
+
+  bgfx::VertexLayout l_vertex_layout;
+  l_vertex_layout.begin()
+      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Uint8)
+      .end();
+
+  container::span<ui8> l_triangle_vertices;
+  l_triangle_vertices.allocate(l_vertex_layout.getSize(3) * 2);
+
+  {
+    l_triangle_vertices.range()
+        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(1))
+        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(2))
+        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(3))
+        .stream(m::vec<f32, 3>{-0.5, 0.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(4))
+        .stream(m::vec<f32, 3>{1.0, 0.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(5))
+        .stream(m::vec<f32, 3>{0.0, 1.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+  }
+
+  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+
+  bgfx::VertexBufferHandle l_vertex_buffer;
+  bgfx::IndexBufferHandle l_index_buffer;
+  RasterizerTestToolbox::loadVertexIndex(
+      l_vertex_layout, l_triangle_vertices.range().cast_to<ui8>(),
+      l_triangle_indices.range().cast_to<ui8>(), &l_vertex_buffer,
+      &l_index_buffer);
+
+  constexpr ui16 l_width = 8, l_height = 8;
+
+  bgfx::FrameBufferHandle l_frame_buffer =
+      bgfx::createFrameBuffer(0, l_width, l_height, bgfx::TextureFormat::RGB8,
+                              bgfx::TextureFormat::D32F);
+
+  bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
+
+  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
+  bgfx::setViewRect(0, 0, 0, l_width, l_height);
+  bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
+  bgfx::setViewFrameBuffer(0, l_frame_buffer);
+
+  bgfx::touch(0);
+
+  bgfx::setTransform(l_indentity.m_data);
+
+  bgfx::setIndexBuffer(l_index_buffer);
+  bgfx::setVertexBuffer(0, l_vertex_buffer);
+  bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS);
+
+  bgfx::submit(0, l_program);
+
+  bgfx::frame();
+
+  container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
+      RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
+  REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
+
+#if WRITE_OUTPUT
+  auto *l_frame_texture =
+      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
+
+  stbi_write_png(
+      "/media/loic/SSD/SoftwareProjects/glm/rast.depth.comparison.readonly.png",
+      l_frame_texture->info.width, l_frame_texture->info.height, 3,
+      l_frame_texture->range().m_begin,
+      l_frame_texture->info.bitsPerPixel * l_frame_texture->info.width);
+#endif
+
+  container::arr<ui8, 192> l_frame_expected = {
+      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 255, 0, 0, 0,   0, 0, 0,   0,
+      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 255, 0,
+      0, 255, 0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
+      0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 0,   0, 0, 0,   0,
+      0, 0,   0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0,
+      0, 255, 0, 0, 255, 0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
+      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
+      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
+      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
+      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
+      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0};
+
+  REQUIRE(l_frame_buffer_memory.is_contained_by(
+      l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
+
+  bgfx::destroy(l_index_buffer);
+  bgfx::destroy(l_vertex_buffer);
+  bgfx::destroy(l_program);
+
+  l_triangle_vertices.free();
+
+  bgfx::shutdown();
+}
+
 // top left-right out of bounds
 TEST_CASE("rast.depth.comparison.outofbounds") {
 
