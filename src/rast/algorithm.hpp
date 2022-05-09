@@ -75,8 +75,8 @@ struct utils {
                                          m::rect_min_max<i16> &p_bounding_rect,
                                          const CallbackFunc &p_cb) {
 
-    i16 l_area = m::cross(p_polygon.p2() - p_polygon.p0(),
-                          p_polygon.p1() - p_polygon.p0());
+    i32 l_area = m::cross((p_polygon.p2() - p_polygon.p0()).cast<i32>(),
+                          (p_polygon.p1() - p_polygon.p0()).cast<i32>());
 
     if (l_area > 0) {
 
