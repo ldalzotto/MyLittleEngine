@@ -455,7 +455,7 @@ private:
     m_heap.m_per_polygons.at(0, &l_polygon, orm::none());
     auto l_bounding_rect = m::bounding_rect(*l_polygon);
     l_bounding_rect.max() = l_bounding_rect.max() + 1;
-    // l_bounding_rect.max() = l_bounding_rect.max() + 1;
+
     l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
 
     m_rendered_rect.m_min = l_bounding_rect.min().cast<ui16>();
@@ -479,8 +479,9 @@ private:
 
       m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
 
-      l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
       l_bounding_rect.max() = l_bounding_rect.max() + 1;
+      l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
+
       m_rendered_rect = m::extend(m_rendered_rect, l_bounding_rect);
 
       assert_debug(l_bounding_rect.is_valid());
