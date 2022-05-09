@@ -56,6 +56,11 @@ template <typename T> struct range {
     return range<T>::make(m_begin + p_count, m_count - p_count);
   };
 
+  range<T> shrink_to(uimax p_count) {
+    assert_debug(m_count >= p_count);
+    return range<T>::make(m_begin, p_count);
+  };
+
   void slide_self(uimax p_count) {
     assert_debug(m_count >= p_count);
     m_begin += p_count;
