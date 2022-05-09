@@ -90,13 +90,13 @@ struct utils {
       i16 ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
       i16 ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
 
-      for (auto y = p_bounding_rect.min().y(); y <= p_bounding_rect.max().y();
+      for (auto y = p_bounding_rect.min().y(); y < p_bounding_rect.max().y();
            ++y) {
         i16 ex0 = ey0;
         i16 ex1 = ey1;
         i16 ex2 = ey2;
 
-        for (auto x = p_bounding_rect.min().x(); x <= p_bounding_rect.max().x();
+        for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
              ++x) {
 
           if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
@@ -413,7 +413,7 @@ private:
 
       l_pixel_coordinates_f32 = (l_pixel_coordinates_f32 + 1) * 0.5;
       l_pixel_coordinates_f32.y() = 1 - l_pixel_coordinates_f32.y();
-      l_pixel_coordinates_f32 *= (m_input.m_rect.extend());
+      l_pixel_coordinates_f32 *= (m_input.m_rect.extend() - 1);
 
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
 
@@ -454,6 +454,8 @@ private:
     pixel_coordinates *l_first_vertex_pixel_coordinates;
     m_heap.m_per_polygons.at(0, &l_polygon, orm::none());
     auto l_bounding_rect = m::bounding_rect(*l_polygon);
+    l_bounding_rect.max() = l_bounding_rect.max() + 1;
+
     l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
 
     m_rendered_rect.m_min = l_bounding_rect.min().cast<ui16>();
@@ -477,18 +479,20 @@ private:
 
       m::rect_min_max<i16> l_bounding_rect = m::bounding_rect(*l_polygon);
 
+      l_bounding_rect.max() = l_bounding_rect.max() + 1;
       l_bounding_rect = m::fit_into(l_bounding_rect, m_input.m_rect);
+
       m_rendered_rect = m::extend(m_rendered_rect, l_bounding_rect);
 
       assert_debug(l_bounding_rect.is_valid());
       assert_debug(m_rendered_rect.is_valid());
-      assert_debug(l_bounding_rect.max().x() <
+      assert_debug(l_bounding_rect.max().x() <=
                    m_input.m_target_image_view.m_target_info.width);
-      assert_debug(l_bounding_rect.max().y() <
+      assert_debug(l_bounding_rect.max().y() <=
                    m_input.m_target_image_view.m_target_info.height);
-      assert_debug(m_rendered_rect.max().x() <
+      assert_debug(m_rendered_rect.max().x() <=
                    m_input.m_target_image_view.m_target_info.width);
-      assert_debug(m_rendered_rect.max().y() <
+      assert_debug(m_rendered_rect.max().y() <=
                    m_input.m_target_image_view.m_target_info.height);
 
       // Resetting the bouding rect visibility buffer
@@ -500,7 +504,7 @@ private:
 
       m::vec<i16, 2> l_rasterization_rect_offset = l_bounding_rect.min();
       m::vec<i16, 2> l_rasterization_rect_dimensions =
-          (l_bounding_rect.max() - l_bounding_rect.min()) + 1;
+          (l_bounding_rect.max() - l_bounding_rect.min());
 
       l_boudingrect_visibility_range = l_boudingrect_visibility_range.shrink_to(
           l_rasterization_rect_dimensions.x() *
@@ -669,9 +673,9 @@ private:
 
   template <typename CallbackFunc>
   void __for_each_rendered_pixels(const CallbackFunc &p_callback) {
-    for (auto y = m_rendered_rect.min().y(); y <= m_rendered_rect.max().y();
+    for (auto y = m_rendered_rect.min().y(); y < m_rendered_rect.max().y();
          ++y) {
-      for (auto x = m_rendered_rect.min().x(); x <= m_rendered_rect.max().x();
+      for (auto x = m_rendered_rect.min().x(); x < m_rendered_rect.max().x();
            ++x) {
         uimax l_pixel_index =
             (m_input.m_target_image_view.m_target_info.width * y) + x;
