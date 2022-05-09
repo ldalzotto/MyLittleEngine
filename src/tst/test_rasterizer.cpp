@@ -3,7 +3,7 @@
 #include <m/const.hpp>
 #include <rast/rast.hpp>
 
-#define WRITE_OUTPUT 1
+#define WRITE_OUTPUT 0
 
 #if WRITE_OUTPUT
 #define STB_IMAGE_WRITE_IMPLEMENTATION
@@ -543,18 +543,4 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
   bgfx::shutdown();
 }
 
-#if 0
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_write.h>
-
-  /*
-    auto *l_frame_texture =
-        s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
-
-    stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/test.png",
-                   l_frame_texture->info.width, l_frame_texture->info.height, 3,
-                   l_frame_texture->range().m_begin,
-                   l_frame_texture->info.bitsPerPixel *
-                       l_frame_texture->info.width);
-  */
-#endif
+#undef WRITE_OUTPUT
