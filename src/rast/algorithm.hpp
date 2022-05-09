@@ -15,11 +15,12 @@ namespace rast {
 
 namespace algorithm {
 
+using screen_coord_t = i16;
 using polygon_vertex_indices = m::polygon<uimax, 3>;
-using pixel_coordinates = m::vec<i16, 2>;
+using pixel_coordinates = m::vec<screen_coord_t, 2>;
 using homogeneous_coordinates = m::vec<f32, 3>;
 using rasterization_weight = m::vec<f32, 3>;
-using screen_polygon = m::polygon<m::vec<i16, 2>, 3>;
+using screen_polygon = m::polygon<m::vec<screen_coord_t, 2>, 3>;
 
 struct render_state {
   enum class depth_test { Undefined = 0, Less = 1 } m_depth;
@@ -76,9 +77,10 @@ struct utils {
 
   using area = i32;
   template <typename CallbackFunc>
-  static void rasterize_polygon_weighted(const screen_polygon &p_polygon,
-                                         m::rect_min_max<i16> &p_bounding_rect,
-                                         const CallbackFunc &p_cb) {
+  static void
+  rasterize_polygon_weighted(const screen_polygon &p_polygon,
+                             m::rect_min_max<screen_coord_t> &p_bounding_rect,
+                             const CallbackFunc &p_cb) {
     area l_area = m::cross((p_polygon.p2() - p_polygon.p0()).cast<area>(),
                            (p_polygon.p1() - p_polygon.p0()).cast<area>());
 
@@ -489,12 +491,12 @@ private:
 
       utils::rasterize_polygon_weighted(
           *l_polygon, l_bounding_rect,
-          [&](i16 x, i16 y, f32 w0, f32 w1, f32 w2) {
+          [&](screen_coord_t x, screen_coord_t y, f32 w0, f32 w1, f32 w2) {
             ui8 *l_visibility_boolean;
             rasterization_weight *l_visibility_weight;
             uimax *l_polygon_index;
 
-            m::vec<i16, 2> l_point = {x, y};
+            pixel_coordinates l_point = {x, y};
             assert_debug(l_point.x() >= l_bounding_rect.min().x());
             assert_debug(l_point.y() >= l_bounding_rect.min().y());
             l_point -= l_bounding_rect.min();
