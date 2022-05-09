@@ -2,7 +2,10 @@
 #include <doctest.h>
 #include <m/const.hpp>
 #include <rast/rast.hpp>
-#if 1
+
+#define WRITE_OUTPUT 1
+
+#if WRITE_OUTPUT
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_write.h>
 #endif
@@ -163,14 +166,17 @@ TEST_CASE("rast.single_triangle.visibility") {
       RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
   REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
 
+#if WRITE_OUTPUT
   auto *l_frame_texture =
       s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
 
-  stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/test.png",
+  stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/"
+                 "rast.single_triangle.visibility.png",
                  l_frame_texture->info.width, l_frame_texture->info.height, 3,
                  l_frame_texture->range().m_begin,
                  l_frame_texture->info.bitsPerPixel *
                      l_frame_texture->info.width);
+#endif
 
   container::arr<ui8, 192> l_frame_expected = {
       0,   0,   0,   0,   0,   0,   0,   0,   0,   255, 255, 255, 0,   0,   0,
@@ -264,6 +270,18 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
       RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
   REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
+
+#if WRITE_OUTPUT
+  auto *l_frame_texture =
+      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
+
+  stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/"
+                 "rast.single_triangle.vertex_color_interpolation.png",
+                 l_frame_texture->info.width, l_frame_texture->info.height, 3,
+                 l_frame_texture->range().m_begin,
+                 l_frame_texture->info.bitsPerPixel *
+                     l_frame_texture->info.width);
+#endif
 
   container::arr<ui8, 192> l_frame_expected = {
       0,   0,   0, 0,  0,   0, 0,  0,   0, 255, 255, 0, 0, 0,  0, 0,   0,   0,
@@ -370,6 +388,17 @@ TEST_CASE("rast.depth.comparison") {
       RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
   REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
 
+#if WRITE_OUTPUT
+  auto *l_frame_texture =
+      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
+
+  stbi_write_png(
+      "/media/loic/SSD/SoftwareProjects/glm/rast.depth.comparison.png",
+      l_frame_texture->info.width, l_frame_texture->info.height, 3,
+      l_frame_texture->range().m_begin,
+      l_frame_texture->info.bitsPerPixel * l_frame_texture->info.width);
+#endif
+
   container::arr<ui8, 192> l_frame_expected = {
       0,   0,   0, 0,   0,   0, 0,   0,   0, 255, 0, 0, 0,   0, 0, 0,   0, 0,
       0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 255, 0, 0,
@@ -475,6 +504,18 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
   container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
       RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
   REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
+
+#if WRITE_OUTPUT
+  auto *l_frame_texture =
+      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
+
+  stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/"
+                 "rast.depth.comparison.outofbounds.png",
+                 l_frame_texture->info.width, l_frame_texture->info.height, 3,
+                 l_frame_texture->range().m_begin,
+                 l_frame_texture->info.bitsPerPixel *
+                     l_frame_texture->info.width);
+#endif
 
   container::arr<ui8, 192> l_frame_expected = {
       0,   0,   0,   0, 0,   0,   0, 0,   0, 255, 0,   0, 255, 0,   0, 255,
