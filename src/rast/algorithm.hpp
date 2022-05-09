@@ -518,7 +518,7 @@ private:
             *l_polygon_index = l_polygon_it;
           });
 
-      if (m_state.m_depth_read) {
+      if (m_state.m_depth_read && !m_state.m_depth_write) {
 
         m::polygon<f32, 3> l_attribute_polygon;
 
@@ -550,12 +550,77 @@ private:
                 *l_visibility_boolean = 1;
                 *l_visibility_weight = *l_boundingrect_visibility_weight;
                 *l_polygon_index = *l_boundingrect_polygon_index;
-
-                // TODO -> move this to a more straightforward way
-                if (m_state.m_depth_write) {
-                  *l_buffer_depth = l_interpolated_depth;
-                }
               }
+            });
+      } else if (m_state.m_depth_read && m_state.m_depth_write) {
+        m::polygon<f32, 3> l_attribute_polygon;
+
+        l_attribute_polygon.p0() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p0()).z();
+        l_attribute_polygon.p1() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p1()).z();
+        l_attribute_polygon.p2() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p2()).z();
+
+        __for_each_bounding_rasterized_pixels_v2(
+            l_rasterization_rect_dimensions, l_bounding_rect.min(),
+            [&](ui8 *l_boundingrect_visibility_boolean,
+                rasterization_weight *l_boundingrect_visibility_weight,
+                uimax *l_boundingrect_polygon_index, uimax l_visibility_index) {
+              ui8 *l_visibility_boolean;
+              rasterization_weight *l_visibility_weight;
+              uimax *l_polygon_index;
+              m_heap.m_visibility_buffer.at(
+                  l_visibility_index, &l_visibility_boolean,
+                  &l_visibility_weight, &l_polygon_index);
+
+              f32 l_interpolated_depth = m::interpolate(
+                  l_attribute_polygon, *l_boundingrect_visibility_weight);
+              f32 *l_buffer_depth =
+                  m_input.m_target_depth_view.at<f32>(l_visibility_index);
+
+              if (l_interpolated_depth < *l_buffer_depth) {
+                *l_visibility_boolean = 1;
+                *l_visibility_weight = *l_boundingrect_visibility_weight;
+                *l_polygon_index = *l_boundingrect_polygon_index;
+
+                // Writing depth
+                *l_buffer_depth = l_interpolated_depth;
+              }
+            });
+      } else if (!m_state.m_depth_read && m_state.m_depth_write) {
+        m::polygon<f32, 3> l_attribute_polygon;
+
+        l_attribute_polygon.p0() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p0()).z();
+        l_attribute_polygon.p1() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p1()).z();
+        l_attribute_polygon.p2() =
+            m_heap.get_vertex_homogenous(l_polygon_indices->p2()).z();
+
+        __for_each_bounding_rasterized_pixels_v2(
+            l_rasterization_rect_dimensions, l_bounding_rect.min(),
+            [&](ui8 *l_boundingrect_visibility_boolean,
+                rasterization_weight *l_boundingrect_visibility_weight,
+                uimax *l_boundingrect_polygon_index, uimax l_visibility_index) {
+              ui8 *l_visibility_boolean;
+              rasterization_weight *l_visibility_weight;
+              uimax *l_polygon_index;
+              m_heap.m_visibility_buffer.at(
+                  l_visibility_index, &l_visibility_boolean,
+                  &l_visibility_weight, &l_polygon_index);
+
+              f32 l_interpolated_depth = m::interpolate(
+                  l_attribute_polygon, *l_boundingrect_visibility_weight);
+              f32 *l_buffer_depth =
+                  m_input.m_target_depth_view.at<f32>(l_visibility_index);
+
+              *l_visibility_boolean = 1;
+              *l_visibility_weight = *l_boundingrect_visibility_weight;
+              *l_polygon_index = *l_boundingrect_polygon_index;
+
+              // Writing depth
+              *l_buffer_depth = l_interpolated_depth;
             });
       } else {
         __for_each_bounding_rasterized_pixels_v2(
