@@ -86,18 +86,22 @@ struct utils {
       const m::vec<i16, 2> d0 = p_polygon.p0() - p_polygon.p2();
       const m::vec<i16, 2> d1 = p_polygon.p1() - p_polygon.p0();
       const m::vec<i16, 2> d2 = p_polygon.p2() - p_polygon.p1();
-      i16 ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
-      i16 ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
-      i16 ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
+      i32 ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
+      i32 ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
+      i32 ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
 
       for (auto y = p_bounding_rect.min().y(); y < p_bounding_rect.max().y();
            ++y) {
-        i16 ex0 = ey0;
-        i16 ex1 = ey1;
-        i16 ex2 = ey2;
+        i32 ex0 = ey0;
+        i32 ex1 = ey1;
+        i32 ex2 = ey2;
 
         for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
              ++x) {
+
+          if (ex2 == l_area) {
+            i32 l_debug = 0;
+          }
 
           if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
             f32 w0 = (f32)ex2 / l_area;
@@ -120,11 +124,11 @@ struct utils {
   };
 
 private:
-  static i16 __ey_calculation(const m::vec<i16, 2> &p_pixel,
+  static i32 __ey_calculation(const m::vec<i16, 2> &p_pixel,
                               const m::vec<i16, 2> &p_polygon_point,
                               const m::vec<i16, 2> &p_delta) {
-    return ((p_pixel.x() - p_polygon_point.x()) * p_delta.y()) -
-           ((p_pixel.y() - p_polygon_point.y()) * p_delta.x());
+    return (i32(p_pixel.x() - p_polygon_point.x()) * p_delta.y()) -
+           (i32(p_pixel.y() - p_polygon_point.y()) * p_delta.x());
   };
 };
 
@@ -466,7 +470,7 @@ private:
         l_visibility_range.shrink_to(m_input.m_target_image_view.pixel_count());
     l_visibility_range.zero();
 
-    for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
+    for (uimax l_polygon_it = 0; l_polygon_it < m_polygon_count;
          ++l_polygon_it) {
       screen_polygon *l_polygon;
       polygon_vertex_indices *l_polygon_indices;
@@ -498,10 +502,12 @@ private:
             uimax *l_polygon_index;
 
             m::vec<i16, 2> l_point = {x, y};
+            assert_debug(l_point.x() >= l_bounding_rect.min().x());
+            assert_debug(l_point.y() >= l_bounding_rect.min().y());
             l_point -= l_bounding_rect.min();
 
-            auto l_boudingrect_visibility_index =
-                (l_point.y() * l_rasterization_rect_dimensions.x()) +
+            ui32 l_boudingrect_visibility_index =
+                (ui32(l_point.y()) * l_rasterization_rect_dimensions.x()) +
                 l_point.x();
 
             assert_debug(l_boudingrect_visibility_index <
@@ -609,11 +615,22 @@ private:
       const m::vec<i16, 2> &p_bounding_rect_offset,
       const CallbackFunc &p_callback) {
 
-    for (auto y = 0; y < p_bounding_rect_extend.y(); ++y) {
-      for (auto x = 0; x < p_bounding_rect_extend.x(); ++x) {
+    for (i16 y = 0; y < p_bounding_rect_extend.y(); ++y) {
+      for (i16 x = 0; x < p_bounding_rect_extend.x(); ++x) {
+        if (x == p_bounding_rect_extend.x() - 1 &&
+            y == p_bounding_rect_extend.y() - 1) {
+          i32 l_debug = 0;
+        }
         auto l_boudingrect_visibility_index =
             (y * p_bounding_rect_extend.x()) + x;
 
+        if (l_boudingrect_visibility_index == 39999) {
+          i32 l_debug = 0;
+        }
+        /*
+    uimax l_boudingrect_visibility_index =
+        (uimax(y) * p_bounding_rect_extend.x()) + x;
+*/
         ui8 *l_boundingrect_visibility_boolean;
         rasterization_weight *l_boundingrect_visibility_weight;
         uimax *l_boundingrect_polygon_index;
@@ -624,10 +641,10 @@ private:
 
         if (*l_boundingrect_visibility_boolean) {
 
-          auto l_visibility_index =
-              ((y + p_bounding_rect_offset.y()) *
+          uimax l_visibility_index =
+              ((uimax(y) + p_bounding_rect_offset.y()) *
                m_input.m_target_image_view.m_target_info.width) +
-              (x + p_bounding_rect_offset.x());
+              (uimax(x) + p_bounding_rect_offset.x());
 
           p_callback(l_boundingrect_visibility_boolean,
                      l_boundingrect_visibility_weight,
@@ -705,6 +722,9 @@ private:
            ++x) {
         uimax l_pixel_index =
             (m_input.m_target_image_view.m_target_info.width * y) + x;
+        if (l_pixel_index == 79799) {
+          i32 l_debug = 10;
+        }
         p_callback(l_pixel_index);
       }
     }
