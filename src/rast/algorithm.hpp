@@ -95,8 +95,7 @@ struct utils {
                              const screen_polygon_area &p_polygon_area,
                              m::rect_min_max<screen_coord_t> &p_bounding_rect,
                              const CallbackFunc &p_cb) {
-    assert_debug(p_polygon_area != 0);
-    // i8 l_area_sign = p_polygon_area > 0 ? 1 : -1;
+    assert_debug(p_polygon_area > 0);
 
     pixel_coordinates l_pixel = {p_bounding_rect.min().x(),
                                  p_bounding_rect.min().y()};
@@ -150,10 +149,7 @@ struct utils {
       p_polygon_indices->p0() = l_tmp;
     }
 
-    // TODO -> remove this by *-1
-    *p_area = m::cross(
-        (p_polygon->p2() - p_polygon->p0()).cast<screen_polygon_area>(),
-        (p_polygon->p1() - p_polygon->p0()).cast<screen_polygon_area>());
+    *p_area = *p_area * -1;
   };
 
 private:
@@ -336,7 +332,7 @@ struct rasterize_unit {
     __resize_buffers();
     __vertex_v2();
 
-    __extract_screen_polygons_v2();
+    __extract_polygons();
     __initialize_rendered_rect();
 
     // TODO -> should apply z clipping
@@ -458,22 +454,22 @@ private:
     }
   };
 
-  void __extract_screen_polygons_v2() {
+  void __extract_polygons() {
 
     switch (m_state.m_cull_mode) {
     case CullMode::Clockwise:
-      __extract_screen_polygons_internal<CullMode::Clockwise>();
+      __extract_polygons_internal<CullMode::Clockwise>();
       break;
     case CullMode::CounterClockwise:
-      __extract_screen_polygons_internal<CullMode::CounterClockwise>();
+      __extract_polygons_internal<CullMode::CounterClockwise>();
       break;
     case CullMode::None:
-      __extract_screen_polygons_internal<CullMode::None>();
+      __extract_polygons_internal<CullMode::None>();
       break;
     }
   };
 
-  template <CullMode CullModeValue> void __extract_screen_polygons_internal() {
+  template <CullMode CullModeValue> void __extract_polygons_internal() {
     uimax l_index_idx = 0;
     for (auto i = 0; i < m_polygon_count; ++i) {
       polygon_vertex_indices *l_polygon_indices;
