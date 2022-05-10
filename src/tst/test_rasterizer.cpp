@@ -748,7 +748,8 @@ TEST_CASE("rast.3Dcube") {
 
       bgfx::setIndexBuffer(l_index_buffer);
       bgfx::setVertexBuffer(0, l_vertex_buffer);
-      bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z);
+      bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z |
+                     BGFX_STATE_CULL_CW);
 
       // Submit primitive for rendering to view 0.
       bgfx::submit(0, l_program);

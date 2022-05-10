@@ -29,6 +29,8 @@ struct render_state {
 
   ui8 m_depth_write;
   ui8 m_depth_read;
+  ui8 m_clockwise_cull;
+  ui8 m_cclockwise_cull;
 
   static render_state from_int(ui64 p_state) {
     render_state l_state;
@@ -49,6 +51,10 @@ struct render_state {
 
     l_state.m_depth_read = l_state.m_depth_read || l_state.m_depth_write;
 
+    auto l_cull_state =
+        ((p_state & BGFX_STATE_CULL_MASK) >> BGFX_STATE_CULL_SHIFT);
+    l_state.m_clockwise_cull = l_cull_state == 1;
+    l_state.m_cclockwise_cull = l_cull_state == 2;
     return l_state;
   };
 };
@@ -465,53 +471,63 @@ private:
           (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
           (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
 
-#if 0
-      if (*l_area >= 0) {
-        i -= 1;
-        m_polygon_count -= 1;
-
-      } else {
-        {
-          auto l_tmp = l_polygon->p1();
-          l_polygon->p1() = l_polygon->p0();
-          l_polygon->p0() = l_tmp;
+      if (m_state.m_clockwise_cull) {
+        if (*l_area <= 0) {
+          i -= 1;
+          m_polygon_count -= 1;
+          goto next;
         }
-        {
-          auto l_tmp = l_polygon_indices->p1();
-          l_polygon_indices->p1() = l_polygon_indices->p0();
-          l_polygon_indices->p0() = l_tmp;
+      } else if (m_state.m_cclockwise_cull) {
+        if (*l_area >= 0) {
+          i -= 1;
+          m_polygon_count -= 1;
+          goto next;
+        } else {
+          {
+            auto l_tmp = l_polygon->p1();
+            l_polygon->p1() = l_polygon->p0();
+            l_polygon->p0() = l_tmp;
+          }
+          {
+            auto l_tmp = l_polygon_indices->p1();
+            l_polygon_indices->p1() = l_polygon_indices->p0();
+            l_polygon_indices->p0() = l_tmp;
+          }
+
+          *l_area = m::cross(
+              (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
+              (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
         }
-
-        *l_area = m::cross(
-            (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
-            (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
-
-        *l_bounding_rect = m::bounding_rect(*l_polygon);
-        l_bounding_rect->max() = l_bounding_rect->max() + 1;
-        *l_bounding_rect = m::fit_into(*l_bounding_rect, m_input.m_rect);
-
-        assert_debug(l_bounding_rect->is_valid());
-        assert_debug(l_bounding_rect->max().x() <=
-                     m_input.m_target_image_view.m_target_info.width);
-        assert_debug(l_bounding_rect->max().y() <=
-                     m_input.m_target_image_view.m_target_info.height);
-      }
-#endif
-      if (*l_area <= 0) {
-        i -= 1;
-        m_polygon_count -= 1;
       } else {
-        *l_bounding_rect = m::bounding_rect(*l_polygon);
-        l_bounding_rect->max() = l_bounding_rect->max() + 1;
-        *l_bounding_rect = m::fit_into(*l_bounding_rect, m_input.m_rect);
+        if (*l_area < 0) {
+          {
+            auto l_tmp = l_polygon->p1();
+            l_polygon->p1() = l_polygon->p0();
+            l_polygon->p0() = l_tmp;
+          }
+          {
+            auto l_tmp = l_polygon_indices->p1();
+            l_polygon_indices->p1() = l_polygon_indices->p0();
+            l_polygon_indices->p0() = l_tmp;
+          }
 
-        assert_debug(l_bounding_rect->is_valid());
-        assert_debug(l_bounding_rect->max().x() <=
-                     m_input.m_target_image_view.m_target_info.width);
-        assert_debug(l_bounding_rect->max().y() <=
-                     m_input.m_target_image_view.m_target_info.height);
+          *l_area = m::cross(
+              (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
+              (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
+        }
       }
 
+      *l_bounding_rect = m::bounding_rect(*l_polygon);
+      l_bounding_rect->max() = l_bounding_rect->max() + 1;
+      *l_bounding_rect = m::fit_into(*l_bounding_rect, m_input.m_rect);
+
+      assert_debug(l_bounding_rect->is_valid());
+      assert_debug(l_bounding_rect->max().x() <=
+                   m_input.m_target_image_view.m_target_info.width);
+      assert_debug(l_bounding_rect->max().y() <=
+                   m_input.m_target_image_view.m_target_info.height);
+
+    next:
       l_index_idx += 3;
     }
   };
