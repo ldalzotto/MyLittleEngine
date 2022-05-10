@@ -150,6 +150,7 @@ struct utils {
       p_polygon_indices->p0() = l_tmp;
     }
 
+    // TODO -> remove this by *-1
     *p_area = m::cross(
         (p_polygon->p2() - p_polygon->p0()).cast<screen_polygon_area>(),
         (p_polygon->p1() - p_polygon->p0()).cast<screen_polygon_area>());
@@ -335,9 +336,6 @@ struct rasterize_unit {
     __resize_buffers();
     __vertex_v2();
 
-    // TODO -> backface culling
-
-    // __extract_screen_polygons();
     __extract_screen_polygons_v2();
     __initialize_rendered_rect();
 
@@ -500,13 +498,13 @@ private:
           (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
           (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
 
-      if constexpr (CullModeValue == CullMode::Clockwise) {
+      if constexpr (CullModeValue == CullMode::CounterClockwise) {
         if (*l_area <= 0) {
           i -= 1;
           m_polygon_count -= 1;
           goto next;
         }
-      } else if constexpr (CullModeValue == CullMode::CounterClockwise) {
+      } else if constexpr (CullModeValue == CullMode::Clockwise) {
         if (*l_area >= 0) {
           i -= 1;
           m_polygon_count -= 1;
@@ -517,6 +515,10 @@ private:
       } else if constexpr (CullModeValue == CullMode::None) {
         if (*l_area < 0) {
           utils::swap_polygon_winding(l_polygon, l_polygon_indices, l_area);
+        } else if (*l_area == 0) {
+          i -= 1;
+          m_polygon_count -= 1;
+          goto next;
         }
       }
 
@@ -536,14 +538,19 @@ private:
   };
 
   void __initialize_rendered_rect() {
-    container::range<screen_polygon_bounding_box> l_polygon_rects =
-        container::range<screen_polygon_bounding_box>::make(
-            m_heap.m_per_polygons.m_col_2, m_polygon_count);
-    m::rect_min_max<screen_coord_t> l_rendered_rect =
-        m::bounding_rect(l_polygon_rects);
+    if (m_polygon_count == 0) {
+      m_rendered_rect.min() = {0, 0};
+      m_rendered_rect.max() = {0, 0};
+    } else {
+      container::range<screen_polygon_bounding_box> l_polygon_rects =
+          container::range<screen_polygon_bounding_box>::make(
+              m_heap.m_per_polygons.m_col_2, m_polygon_count);
+      m::rect_min_max<screen_coord_t> l_rendered_rect =
+          m::bounding_rect(l_polygon_rects);
 
-    m_rendered_rect.min() = l_rendered_rect.min().cast<ui16>();
-    m_rendered_rect.max() = l_rendered_rect.max().cast<ui16>();
+      m_rendered_rect.min() = l_rendered_rect.min().cast<ui16>();
+      m_rendered_rect.max() = l_rendered_rect.max().cast<ui16>();
+    }
 
     assert_debug(m_rendered_rect.is_valid());
     assert_debug(m_rendered_rect.max().x() <=
@@ -553,7 +560,6 @@ private:
   };
 
   void __calculate_visibility_buffer() {
-
     container::range<ui8> l_visibility_range;
     m_heap.m_visibility_buffer.range(&l_visibility_range, orm::none(),
                                      orm::none());

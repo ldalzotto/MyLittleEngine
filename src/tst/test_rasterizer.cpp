@@ -284,6 +284,90 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   bgfx::shutdown();
 }
 
+TEST_CASE("rast.cull.clockwise.counterclockwise") {
+
+  bgfx::init();
+
+  bgfx::VertexLayout l_vertex_layout;
+  l_vertex_layout.begin();
+  l_vertex_layout.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
+
+  container::arr<m::vec<f32, 3>, 6> l_triangle_vertices = {
+      .m_data = {
+          {0.0, 0.0, 0.0},
+          {1.0, 0.0, 0.0},
+          {0.0, 1.0, 0.0}, // ccw
+          {0.0, 0.0, 0.0},
+          {0.0, -1.0, 0.0},
+          {-1.0, 0.0, 0.0} // cc
+      }};
+  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+
+  bgfx::VertexBufferHandle l_vertex_buffer;
+  bgfx::IndexBufferHandle l_index_buffer;
+  RasterizerTestToolbox::loadVertexIndex(
+      l_vertex_layout, l_triangle_vertices.range().cast_to<ui8>(),
+      l_triangle_indices.range().cast_to<ui8>(), &l_vertex_buffer,
+      &l_index_buffer);
+
+  constexpr ui16 l_width = 8, l_height = 8;
+
+  bgfx::FrameBufferHandle l_frame_buffer =
+      bgfx::createFrameBuffer(l_width, l_height, bgfx::TextureFormat::RGB8);
+
+  bgfx::ProgramHandle l_program = WhiteShader::load_program();
+
+  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
+  bgfx::setViewRect(0, 0, 0, l_width, l_height);
+  bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
+  bgfx::setViewFrameBuffer(0, l_frame_buffer);
+
+  bgfx::touch(0);
+
+  bgfx::setTransform(l_indentity.m_data);
+  bgfx::setIndexBuffer(l_index_buffer);
+  bgfx::setVertexBuffer(0, l_vertex_buffer);
+  bgfx::setState(BGFX_STATE_CULL_CW);
+
+  bgfx::submit(0, l_program);
+
+  bgfx::frame();
+
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.cull.clockwise.png",
+      l_frame_buffer, frame_expected::rast_cull_clockwise());
+
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
+  bgfx::setViewRect(0, 0, 0, l_width, l_height);
+  bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
+  bgfx::setViewFrameBuffer(0, l_frame_buffer);
+
+  bgfx::touch(0);
+
+  bgfx::setTransform(l_indentity.m_data);
+  bgfx::setIndexBuffer(l_index_buffer);
+  bgfx::setVertexBuffer(0, l_vertex_buffer);
+  bgfx::setState(BGFX_STATE_CULL_CCW);
+
+  bgfx::submit(0, l_program);
+
+  bgfx::frame();
+
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.cull.counterclockwise.png",
+      l_frame_buffer, frame_expected::rast_cull_counterclockwise());
+
+  bgfx::destroy(l_index_buffer);
+  bgfx::destroy(l_vertex_buffer);
+  bgfx::destroy(l_program);
+
+  bgfx::shutdown();
+}
+
 TEST_CASE("rast.depth.comparison") {
 
   bgfx::init();
