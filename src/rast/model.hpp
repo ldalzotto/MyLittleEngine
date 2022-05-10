@@ -22,39 +22,36 @@ struct image_view {
                      (p_target_info.height * p_target_info.width));
   };
 
-  uimax get_buffer_index(ui16 r, ui16 c) {
+  template <typename SizeType> uimax get_buffer_index(SizeType r, SizeType c) {
 
     assert_debug(r < m_target_info.height);
     assert_debug(c < m_target_info.width);
 
     return r * stride() + (c * m_target_info.bitsPerPixel);
   };
-  uimax get_buffer_index(ui16 p) {
+
+  template <typename SizeType> uimax get_buffer_index(SizeType p) {
 
     assert_debug(p < (m_target_info.height * m_target_info.width));
 
     return m_target_info.bitsPerPixel * p;
   };
 
-  ui8 *at(ui16 r, ui16 c) { return &m_buffer.at(get_buffer_index(r, c)); };
-  ui8 *at(ui16 p) { return &m_buffer.at(get_buffer_index(p)); };
-
-  template <typename T> T *at(ui16 r, ui16 c) {
-    assert_debug(m_target_info.bitsPerPixel == sizeof(T));
-    return (T *)at(r, c);
+  template <typename SizeType> ui8 *at(SizeType r, SizeType c) {
+    return &m_buffer.at(get_buffer_index(r, c));
+  };
+  template <typename SizeType> ui8 *at(SizeType p) {
+    return &m_buffer.at(get_buffer_index(p));
   };
 
-  template <typename T> T *at(ui16 p) {
-    assert_debug(m_target_info.bitsPerPixel == sizeof(T));
-    return (T *)at(p);
-  };
-
-  void set_pixel(ui16 r, ui16 c, const m::vec<ui8, 3> &p_pixel) {
+  template <typename SizeType>
+  void set_pixel(SizeType r, SizeType c, const m::vec<ui8, 3> &p_pixel) {
     assert_debug(sizeof(p_pixel) == m_target_info.bitsPerPixel);
     *(m::vec<ui8, 3> *)at(r, c) = p_pixel;
   };
 
-  void set_pixel(ui16 p, const m::vec<ui8, 3> &p_pixel) {
+  template <typename SizeType>
+  void set_pixel(SizeType p, const m::vec<ui8, 3> &p_pixel) {
     assert_debug(sizeof(p_pixel) == m_target_info.bitsPerPixel);
     *(m::vec<ui8, 3> *)at(p) = p_pixel;
   };

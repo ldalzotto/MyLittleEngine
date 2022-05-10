@@ -2,13 +2,12 @@
 #include <doctest.h>
 #include <m/const.hpp>
 #include <rast/rast.hpp>
+#include <tst/test_rasterizer_assets.hpp>
 
 #define WRITE_OUTPUT 0
 
-#if WRITE_OUTPUT
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_write.h>
-#endif
 
 namespace RasterizerTestToolbox {
 
@@ -20,6 +19,37 @@ getFrameBuffer(bgfx::FrameBufferHandle p_frame_buffer) {
       .value()
       ->range()
       .cast_to<m::vec<ui8, 3>>();
+};
+
+template <typename ExpectedFrameType>
+inline static void
+assert_frame_equals(const i8 *p_save_path,
+                    bgfx::FrameBufferHandle p_frame_buffer,
+                    const ExpectedFrameType &p_expected_frame) {
+  container::range<ui8> l_png_frame;
+  {
+    auto *l_frame_texture =
+        s_bgfx_impl.proxy().FrameBuffer(p_frame_buffer).RGBTexture().value();
+
+#if WRITE_OUTPUT
+    stbi_write_png(
+        p_save_path, l_frame_texture->info.width, l_frame_texture->info.height,
+        3, l_frame_texture->range().m_begin,
+        l_frame_texture->info.bitsPerPixel * l_frame_texture->info.width);
+#endif
+
+    i32 l_length;
+    l_png_frame.m_begin = stbi_write_png_to_mem(
+        l_frame_texture->range().m_begin,
+        l_frame_texture->info.bitsPerPixel * l_frame_texture->info.width,
+        l_frame_texture->info.width, l_frame_texture->info.height, 3,
+        &l_length);
+    l_png_frame.m_count = l_length;
+  }
+
+  REQUIRE(l_png_frame.is_contained_by(p_expected_frame.range()));
+
+  STBIW_FREE(l_png_frame.m_begin);
 };
 
 inline static bgfx::ProgramHandle
@@ -162,39 +192,10 @@ TEST_CASE("rast.single_triangle.visibility") {
 
   bgfx::frame();
 
-  container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
-      RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
-  REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
-
-#if WRITE_OUTPUT
-  auto *l_frame_texture =
-      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
-
-  stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/"
-                 "rast.single_triangle.visibility.png",
-                 l_frame_texture->info.width, l_frame_texture->info.height, 3,
-                 l_frame_texture->range().m_begin,
-                 l_frame_texture->info.bitsPerPixel *
-                     l_frame_texture->info.width);
-#endif
-
-  container::arr<ui8, 192> l_frame_expected = {
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   255, 255, 255, 0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   255, 255, 255, 255, 255, 255, 0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   255, 255, 255,
-      255, 255, 255, 255, 255, 255, 0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   255, 255, 255, 255, 255, 255, 255, 255, 255,
-      255, 255, 255, 255, 255, 255, 0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-      0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0};
-
-  REQUIRE(l_frame_buffer_memory.is_contained_by(
-      l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.single_triangle.visibility.png",
+      l_frame_buffer, frame_expected::rast_single_triangle_visibility());
 
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
@@ -267,37 +268,11 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   bgfx::frame();
 
-  container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
-      RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
-  REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
-
-#if WRITE_OUTPUT
-  auto *l_frame_texture =
-      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
-
-  stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/"
-                 "rast.single_triangle.vertex_color_interpolation.png",
-                 l_frame_texture->info.width, l_frame_texture->info.height, 3,
-                 l_frame_texture->range().m_begin,
-                 l_frame_texture->info.bitsPerPixel *
-                     l_frame_texture->info.width);
-#endif
-
-  container::arr<ui8, 192> l_frame_expected = {
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 255, 255, 0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 170, 170, 0,
-      170, 233, 0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 85, 85,  0, 85, 148, 0, 85,  212, 0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 63, 0, 0,   127, 0,
-      0,   191, 0, 0,  255, 0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0, 0, 0,  0, 0,   0,   0,
-      0,   0,   0, 0,  0,   0, 0,  0,   0, 0,   0,   0};
-
-  REQUIRE(l_frame_buffer_memory.is_contained_by(
-      l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.single_triangle.vertex_color_interpolation.png",
+      l_frame_buffer,
+      frame_expected::rast_single_triangle_vertex_color_interpolation());
 
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
@@ -384,36 +359,101 @@ TEST_CASE("rast.depth.comparison") {
 
   bgfx::frame();
 
-  container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
-      RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
-  REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.depth.comparison.png",
+      l_frame_buffer, frame_expected::rast_depth_comparison());
 
-#if WRITE_OUTPUT
-  auto *l_frame_texture =
-      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
+  bgfx::destroy(l_index_buffer);
+  bgfx::destroy(l_vertex_buffer);
+  bgfx::destroy(l_program);
 
-  stbi_write_png(
-      "/media/loic/SSD/SoftwareProjects/glm/rast.depth.comparison.png",
-      l_frame_texture->info.width, l_frame_texture->info.height, 3,
-      l_frame_texture->range().m_begin,
-      l_frame_texture->info.bitsPerPixel * l_frame_texture->info.width);
-#endif
+  l_triangle_vertices.free();
 
-  container::arr<ui8, 192> l_frame_expected = {
-      0,   0,   0, 0,   0,   0, 0,   0,   0, 255, 0, 0, 0,   0, 0, 0,   0, 0,
-      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 255, 0, 0,
-      255, 0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
-      0,   255, 0, 255, 0,   0, 255, 0,   0, 255, 0, 0, 0,   0, 0, 0,   0, 0,
-      0,   0,   0, 0,   255, 0, 0,   255, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0,
-      255, 0,   0, 255, 0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
-      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
-      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
-      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
-      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0, 0,   0, 0, 0,   0, 0,
-      0,   0,   0, 0,   0,   0, 0,   0,   0, 0,   0, 0};
+  bgfx::shutdown();
+}
 
-  REQUIRE(l_frame_buffer_memory.is_contained_by(
-      l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
+TEST_CASE("rast.depth.comparison.large_framebuffer") {
+
+  bgfx::init();
+
+  bgfx::VertexLayout l_vertex_layout;
+  l_vertex_layout.begin()
+      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Uint8)
+      .end();
+
+  container::span<ui8> l_triangle_vertices;
+  l_triangle_vertices.allocate(l_vertex_layout.getSize(3) * 2);
+
+  {
+    l_triangle_vertices.range()
+        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(1))
+        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(2))
+        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<ui8, 3>{0, 0, 255});
+
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(3))
+        .stream(m::vec<f32, 3>{-0.5, 0.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(4))
+        .stream(m::vec<f32, 3>{1.0, 0.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(5))
+        .stream(m::vec<f32, 3>{0.0, 1.0, 0.1})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+  }
+
+  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+
+  bgfx::VertexBufferHandle l_vertex_buffer;
+  bgfx::IndexBufferHandle l_index_buffer;
+  RasterizerTestToolbox::loadVertexIndex(
+      l_vertex_layout, l_triangle_vertices.range().cast_to<ui8>(),
+      l_triangle_indices.range().cast_to<ui8>(), &l_vertex_buffer,
+      &l_index_buffer);
+
+  constexpr ui16 l_width = 400, l_height = 400;
+
+  bgfx::FrameBufferHandle l_frame_buffer =
+      bgfx::createFrameBuffer(0, l_width, l_height, bgfx::TextureFormat::RGB8,
+                              bgfx::TextureFormat::D32F);
+
+  bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
+
+  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
+  bgfx::setViewRect(0, 0, 0, l_width, l_height);
+  bgfx::setViewTransform(0, l_indentity.m_data, l_indentity.m_data);
+  bgfx::setViewFrameBuffer(0, l_frame_buffer);
+
+  bgfx::touch(0);
+
+  bgfx::setTransform(l_indentity.m_data);
+
+  bgfx::setIndexBuffer(l_index_buffer);
+  bgfx::setVertexBuffer(0, l_vertex_buffer);
+  bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z);
+
+  bgfx::submit(0, l_program);
+
+  bgfx::frame();
+
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.depth.comparison.large_framebuffer.png",
+      l_frame_buffer,
+      frame_expected::rast_depth_comparison_large_framebuffer());
 
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
@@ -500,36 +540,10 @@ TEST_CASE("rast.depth.comparison.readonly") {
 
   bgfx::frame();
 
-  container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
-      RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
-  REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
-
-#if WRITE_OUTPUT
-  auto *l_frame_texture =
-      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
-
-  stbi_write_png(
-      "/media/loic/SSD/SoftwareProjects/glm/rast.depth.comparison.readonly.png",
-      l_frame_texture->info.width, l_frame_texture->info.height, 3,
-      l_frame_texture->range().m_begin,
-      l_frame_texture->info.bitsPerPixel * l_frame_texture->info.width);
-#endif
-
-  container::arr<ui8, 192> l_frame_expected = {
-      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 255, 0, 0, 0,   0, 0, 0,   0,
-      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 255, 0,
-      0, 255, 0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
-      0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 0,   0, 0, 0,   0,
-      0, 0,   0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0, 0, 255, 0,
-      0, 255, 0, 0, 255, 0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
-      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
-      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
-      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
-      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0,
-      0, 0,   0, 0, 0,   0, 0, 0,   0, 0, 0,   0};
-
-  REQUIRE(l_frame_buffer_memory.is_contained_by(
-      l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.depth.comparison.readonly.png",
+      l_frame_buffer, frame_expected::rast_depth_comparison_readonly());
 
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
@@ -617,38 +631,10 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
 
   bgfx::frame();
 
-  container::range<m::vec<ui8, 3>> l_frame_buffer_memory =
-      RasterizerTestToolbox::getFrameBuffer(l_frame_buffer);
-  REQUIRE(l_frame_buffer_memory.count() == l_width * l_height);
-
-#if WRITE_OUTPUT
-  auto *l_frame_texture =
-      s_bgfx_impl.proxy().FrameBuffer(l_frame_buffer).RGBTexture().value();
-
-  stbi_write_png("/media/loic/SSD/SoftwareProjects/glm/"
-                 "rast.depth.comparison.outofbounds.png",
-                 l_frame_texture->info.width, l_frame_texture->info.height, 3,
-                 l_frame_texture->range().m_begin,
-                 l_frame_texture->info.bitsPerPixel *
-                     l_frame_texture->info.width);
-#endif
-
-  container::arr<ui8, 192> l_frame_expected = {
-      0,   0,   0,   0, 0,   0,   0, 0,   0, 255, 0,   0, 255, 0,   0, 255,
-      0,   0,   255, 0, 0,   0,   0, 0,   0, 0,   0,   0, 0,   0,   0, 0,
-      0,   255, 0,   0, 255, 0,   0, 255, 0, 0,   255, 0, 0,   255, 0, 0,
-      0,   0,   0,   0, 0,   0,   0, 255, 0, 255, 0,   0, 255, 0,   0, 255,
-      0,   0,   255, 0, 0,   255, 0, 0,   0, 0,   0,   0, 0,   0,   0, 255,
-      0,   255, 0,   0, 255, 0,   0, 255, 0, 0,   255, 0, 0,   255, 0, 0,
-      0,   0,   0,   0, 255, 0,   0, 255, 0, 0,   255, 0, 0,   255, 0, 0,
-      254, 0,   0,   0, 0,   0,   0, 0,   0, 255, 0,   0, 255, 0,   0, 255,
-      0,   0,   255, 0, 0,   255, 0, 0,   0, 0,   0,   0, 0,   0,   0, 0,
-      0,   255, 0,   0, 255, 0,   0, 255, 0, 0,   0,   0, 0,   0,   0, 0,
-      0,   0,   0,   0, 0,   0,   0, 0,   0, 255, 0,   0, 255, 0,   0, 0,
-      0,   0,   0,   0, 0,   0,   0, 0,   0, 0,   0,   0, 0,   0,   0, 0};
-
-  REQUIRE(l_frame_buffer_memory.is_contained_by(
-      l_frame_expected.range().cast_to<m::vec<ui8, 3>>()));
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.depth.comparison.outofbounds.png",
+      l_frame_buffer, frame_expected::rast_depth_comparison_outofbounds());
 
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);

@@ -53,7 +53,7 @@ add_library(API SHARED ./src/eng/api.cpp)
 target_link_libraries(API PUBLIC SYS)
 target_link_libraries(API PUBLIC WIN)
 
-add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer.cpp)
+add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp)
 target_link_libraries(TESTS PUBLIC SYS)
 target_link_libraries(TESTS PUBLIC WIN)
 target_link_libraries(TESTS PUBLIC STB)

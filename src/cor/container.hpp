@@ -85,6 +85,7 @@ template <typename T> struct range {
   };
 
   ui8 is_contained_by(const range<T> &p_other) const {
+    assert_debug(p_other.size_of() >= size_of());
     return sys::memcmp(m_begin, p_other.m_begin, size_of()) == 0;
   };
 };
@@ -92,6 +93,9 @@ template <typename T> struct range {
 template <typename T, int N> struct arr {
   T m_data[N];
   container::range<T> range() { return container::range<T>::make(m_data, N); };
+  container::range<T> range() const {
+    return container::range<T>::make((T *)m_data, N);
+  };
   T *data() { return m_data; };
   const T *data() const { return m_data; };
 };
