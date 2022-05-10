@@ -47,6 +47,7 @@ assert_frame_equals(const i8 *p_save_path,
     l_png_frame.m_count = l_length;
   }
 
+  REQUIRE(l_png_frame.count() == p_expected_frame.count());
   REQUIRE(l_png_frame.is_contained_by(p_expected_frame.range()));
 
   STBIW_FREE(l_png_frame.m_begin);
@@ -635,6 +636,131 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
       "/media/loic/SSD/SoftwareProjects/glm/"
       "rast.depth.comparison.outofbounds.png",
       l_frame_buffer, frame_expected::rast_depth_comparison_outofbounds());
+
+  bgfx::destroy(l_index_buffer);
+  bgfx::destroy(l_vertex_buffer);
+  bgfx::destroy(l_program);
+
+  l_triangle_vertices.free();
+
+  bgfx::shutdown();
+}
+
+TEST_CASE("rast.3Dcube") {
+  bgfx::init();
+
+  bgfx::VertexLayout l_vertex_layout;
+  l_vertex_layout.begin()
+      .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+      .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Uint8)
+      .end();
+
+  container::span<ui8> l_triangle_vertices;
+  l_triangle_vertices.allocate(l_vertex_layout.getSize(8));
+
+  {
+    l_triangle_vertices.range()
+        .stream(m::vec<f32, 3>{-1.0f, 1.0f, 1.0f})
+        .stream(m::vec<ui8, 3>{0, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(1))
+        .stream(m::vec<f32, 3>{1.0f, 1.0f, 1.0f})
+        .stream(m::vec<ui8, 3>{0, 0, 255});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(2))
+        .stream(m::vec<f32, 3>{-1.0f, -1.0f, 1.0f})
+        .stream(m::vec<ui8, 3>{0, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(3))
+        .stream(m::vec<f32, 3>{1.0f, -1.0f, 1.0f})
+        .stream(m::vec<ui8, 3>{0, 255, 255});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(4))
+        .stream(m::vec<f32, 3>{-1.0f, 1.0f, -1.0f})
+        .stream(m::vec<ui8, 3>{255, 0, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(5))
+        .stream(m::vec<f32, 3>{1.0f, 1.0f, -1.0f})
+        .stream(m::vec<ui8, 3>{255, 0, 255});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(6))
+        .stream(m::vec<f32, 3>{-1.0f, -1.0f, -1.0f})
+        .stream(m::vec<ui8, 3>{255, 255, 0});
+    l_triangle_vertices.range()
+        .slide(l_vertex_layout.getSize(7))
+        .stream(m::vec<f32, 3>{1.0f, -1.0f, -1.0f})
+        .stream(m::vec<ui8, 3>{255, 255, 255});
+  }
+
+  container::arr<ui16, 36> l_triangle_indices = {0, 1, 2,          // 0
+                                                 1, 3, 2, 4, 6, 5, // 2
+                                                 5, 6, 7, 0, 2, 4, // 4
+                                                 4, 2, 6, 1, 5, 3, // 6
+                                                 5, 7, 3, 0, 4, 1, // 8
+                                                 4, 5, 1, 2, 3, 6, // 10
+                                                 6, 3, 7};
+
+  bgfx::VertexBufferHandle l_vertex_buffer;
+  bgfx::IndexBufferHandle l_index_buffer;
+  RasterizerTestToolbox::loadVertexIndex(
+      l_vertex_layout, l_triangle_vertices.range().cast_to<ui8>(),
+      l_triangle_indices.range().cast_to<ui8>(), &l_vertex_buffer,
+      &l_index_buffer);
+
+  constexpr ui16 l_width = 128, l_height = 128;
+
+  bgfx::FrameBufferHandle l_frame_buffer =
+      bgfx::createFrameBuffer(0, l_width, l_height, bgfx::TextureFormat::RGB8,
+                              bgfx::TextureFormat::D32F);
+
+  bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
+
+  m::mat<f32, 4, 4> l_view, l_proj;
+  {
+    const m::vec<f32, 3> at = {0.0f, 0.0f, 0.0f};
+    const m::vec<f32, 3> eye = {0.0f, 0.0f, -35.0f};
+
+    // Set view and projection matrix for view 0.
+    {
+      l_view = m::look_at(eye, at, {0, 1, 0});
+      l_proj = m::perspective(60.0f * m::deg_to_rad,
+                              float(l_width) / float(l_height), 0.1f, 100.0f);
+    }
+  }
+
+  bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
+  bgfx::setViewRect(0, 0, 0, l_width, l_height);
+  bgfx::setViewTransform(0, l_view.m_data, l_proj.m_data);
+  bgfx::setViewFrameBuffer(0, l_frame_buffer);
+
+  bgfx::touch(0);
+
+  // Submit 11x11 cubes.
+  for (uint32_t yy = 0; yy < 11; ++yy) {
+    for (uint32_t xx = 0; xx < 11; ++xx) {
+      m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
+      l_transform.at(3, 0) = -15.0f + xx * 3.0f;
+      l_transform.at(3, 1) = -15.0f + yy * 3.0f;
+      l_transform.at(3, 2) = 0.0f;
+
+      // Set model matrix for rendering.
+      bgfx::setTransform(l_transform.m_data);
+
+      bgfx::setIndexBuffer(l_index_buffer);
+      bgfx::setVertexBuffer(0, l_vertex_buffer);
+      bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z);
+
+      // Submit primitive for rendering to view 0.
+      bgfx::submit(0, l_program);
+    }
+  }
+
+  bgfx::frame();
+
+  RasterizerTestToolbox::assert_frame_equals(
+      "/media/loic/SSD/SoftwareProjects/glm/"
+      "rast.3Dcube.png",
+      l_frame_buffer, frame_expected::rast_3Dcube());
 
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);

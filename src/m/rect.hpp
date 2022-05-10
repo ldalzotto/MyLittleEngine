@@ -62,6 +62,42 @@ template <typename T> struct rect_point_extend {
     l_rect.m_extend = l_rect.m_extend.getZero();
     return l_rect;
   };
+
+  static rect_point_extend build(const rect_min_max<T> &p_other) {
+    rect_point_extend l_rect;
+    l_rect.point() = p_other.min();
+    l_rect.extend() = p_other.max() - p_other.min();
+    return l_rect;
+  };
+};
+
+template <typename T>
+rect_min_max<T> bounding_rect(container::range<m::rect_min_max<T>> &p_rects) {
+  assert_debug(p_rects.count() > 0);
+
+  rect_min_max<T> l_rect;
+  {
+    l_rect.min() = p_rects.at(0).min();
+    l_rect.max() = p_rects.at(0).max();
+  }
+
+  for (auto i = 1; i < p_rects.count(); ++i) {
+    m::rect_min_max<T> &l_input_rect = p_rects.at(i);
+    if (l_rect.min().x() > l_input_rect.min().x()) {
+      l_rect.min().x() = l_input_rect.min().x();
+    }
+    if (l_rect.max().x() < l_input_rect.max().x()) {
+      l_rect.max().x() = l_input_rect.max().x();
+    }
+    if (l_rect.min().y() > l_input_rect.min().y()) {
+      l_rect.min().y() = l_input_rect.min().y();
+    }
+    if (l_rect.max().y() < l_input_rect.max().y()) {
+      l_rect.max().y() = l_input_rect.max().y();
+    }
+  }
+
+  return l_rect;
 };
 
 template <typename T, typename TT>
@@ -92,6 +128,12 @@ m::rect_min_max<T> fit_into(const m::rect_min_max<T> &p_rect,
     l_rect.max().y() = (p_into.point().y() + p_into.extend().y());
   }
   return l_rect;
+};
+
+template <typename T, typename TT>
+m::rect_min_max<T> fit_into(const m::rect_min_max<T> &p_rect,
+                            const m::rect_min_max<TT> &p_into) {
+  return fit_into(p_rect, rect_point_extend<TT>::build(p_into));
 };
 
 template <typename T, typename TT>

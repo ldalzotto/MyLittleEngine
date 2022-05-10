@@ -919,6 +919,9 @@ private:
   void at(uimax p_index, type_0 **out_0, type_1 **out_1, type_2 **out_2) {     \
     orm::details::__at_span_3(*this, p_index, out_0, out_1, out_2);            \
   };                                                                           \
+  void at(uimax p_index, orm::none out_0, type_1 **out_1, orm::none out_2) {   \
+    orm::details::__at_span_3(*this, p_index, out_0, out_1, out_2);            \
+  };                                                                           \
   void at(uimax p_index, type_0 **out_0, orm::none out_1, orm::none out_2) {   \
     orm::details::__at_span_3(*this, p_index, out_0, out_1, out_2);            \
   };                                                                           \

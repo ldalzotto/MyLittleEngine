@@ -98,6 +98,8 @@ template <typename T, int N> struct arr {
   };
   T *data() { return m_data; };
   const T *data() const { return m_data; };
+  constexpr uimax count() { return N; }
+  constexpr uimax count() const { return N; }
 };
 
 template <typename T, typename AllocFunctions = malloc_free_functions>
