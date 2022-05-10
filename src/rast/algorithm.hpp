@@ -84,45 +84,43 @@ struct utils {
                              m::rect_min_max<screen_coord_t> &p_bounding_rect,
                              const CallbackFunc &p_cb) {
 
-    // TODO -> replace this by an assert ?
-    if (p_polygon_area > 0) {
+    assert_debug(p_polygon_area > 0);
 
-      pixel_coordinates l_pixel = {p_bounding_rect.min().x(),
-                                   p_bounding_rect.min().y()};
+    pixel_coordinates l_pixel = {p_bounding_rect.min().x(),
+                                 p_bounding_rect.min().y()};
 
-      const pixel_coordinates d0 = p_polygon.p0() - p_polygon.p2();
-      const pixel_coordinates d1 = p_polygon.p1() - p_polygon.p0();
-      const pixel_coordinates d2 = p_polygon.p2() - p_polygon.p1();
-      screen_polygon_area ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
-      screen_polygon_area ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
-      screen_polygon_area ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
+    const pixel_coordinates d0 = p_polygon.p0() - p_polygon.p2();
+    const pixel_coordinates d1 = p_polygon.p1() - p_polygon.p0();
+    const pixel_coordinates d2 = p_polygon.p2() - p_polygon.p1();
+    screen_polygon_area ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
+    screen_polygon_area ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
+    screen_polygon_area ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
 
-      for (auto y = p_bounding_rect.min().y(); y < p_bounding_rect.max().y();
-           ++y) {
-        screen_polygon_area ex0 = ey0;
-        screen_polygon_area ex1 = ey1;
-        screen_polygon_area ex2 = ey2;
+    for (auto y = p_bounding_rect.min().y(); y < p_bounding_rect.max().y();
+         ++y) {
+      screen_polygon_area ex0 = ey0;
+      screen_polygon_area ex1 = ey1;
+      screen_polygon_area ex2 = ey2;
 
-        for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
-             ++x) {
+      for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
+           ++x) {
 
-          if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
-            f32 w0 = (f32)ex2 / p_polygon_area;
-            f32 w1 = (f32)ex0 / p_polygon_area;
-            f32 w2 = (f32)ex1 / p_polygon_area;
-            assert_debug(w0 + w1 + w2 <= 1.01f);
-            p_cb(x, y, w0, w1, w2);
-          }
-
-          ex0 += d0.y();
-          ex1 += d1.y();
-          ex2 += d2.y();
+        if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
+          f32 w0 = (f32)ex2 / p_polygon_area;
+          f32 w1 = (f32)ex0 / p_polygon_area;
+          f32 w2 = (f32)ex1 / p_polygon_area;
+          assert_debug(w0 + w1 + w2 <= 1.01f);
+          p_cb(x, y, w0, w1, w2);
         }
 
-        ey0 -= d0.x();
-        ey1 -= d1.x();
-        ey2 -= d2.x();
+        ex0 += d0.y();
+        ex1 += d1.y();
+        ex2 += d2.y();
       }
+
+      ey0 -= d0.x();
+      ey1 -= d1.x();
+      ey2 -= d2.x();
     }
   };
 
@@ -308,7 +306,8 @@ struct rasterize_unit {
 
     // TODO -> backface culling
 
-    __extract_screen_polygons();
+    // __extract_screen_polygons();
+    __extract_screen_polygons_v2();
     __initialize_rendered_rect();
 
     // TODO -> should apply z clipping
@@ -430,7 +429,7 @@ private:
     }
   };
 
-  void __extract_screen_polygons() {
+  void __extract_screen_polygons_v2() {
 
     uimax l_index_idx = 0;
     for (auto i = 0; i < m_polygon_count; ++i) {
@@ -452,24 +451,31 @@ private:
       l_polygon->p1() = m_heap.get_pixel_coordinates(l_polygon_indices->p1());
       l_polygon->p2() = m_heap.get_pixel_coordinates(l_polygon_indices->p2());
 
-      *l_bounding_rect = m::bounding_rect(*l_polygon);
-      l_bounding_rect->max() = l_bounding_rect->max() + 1;
-      *l_bounding_rect = m::fit_into(*l_bounding_rect, m_input.m_rect);
-
-      assert_debug(l_bounding_rect->is_valid());
-      assert_debug(l_bounding_rect->max().x() <=
-                   m_input.m_target_image_view.m_target_info.width);
-      assert_debug(l_bounding_rect->max().y() <=
-                   m_input.m_target_image_view.m_target_info.height);
-
+      // TODO -> filtering clockwise stuff ?
       *l_area = m::cross(
           (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
           (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
+
+      if (*l_area <= 0) {
+        i -= 1;
+        m_polygon_count -= 1;
+      } else {
+        *l_bounding_rect = m::bounding_rect(*l_polygon);
+        l_bounding_rect->max() = l_bounding_rect->max() + 1;
+        *l_bounding_rect = m::fit_into(*l_bounding_rect, m_input.m_rect);
+
+        assert_debug(l_bounding_rect->is_valid());
+        assert_debug(l_bounding_rect->max().x() <=
+                     m_input.m_target_image_view.m_target_info.width);
+        assert_debug(l_bounding_rect->max().y() <=
+                     m_input.m_target_image_view.m_target_info.height);
+      }
 
       l_index_idx += 3;
     }
   };
 
+  // TODO -> update this to not take into account occluded polygons ?
   void __initialize_rendered_rect() {
     container::range<screen_polygon_bounding_box> l_polygon_rects =
         container::range<screen_polygon_bounding_box>::make(
