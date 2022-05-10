@@ -93,6 +93,9 @@ template <typename T> struct range {
 template <typename T, int N> struct arr {
   T m_data[N];
   container::range<T> range() { return container::range<T>::make(m_data, N); };
+  container::range<T> range() const {
+    return container::range<T>::make((T *)m_data, N);
+  };
   T *data() { return m_data; };
   const T *data() const { return m_data; };
 };
