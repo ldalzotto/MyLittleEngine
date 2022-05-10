@@ -85,6 +85,7 @@ template <typename T> struct range {
   };
 
   ui8 is_contained_by(const range<T> &p_other) const {
+    assert_debug(p_other.size_of() >= size_of());
     return sys::memcmp(m_begin, p_other.m_begin, size_of()) == 0;
   };
 };
