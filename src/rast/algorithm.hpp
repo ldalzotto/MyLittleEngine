@@ -22,6 +22,7 @@ using homogeneous_coordinates = m::vec<f32, 3>;
 using rasterization_weight = m::vec<f32, 3>;
 using screen_polygon = m::polygon<m::vec<screen_coord_t, 2>, 3>;
 using screen_polygon_bounding_box = m::rect_min_max<screen_coord_t>;
+using screen_polygon_area = i32;
 
 struct render_state {
   enum class depth_test { Undefined = 0, Less = 1 } m_depth;
@@ -76,16 +77,15 @@ struct program {
 
 struct utils {
 
-  using area = i32;
   template <typename CallbackFunc>
   static void
   rasterize_polygon_weighted(const screen_polygon &p_polygon,
+                             const screen_polygon_area &p_polygon_area,
                              m::rect_min_max<screen_coord_t> &p_bounding_rect,
                              const CallbackFunc &p_cb) {
-    area l_area = m::cross((p_polygon.p2() - p_polygon.p0()).cast<area>(),
-                           (p_polygon.p1() - p_polygon.p0()).cast<area>());
 
-    if (l_area > 0) {
+    // TODO -> replace this by an assert ?
+    if (p_polygon_area > 0) {
 
       pixel_coordinates l_pixel = {p_bounding_rect.min().x(),
                                    p_bounding_rect.min().y()};
@@ -93,23 +93,23 @@ struct utils {
       const pixel_coordinates d0 = p_polygon.p0() - p_polygon.p2();
       const pixel_coordinates d1 = p_polygon.p1() - p_polygon.p0();
       const pixel_coordinates d2 = p_polygon.p2() - p_polygon.p1();
-      area ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
-      area ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
-      area ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
+      screen_polygon_area ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
+      screen_polygon_area ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
+      screen_polygon_area ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
 
       for (auto y = p_bounding_rect.min().y(); y < p_bounding_rect.max().y();
            ++y) {
-        area ex0 = ey0;
-        area ex1 = ey1;
-        area ex2 = ey2;
+        screen_polygon_area ex0 = ey0;
+        screen_polygon_area ex1 = ey1;
+        screen_polygon_area ex2 = ey2;
 
         for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
              ++x) {
 
           if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
-            f32 w0 = (f32)ex2 / l_area;
-            f32 w1 = (f32)ex0 / l_area;
-            f32 w2 = (f32)ex1 / l_area;
+            f32 w0 = (f32)ex2 / p_polygon_area;
+            f32 w1 = (f32)ex0 / p_polygon_area;
+            f32 w2 = (f32)ex1 / p_polygon_area;
             assert_debug(w0 + w1 + w2 <= 1.01f);
             p_cb(x, y, w0, w1, w2);
           }
@@ -127,11 +127,14 @@ struct utils {
   };
 
 private:
-  static area __ey_calculation(const pixel_coordinates &p_pixel,
-                               const pixel_coordinates &p_polygon_point,
-                               const pixel_coordinates &p_delta) {
-    return (area(p_pixel.x() - p_polygon_point.x()) * p_delta.y()) -
-           (area(p_pixel.y() - p_polygon_point.y()) * p_delta.x());
+  static screen_polygon_area
+  __ey_calculation(const pixel_coordinates &p_pixel,
+                   const pixel_coordinates &p_polygon_point,
+                   const pixel_coordinates &p_delta) {
+    return (screen_polygon_area(p_pixel.x() - p_polygon_point.x()) *
+            p_delta.y()) -
+           (screen_polygon_area(p_pixel.y() - p_polygon_point.y()) *
+            p_delta.x());
   };
 };
 
@@ -145,9 +148,9 @@ struct rasterize_heap {
 
   struct per_polygons {
     table_span_meta;
-    table_cols_3(screen_polygon, polygon_vertex_indices,
-                 screen_polygon_bounding_box);
-    table_define_span_3;
+    table_cols_4(screen_polygon, polygon_vertex_indices,
+                 screen_polygon_bounding_box, screen_polygon_area);
+    table_define_span_4;
   } m_per_polygons;
 
   container::multi_byte_buffer m_vertex_output;
@@ -434,9 +437,10 @@ private:
       polygon_vertex_indices *l_polygon_indices;
       screen_polygon *l_polygon;
       screen_polygon_bounding_box *l_bounding_rect;
+      screen_polygon_area *l_area;
 
       m_heap.m_per_polygons.at(i, &l_polygon, &l_polygon_indices,
-                               &l_bounding_rect);
+                               &l_bounding_rect, &l_area);
 
       l_polygon_indices->p0() = m_input.m_index_buffer.at<ui16>(l_index_idx);
       l_polygon_indices->p1() =
@@ -457,6 +461,10 @@ private:
                    m_input.m_target_image_view.m_target_info.width);
       assert_debug(l_bounding_rect->max().y() <=
                    m_input.m_target_image_view.m_target_info.height);
+
+      *l_area = m::cross(
+          (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
+          (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
 
       l_index_idx += 3;
     }
@@ -493,8 +501,9 @@ private:
       screen_polygon *l_polygon;
       polygon_vertex_indices *l_polygon_indices;
       screen_polygon_bounding_box *l_bounding_rect;
+      screen_polygon_area *l_area;
       m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, &l_polygon_indices,
-                               &l_bounding_rect);
+                               &l_bounding_rect, &l_area);
 
       // Resetting the bouding rect visibility buffer
       container::range<ui8> l_boudingrect_visibility_range;
@@ -513,7 +522,7 @@ private:
       l_boudingrect_visibility_range.zero();
 
       utils::rasterize_polygon_weighted(
-          *l_polygon, *l_bounding_rect,
+          *l_polygon, *l_area, *l_bounding_rect,
           [&](screen_coord_t x, screen_coord_t y, f32 w0, f32 w1, f32 w2) {
             ui8 *l_visibility_boolean;
             rasterization_weight *l_visibility_weight;
@@ -722,7 +731,7 @@ private:
       if (*l_visibility_boolean) {
         polygon_vertex_indices *l_indices_polygon;
         m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
-                                 &l_indices_polygon, orm::none());
+                                 &l_indices_polygon, orm::none(), orm::none());
 
         for (auto l_vertex_output_index = p_begin_index;
              l_vertex_output_index < p_end_index; ++l_vertex_output_index) {

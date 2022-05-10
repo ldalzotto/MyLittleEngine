@@ -950,6 +950,10 @@ private:
           orm::none out_3) {                                                   \
     orm::details::__at_span_4(*this, p_index, out_0, out_1, out_2, out_3);     \
   };                                                                           \
+  void at(uimax p_index, orm::none out_0, type_1 **out_1, orm::none out_2,     \
+          orm::none out_3) {                                                   \
+    orm::details::__at_span_4(*this, p_index, out_0, out_1, out_2, out_3);     \
+  };                                                                           \
   void resize(uimax p_new_capacity) {                                          \
     orm::details::__resize_span_4(*this, p_new_capacity);                      \
   };                                                                           \
