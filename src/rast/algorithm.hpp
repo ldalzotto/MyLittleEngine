@@ -22,12 +22,16 @@ using homogeneous_coordinates = m::vec<f32, 3>;
 using rasterization_weight = m::vec<f32, 3>;
 using screen_polygon = m::polygon<m::vec<screen_coord_t, 2>, 3>;
 using screen_polygon_bounding_box = m::rect_min_max<screen_coord_t>;
+using screen_polygon_area = i32;
+
+enum class CullMode { None = 0, Clockwise = 1, CounterClockwise = 2 };
 
 struct render_state {
   enum class depth_test { Undefined = 0, Less = 1 } m_depth;
 
   ui8 m_depth_write;
   ui8 m_depth_read;
+  CullMode m_cull_mode;
 
   static render_state from_int(ui64 p_state) {
     render_state l_state;
@@ -48,6 +52,15 @@ struct render_state {
 
     l_state.m_depth_read = l_state.m_depth_read || l_state.m_depth_write;
 
+    auto l_cull_state =
+        ((p_state & BGFX_STATE_CULL_MASK) >> BGFX_STATE_CULL_SHIFT);
+    if (l_cull_state == 1) {
+      l_state.m_cull_mode = CullMode::Clockwise;
+    } else if (l_cull_state == 2) {
+      l_state.m_cull_mode = CullMode::CounterClockwise;
+    } else {
+      l_state.m_cull_mode = CullMode::None;
+    }
     return l_state;
   };
 };
@@ -76,62 +89,78 @@ struct program {
 
 struct utils {
 
-  using area = i32;
   template <typename CallbackFunc>
   static void
   rasterize_polygon_weighted(const screen_polygon &p_polygon,
+                             const screen_polygon_area &p_polygon_area,
                              m::rect_min_max<screen_coord_t> &p_bounding_rect,
                              const CallbackFunc &p_cb) {
-    area l_area = m::cross((p_polygon.p2() - p_polygon.p0()).cast<area>(),
-                           (p_polygon.p1() - p_polygon.p0()).cast<area>());
+    assert_debug(p_polygon_area > 0);
 
-    if (l_area > 0) {
+    pixel_coordinates l_pixel = {p_bounding_rect.min().x(),
+                                 p_bounding_rect.min().y()};
 
-      pixel_coordinates l_pixel = {p_bounding_rect.min().x(),
-                                   p_bounding_rect.min().y()};
+    const pixel_coordinates d0 = p_polygon.p0() - p_polygon.p2();
+    const pixel_coordinates d1 = p_polygon.p1() - p_polygon.p0();
+    const pixel_coordinates d2 = p_polygon.p2() - p_polygon.p1();
+    screen_polygon_area ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
+    screen_polygon_area ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
+    screen_polygon_area ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
 
-      const pixel_coordinates d0 = p_polygon.p0() - p_polygon.p2();
-      const pixel_coordinates d1 = p_polygon.p1() - p_polygon.p0();
-      const pixel_coordinates d2 = p_polygon.p2() - p_polygon.p1();
-      area ey0 = __ey_calculation(l_pixel, p_polygon.p0(), d0);
-      area ey1 = __ey_calculation(l_pixel, p_polygon.p1(), d1);
-      area ey2 = __ey_calculation(l_pixel, p_polygon.p2(), d2);
+    for (auto y = p_bounding_rect.min().y(); y < p_bounding_rect.max().y();
+         ++y) {
+      screen_polygon_area ex0 = ey0;
+      screen_polygon_area ex1 = ey1;
+      screen_polygon_area ex2 = ey2;
 
-      for (auto y = p_bounding_rect.min().y(); y < p_bounding_rect.max().y();
-           ++y) {
-        area ex0 = ey0;
-        area ex1 = ey1;
-        area ex2 = ey2;
+      for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
+           ++x) {
 
-        for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
-             ++x) {
-
-          if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
-            f32 w0 = (f32)ex2 / l_area;
-            f32 w1 = (f32)ex0 / l_area;
-            f32 w2 = (f32)ex1 / l_area;
-            assert_debug(w0 + w1 + w2 <= 1.01f);
-            p_cb(x, y, w0, w1, w2);
-          }
-
-          ex0 += d0.y();
-          ex1 += d1.y();
-          ex2 += d2.y();
+        if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
+          f32 w0 = (f32)ex2 / p_polygon_area;
+          f32 w1 = (f32)ex0 / p_polygon_area;
+          f32 w2 = (f32)ex1 / p_polygon_area;
+          assert_debug(w0 + w1 + w2 <= 1.01f);
+          p_cb(x, y, w0, w1, w2);
         }
 
-        ey0 -= d0.x();
-        ey1 -= d1.x();
-        ey2 -= d2.x();
+        ex0 += d0.y();
+        ex1 += d1.y();
+        ex2 += d2.y();
       }
+
+      ey0 -= d0.x();
+      ey1 -= d1.x();
+      ey2 -= d2.x();
     }
   };
 
+  static void swap_polygon_winding(screen_polygon *p_polygon,
+                                   polygon_vertex_indices *p_polygon_indices,
+                                   screen_polygon_area *p_area) {
+    {
+      auto l_tmp = p_polygon->p1();
+      p_polygon->p1() = p_polygon->p0();
+      p_polygon->p0() = l_tmp;
+    }
+    {
+      auto l_tmp = p_polygon_indices->p1();
+      p_polygon_indices->p1() = p_polygon_indices->p0();
+      p_polygon_indices->p0() = l_tmp;
+    }
+
+    *p_area = *p_area * -1;
+  };
+
 private:
-  static area __ey_calculation(const pixel_coordinates &p_pixel,
-                               const pixel_coordinates &p_polygon_point,
-                               const pixel_coordinates &p_delta) {
-    return (area(p_pixel.x() - p_polygon_point.x()) * p_delta.y()) -
-           (area(p_pixel.y() - p_polygon_point.y()) * p_delta.x());
+  static screen_polygon_area
+  __ey_calculation(const pixel_coordinates &p_pixel,
+                   const pixel_coordinates &p_polygon_point,
+                   const pixel_coordinates &p_delta) {
+    return (screen_polygon_area(p_pixel.x() - p_polygon_point.x()) *
+            p_delta.y()) -
+           (screen_polygon_area(p_pixel.y() - p_polygon_point.y()) *
+            p_delta.x());
   };
 };
 
@@ -145,9 +174,9 @@ struct rasterize_heap {
 
   struct per_polygons {
     table_span_meta;
-    table_cols_3(screen_polygon, polygon_vertex_indices,
-                 screen_polygon_bounding_box);
-    table_define_span_3;
+    table_cols_4(screen_polygon, polygon_vertex_indices,
+                 screen_polygon_bounding_box, screen_polygon_area);
+    table_define_span_4;
   } m_per_polygons;
 
   container::multi_byte_buffer m_vertex_output;
@@ -303,9 +332,7 @@ struct rasterize_unit {
     __resize_buffers();
     __vertex_v2();
 
-    // TODO -> backface culling
-
-    __extract_screen_polygons();
+    __extract_polygons();
     __initialize_rendered_rect();
 
     // TODO -> should apply z clipping
@@ -427,16 +454,31 @@ private:
     }
   };
 
-  void __extract_screen_polygons() {
+  void __extract_polygons() {
 
+    switch (m_state.m_cull_mode) {
+    case CullMode::Clockwise:
+      __extract_polygons_internal<CullMode::Clockwise>();
+      break;
+    case CullMode::CounterClockwise:
+      __extract_polygons_internal<CullMode::CounterClockwise>();
+      break;
+    case CullMode::None:
+      __extract_polygons_internal<CullMode::None>();
+      break;
+    }
+  };
+
+  template <CullMode CullModeValue> void __extract_polygons_internal() {
     uimax l_index_idx = 0;
     for (auto i = 0; i < m_polygon_count; ++i) {
       polygon_vertex_indices *l_polygon_indices;
       screen_polygon *l_polygon;
       screen_polygon_bounding_box *l_bounding_rect;
+      screen_polygon_area *l_area;
 
       m_heap.m_per_polygons.at(i, &l_polygon, &l_polygon_indices,
-                               &l_bounding_rect);
+                               &l_bounding_rect, &l_area);
 
       l_polygon_indices->p0() = m_input.m_index_buffer.at<ui16>(l_index_idx);
       l_polygon_indices->p1() =
@@ -448,6 +490,34 @@ private:
       l_polygon->p1() = m_heap.get_pixel_coordinates(l_polygon_indices->p1());
       l_polygon->p2() = m_heap.get_pixel_coordinates(l_polygon_indices->p2());
 
+      *l_area = m::cross(
+          (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
+          (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
+
+      if constexpr (CullModeValue == CullMode::CounterClockwise) {
+        if (*l_area <= 0) {
+          i -= 1;
+          m_polygon_count -= 1;
+          goto next;
+        }
+      } else if constexpr (CullModeValue == CullMode::Clockwise) {
+        if (*l_area >= 0) {
+          i -= 1;
+          m_polygon_count -= 1;
+          goto next;
+        } else {
+          utils::swap_polygon_winding(l_polygon, l_polygon_indices, l_area);
+        }
+      } else if constexpr (CullModeValue == CullMode::None) {
+        if (*l_area < 0) {
+          utils::swap_polygon_winding(l_polygon, l_polygon_indices, l_area);
+        } else if (*l_area == 0) {
+          i -= 1;
+          m_polygon_count -= 1;
+          goto next;
+        }
+      }
+
       *l_bounding_rect = m::bounding_rect(*l_polygon);
       l_bounding_rect->max() = l_bounding_rect->max() + 1;
       *l_bounding_rect = m::fit_into(*l_bounding_rect, m_input.m_rect);
@@ -458,19 +528,25 @@ private:
       assert_debug(l_bounding_rect->max().y() <=
                    m_input.m_target_image_view.m_target_info.height);
 
+    next:
       l_index_idx += 3;
     }
   };
 
   void __initialize_rendered_rect() {
-    container::range<screen_polygon_bounding_box> l_polygon_rects =
-        container::range<screen_polygon_bounding_box>::make(
-            m_heap.m_per_polygons.m_col_2, m_polygon_count);
-    m::rect_min_max<screen_coord_t> l_rendered_rect =
-        m::bounding_rect(l_polygon_rects);
+    if (m_polygon_count == 0) {
+      m_rendered_rect.min() = {0, 0};
+      m_rendered_rect.max() = {0, 0};
+    } else {
+      container::range<screen_polygon_bounding_box> l_polygon_rects =
+          container::range<screen_polygon_bounding_box>::make(
+              m_heap.m_per_polygons.m_col_2, m_polygon_count);
+      m::rect_min_max<screen_coord_t> l_rendered_rect =
+          m::bounding_rect(l_polygon_rects);
 
-    m_rendered_rect.min() = l_rendered_rect.min().cast<ui16>();
-    m_rendered_rect.max() = l_rendered_rect.max().cast<ui16>();
+      m_rendered_rect.min() = l_rendered_rect.min().cast<ui16>();
+      m_rendered_rect.max() = l_rendered_rect.max().cast<ui16>();
+    }
 
     assert_debug(m_rendered_rect.is_valid());
     assert_debug(m_rendered_rect.max().x() <=
@@ -480,7 +556,6 @@ private:
   };
 
   void __calculate_visibility_buffer() {
-
     container::range<ui8> l_visibility_range;
     m_heap.m_visibility_buffer.range(&l_visibility_range, orm::none(),
                                      orm::none());
@@ -493,8 +568,9 @@ private:
       screen_polygon *l_polygon;
       polygon_vertex_indices *l_polygon_indices;
       screen_polygon_bounding_box *l_bounding_rect;
+      screen_polygon_area *l_area;
       m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, &l_polygon_indices,
-                               &l_bounding_rect);
+                               &l_bounding_rect, &l_area);
 
       // Resetting the bouding rect visibility buffer
       container::range<ui8> l_boudingrect_visibility_range;
@@ -513,7 +589,7 @@ private:
       l_boudingrect_visibility_range.zero();
 
       utils::rasterize_polygon_weighted(
-          *l_polygon, *l_bounding_rect,
+          *l_polygon, *l_area, *l_bounding_rect,
           [&](screen_coord_t x, screen_coord_t y, f32 w0, f32 w1, f32 w2) {
             ui8 *l_visibility_boolean;
             rasterization_weight *l_visibility_weight;
@@ -722,7 +798,7 @@ private:
       if (*l_visibility_boolean) {
         polygon_vertex_indices *l_indices_polygon;
         m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
-                                 &l_indices_polygon, orm::none());
+                                 &l_indices_polygon, orm::none(), orm::none());
 
         for (auto l_vertex_output_index = p_begin_index;
              l_vertex_output_index < p_end_index; ++l_vertex_output_index) {
