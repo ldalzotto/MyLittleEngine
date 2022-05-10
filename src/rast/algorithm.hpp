@@ -24,13 +24,14 @@ using screen_polygon = m::polygon<m::vec<screen_coord_t, 2>, 3>;
 using screen_polygon_bounding_box = m::rect_min_max<screen_coord_t>;
 using screen_polygon_area = i32;
 
+enum class CullMode { None = 0, Clockwise = 1, CounterClockwise = 2 };
+
 struct render_state {
   enum class depth_test { Undefined = 0, Less = 1 } m_depth;
 
   ui8 m_depth_write;
   ui8 m_depth_read;
-  ui8 m_clockwise_cull;
-  ui8 m_cclockwise_cull;
+  CullMode m_cull_mode;
 
   static render_state from_int(ui64 p_state) {
     render_state l_state;
@@ -53,8 +54,13 @@ struct render_state {
 
     auto l_cull_state =
         ((p_state & BGFX_STATE_CULL_MASK) >> BGFX_STATE_CULL_SHIFT);
-    l_state.m_clockwise_cull = l_cull_state == 1;
-    l_state.m_cclockwise_cull = l_cull_state == 2;
+    if (l_cull_state == 1) {
+      l_state.m_cull_mode = CullMode::Clockwise;
+    } else if (l_cull_state == 2) {
+      l_state.m_cull_mode = CullMode::CounterClockwise;
+    } else {
+      l_state.m_cull_mode = CullMode::None;
+    }
     return l_state;
   };
 };
@@ -111,16 +117,6 @@ struct utils {
       for (auto x = p_bounding_rect.min().x(); x < p_bounding_rect.max().x();
            ++x) {
 
-        /*
-                if ((ex0 * l_area_sign) >= 0 && (ex1 * l_area_sign) >= 0 &&
-                    (ex2 * l_area_sign) >= 0) {
-                  f32 w0 = (f32)ex2 / p_polygon_area;
-                  f32 w1 = (f32)ex0 / p_polygon_area;
-                  f32 w2 = (f32)ex1 / p_polygon_area;
-                  assert_debug(w0 + w1 + w2 <= 1.01f);
-                  p_cb(x, y, w0, w1, w2);
-                }
-        */
         if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
           f32 w0 = (f32)ex2 / p_polygon_area;
           f32 w1 = (f32)ex0 / p_polygon_area;
@@ -138,6 +134,25 @@ struct utils {
       ey1 -= d1.x();
       ey2 -= d2.x();
     }
+  };
+
+  static void swap_polygon_winding(screen_polygon *p_polygon,
+                                   polygon_vertex_indices *p_polygon_indices,
+                                   screen_polygon_area *p_area) {
+    {
+      auto l_tmp = p_polygon->p1();
+      p_polygon->p1() = p_polygon->p0();
+      p_polygon->p0() = l_tmp;
+    }
+    {
+      auto l_tmp = p_polygon_indices->p1();
+      p_polygon_indices->p1() = p_polygon_indices->p0();
+      p_polygon_indices->p0() = l_tmp;
+    }
+
+    *p_area = m::cross(
+        (p_polygon->p2() - p_polygon->p0()).cast<screen_polygon_area>(),
+        (p_polygon->p1() - p_polygon->p0()).cast<screen_polygon_area>());
   };
 
 private:
@@ -447,6 +462,20 @@ private:
 
   void __extract_screen_polygons_v2() {
 
+    switch (m_state.m_cull_mode) {
+    case CullMode::Clockwise:
+      __extract_screen_polygons_internal<CullMode::Clockwise>();
+      break;
+    case CullMode::CounterClockwise:
+      __extract_screen_polygons_internal<CullMode::CounterClockwise>();
+      break;
+    case CullMode::None:
+      __extract_screen_polygons_internal<CullMode::None>();
+      break;
+    }
+  };
+
+  template <CullMode CullModeValue> void __extract_screen_polygons_internal() {
     uimax l_index_idx = 0;
     for (auto i = 0; i < m_polygon_count; ++i) {
       polygon_vertex_indices *l_polygon_indices;
@@ -471,49 +500,23 @@ private:
           (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
           (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
 
-      if (m_state.m_clockwise_cull) {
+      if constexpr (CullModeValue == CullMode::Clockwise) {
         if (*l_area <= 0) {
           i -= 1;
           m_polygon_count -= 1;
           goto next;
         }
-      } else if (m_state.m_cclockwise_cull) {
+      } else if constexpr (CullModeValue == CullMode::CounterClockwise) {
         if (*l_area >= 0) {
           i -= 1;
           m_polygon_count -= 1;
           goto next;
         } else {
-          {
-            auto l_tmp = l_polygon->p1();
-            l_polygon->p1() = l_polygon->p0();
-            l_polygon->p0() = l_tmp;
-          }
-          {
-            auto l_tmp = l_polygon_indices->p1();
-            l_polygon_indices->p1() = l_polygon_indices->p0();
-            l_polygon_indices->p0() = l_tmp;
-          }
-
-          *l_area = m::cross(
-              (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
-              (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
+          utils::swap_polygon_winding(l_polygon, l_polygon_indices, l_area);
         }
-      } else {
+      } else if constexpr (CullModeValue == CullMode::None) {
         if (*l_area < 0) {
-          {
-            auto l_tmp = l_polygon->p1();
-            l_polygon->p1() = l_polygon->p0();
-            l_polygon->p0() = l_tmp;
-          }
-          {
-            auto l_tmp = l_polygon_indices->p1();
-            l_polygon_indices->p1() = l_polygon_indices->p0();
-            l_polygon_indices->p0() = l_tmp;
-          }
-
-          *l_area = m::cross(
-              (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
-              (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
+          utils::swap_polygon_winding(l_polygon, l_polygon_indices, l_area);
         }
       }
 
