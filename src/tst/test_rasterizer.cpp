@@ -4,7 +4,7 @@
 #include <rast/rast.hpp>
 #include <tst/test_rasterizer_assets.hpp>
 
-#define WRITE_OUTPUT 1
+#define WRITE_OUTPUT 0
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_write.h>
@@ -771,30 +771,4 @@ TEST_CASE("rast.3Dcube") {
   bgfx::shutdown();
 }
 
-#if 0
-    // Submit 11x11 cubes.
-    for (uint32_t yy = 0; yy < 11; ++yy) {
-      for (uint32_t xx = 0; xx < 11; ++xx) {
-        m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
-        l_transform.at(3, 0) = -15.0f + float(xx) * 3.0f;
-        l_transform.at(3, 1) = -15.0f + float(yy) * 3.0f;
-        l_transform.at(3, 2) = 0.0f;
-
-        // Set model matrix for rendering.
-        bgfx::setTransform(l_transform.m_data);
-        bgfx::setViewFrameBuffer(0, l_frame_buffer);
-
-        // Set vertex and index buffer.
-        bgfx::setVertexBuffer(0, m_vbh);
-        bgfx::setIndexBuffer(ibh);
-
-        // Set render states.
-        bgfx::setState(state);
-
-        // Submit primitive for rendering to view 0.
-        bgfx::submit(0, l_program);
-      }
-    }
-
-#endif
 #undef WRITE_OUTPUT

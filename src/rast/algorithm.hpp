@@ -21,7 +21,7 @@ using pixel_coordinates = m::vec<screen_coord_t, 2>;
 using homogeneous_coordinates = m::vec<f32, 3>;
 using rasterization_weight = m::vec<f32, 3>;
 using screen_polygon = m::polygon<m::vec<screen_coord_t, 2>, 3>;
-using polygon_bounding_box = m::rect_min_max<screen_coord_t>;
+using screen_polygon_bounding_box = m::rect_min_max<screen_coord_t>;
 
 struct render_state {
   enum class depth_test { Undefined = 0, Less = 1 } m_depth;
@@ -145,7 +145,8 @@ struct rasterize_heap {
 
   struct per_polygons {
     table_span_meta;
-    table_cols_3(screen_polygon, polygon_vertex_indices, polygon_bounding_box);
+    table_cols_3(screen_polygon, polygon_vertex_indices,
+                 screen_polygon_bounding_box);
     table_define_span_3;
   } m_per_polygons;
 
@@ -305,7 +306,7 @@ struct rasterize_unit {
     // TODO -> backface culling
 
     __extract_screen_polygons();
-    __intialize_rendered_rect();
+    __initialize_rendered_rect();
 
     // TODO -> should apply z clipping
 
@@ -432,7 +433,7 @@ private:
     for (auto i = 0; i < m_polygon_count; ++i) {
       polygon_vertex_indices *l_polygon_indices;
       screen_polygon *l_polygon;
-      polygon_bounding_box *l_bounding_rect;
+      screen_polygon_bounding_box *l_bounding_rect;
 
       m_heap.m_per_polygons.at(i, &l_polygon, &l_polygon_indices,
                                &l_bounding_rect);
@@ -451,13 +452,19 @@ private:
       l_bounding_rect->max() = l_bounding_rect->max() + 1;
       *l_bounding_rect = m::fit_into(*l_bounding_rect, m_input.m_rect);
 
+      assert_debug(l_bounding_rect->is_valid());
+      assert_debug(l_bounding_rect->max().x() <=
+                   m_input.m_target_image_view.m_target_info.width);
+      assert_debug(l_bounding_rect->max().y() <=
+                   m_input.m_target_image_view.m_target_info.height);
+
       l_index_idx += 3;
     }
   };
 
-  void __intialize_rendered_rect() {
-    container::range<polygon_bounding_box> l_polygon_rects =
-        container::range<polygon_bounding_box>::make(
+  void __initialize_rendered_rect() {
+    container::range<screen_polygon_bounding_box> l_polygon_rects =
+        container::range<screen_polygon_bounding_box>::make(
             m_heap.m_per_polygons.m_col_2, m_polygon_count);
     m::rect_min_max<screen_coord_t> l_rendered_rect =
         m::bounding_rect(l_polygon_rects);
@@ -485,7 +492,7 @@ private:
          ++l_polygon_it) {
       screen_polygon *l_polygon;
       polygon_vertex_indices *l_polygon_indices;
-      polygon_bounding_box *l_bounding_rect;
+      screen_polygon_bounding_box *l_bounding_rect;
       m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, &l_polygon_indices,
                                &l_bounding_rect);
 
