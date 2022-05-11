@@ -528,9 +528,9 @@ private:
 
       assert_debug(l_bounding_rect->is_valid());
       assert_debug(l_bounding_rect->max().x() <=
-                   m_input.m_target_image_view_v2.m_width);
+                   m_input.m_target_image_view.m_width);
       assert_debug(l_bounding_rect->max().y() <=
-                   m_input.m_target_image_view_v2.m_height);
+                   m_input.m_target_image_view.m_height);
 
     next:
       l_index_idx += 3;
@@ -554,9 +554,9 @@ private:
 
     assert_debug(m_rendered_rect.is_valid());
     assert_debug(m_rendered_rect.max().x() <=
-                 m_input.m_target_image_view_v2.m_width);
+                 m_input.m_target_image_view.m_width);
     assert_debug(m_rendered_rect.max().y() <=
-                 m_input.m_target_image_view_v2.m_height);
+                 m_input.m_target_image_view.m_height);
   };
 
   void __calculate_visibility_buffer() {
