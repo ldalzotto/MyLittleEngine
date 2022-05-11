@@ -725,9 +725,11 @@ struct bgfx_impl {
       {
         const clear_state &l_clear_state = p_render_pass.value()->clear;
         if (l_clear_state.m_flags.m_color) {
-          rast::image_view l_target_view(l_frame_rgb_texture.value()->info,
-                                         l_frame_rgb_texture_range);
-          l_target_view.for_each_pixels_rgb([&](m::vec<ui8, 3> &p_pixel) {
+          Texture *l_texture = l_frame_rgb_texture.value();
+          rast::image_view l_target_view(
+              l_texture->info.width, l_texture->info.height,
+              l_texture->info.bitsPerPixel, l_frame_rgb_texture_range);
+          l_target_view.for_each<m::vec<ui8, 3>>([&](m::vec<ui8, 3> &p_pixel) {
             p_pixel.x() = l_clear_state.m_rgba.r;
             p_pixel.y() = l_clear_state.m_rgba.g;
             p_pixel.z() = l_clear_state.m_rgba.b;
@@ -736,9 +738,11 @@ struct bgfx_impl {
 
         if (l_clear_state.m_flags.m_depth) {
           assert_debug(l_frame_buffer.m_value->has_depth());
-          rast::image_view l_depth_view(l_frame_depth_texture_info,
+          rast::image_view l_depth_view(l_frame_depth_texture_info.width,
+                                        l_frame_depth_texture_info.height,
+                                        l_frame_depth_texture_info.bitsPerPixel,
                                         l_frame_depth_texture_range);
-          l_depth_view.for_each_pixels_depth(
+          l_depth_view.for_each<f32>(
               [&](f32 &p_pixel) { p_pixel = l_clear_state.m_depth; });
         }
       }

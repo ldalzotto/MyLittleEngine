@@ -8,33 +8,32 @@
 namespace rast {
 
 struct image_view {
-
-  const bgfx::TextureInfo &m_target_info;
+  const ui16 &m_width;
+  const ui16 &m_height;
+  const ui8 &m_bits_per_pixel;
   container::range<ui8> &m_buffer;
+  uimax m_stride;
 
-  image_view(const bgfx::TextureInfo &p_target_info,
-             container::range<ui8> &p_buffer)
-      : m_target_info(p_target_info), m_buffer(p_buffer) {
-    m_buffer = p_buffer;
-
-    assert_debug(m_buffer.count() ==
-                 p_target_info.bitsPerPixel *
-                     (p_target_info.height * p_target_info.width));
+  image_view(const ui16 &p_width, const ui16 &p_height,
+             const ui8 &p_bits_per_pixel, container::range<ui8> &p_buffer)
+      : m_width(p_width), m_height(p_height),
+        m_bits_per_pixel(p_bits_per_pixel), m_buffer(p_buffer) {
+    m_stride = m_bits_per_pixel * m_width;
   };
 
   template <typename SizeType> uimax get_buffer_index(SizeType r, SizeType c) {
 
-    assert_debug(r < m_target_info.height);
-    assert_debug(c < m_target_info.width);
+    assert_debug(r < m_height);
+    assert_debug(c < m_width);
 
-    return r * stride() + (c * m_target_info.bitsPerPixel);
+    return (r * m_stride) + (c * m_bits_per_pixel);
   };
 
   template <typename SizeType> uimax get_buffer_index(SizeType p) {
 
-    assert_debug(p < (m_target_info.height * m_target_info.width));
+    assert_debug(p < (m_height * m_width));
 
-    return m_target_info.bitsPerPixel * p;
+    return m_bits_per_pixel * p;
   };
 
   template <typename SizeType> ui8 *at(SizeType r, SizeType c) {
@@ -46,34 +45,25 @@ struct image_view {
 
   template <typename SizeType>
   void set_pixel(SizeType r, SizeType c, const m::vec<ui8, 3> &p_pixel) {
-    assert_debug(sizeof(p_pixel) == m_target_info.bitsPerPixel);
+    assert_debug(sizeof(p_pixel) == m_bits_per_pixel);
     *(m::vec<ui8, 3> *)at(r, c) = p_pixel;
   };
 
   template <typename SizeType>
   void set_pixel(SizeType p, const m::vec<ui8, 3> &p_pixel) {
-    assert_debug(sizeof(p_pixel) == m_target_info.bitsPerPixel);
+    assert_debug(sizeof(p_pixel) == m_bits_per_pixel);
     *(m::vec<ui8, 3> *)at(p) = p_pixel;
   };
 
-  uimax get_image_byte_size() { return stride() * m_target_info.height; };
-  uimax pixel_count() { return m_target_info.height * m_target_info.width; };
-  uimax stride() { return m_target_info.bitsPerPixel * m_target_info.width; };
+  uimax size_of() { return m_stride * m_height; };
+  uimax pixel_count() { return m_height * m_width; };
 
-  template <typename Callback> void for_each_pixels_rgb(const Callback &p_cb) {
-    assert_debug(m_target_info.bitsPerPixel == sizeof(ui8) * 3);
+  template <typename T, typename CallbackFunc>
+  void for_each(const CallbackFunc &p_callback) {
+    assert_debug(m_bits_per_pixel >= sizeof(T));
     auto l_pix_count = pixel_count();
     for (auto i = 0; i < l_pix_count; ++i) {
-      p_cb(*(m::vec<ui8, 3> *)at(i));
-    }
-  };
-
-  template <typename Callback>
-  void for_each_pixels_depth(const Callback &p_cb) {
-    assert_debug(m_target_info.bitsPerPixel == sizeof(f32));
-    auto l_pix_count = pixel_count();
-    for (auto i = 0; i < l_pix_count; ++i) {
-      p_cb(*(f32 *)at(i));
+      p_callback(*(T *)at(i));
     }
   };
 };
