@@ -257,8 +257,10 @@ struct rasterize_unit {
     const container::range<ui8> &m_vertex_buffer;
     ui64 m_state;
     ui32 m_rgba;
+
     image_view m_target_image_view;
     image_view m_target_depth_view;
+
     input(const program &p_program, m::rect_point_extend<ui16> &p_rect,
           const m::mat<f32, 4, 4> &p_proj, const m::mat<f32, 4, 4> &p_view,
           const m::mat<f32, 4, 4> &p_transform,
@@ -273,8 +275,10 @@ struct rasterize_unit {
           m_transform(p_transform), m_index_buffer(p_index_buffer),
           m_vertex_layout(p_vertex_layout), m_vertex_buffer(p_vertex_buffer),
           m_state(p_state), m_rgba(p_rgba),
-          m_target_image_view(p_target_info, p_target_buffer),
-          m_target_depth_view(p_depth_info, p_depth_buffer){};
+          m_target_image_view(p_target_info.width, p_target_info.height,
+                              p_target_info.bitsPerPixel, p_target_buffer),
+          m_target_depth_view(p_depth_info.width, p_depth_info.height,
+                              p_depth_info.bitsPerPixel, p_depth_buffer){};
 
   } m_input;
 
@@ -524,9 +528,9 @@ private:
 
       assert_debug(l_bounding_rect->is_valid());
       assert_debug(l_bounding_rect->max().x() <=
-                   m_input.m_target_image_view.m_target_info.width);
+                   m_input.m_target_image_view.m_width);
       assert_debug(l_bounding_rect->max().y() <=
-                   m_input.m_target_image_view.m_target_info.height);
+                   m_input.m_target_image_view.m_height);
 
     next:
       l_index_idx += 3;
@@ -550,9 +554,9 @@ private:
 
     assert_debug(m_rendered_rect.is_valid());
     assert_debug(m_rendered_rect.max().x() <=
-                 m_input.m_target_image_view.m_target_info.width);
+                 m_input.m_target_image_view.m_width);
     assert_debug(m_rendered_rect.max().y() <=
-                 m_input.m_target_image_view.m_target_info.height);
+                 m_input.m_target_image_view.m_height);
   };
 
   void __calculate_visibility_buffer() {
@@ -724,10 +728,9 @@ private:
 
         if (*l_boundingrect_visibility_boolean) {
 
-          auto l_visibility_index =
-              ((y + p_bounding_rect_offset.y()) *
-               m_input.m_target_image_view.m_target_info.width) +
-              (x + p_bounding_rect_offset.x());
+          auto l_visibility_index = ((y + p_bounding_rect_offset.y()) *
+                                     m_input.m_target_image_view.m_width) +
+                                    (x + p_bounding_rect_offset.x());
 
           p_callback(l_boundingrect_visibility_boolean,
                      l_boundingrect_visibility_weight,
@@ -779,8 +782,7 @@ private:
          ++y) {
       for (auto x = m_rendered_rect.min().x(); x < m_rendered_rect.max().x();
            ++x) {
-        auto l_pixel_index =
-            (m_input.m_target_image_view.m_target_info.width * y) + x;
+        auto l_pixel_index = (m_input.m_target_image_view.m_width * y) + x;
         p_callback(l_pixel_index);
       }
     }
