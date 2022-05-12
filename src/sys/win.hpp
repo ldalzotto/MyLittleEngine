@@ -45,6 +45,6 @@ struct events {
   void free() { m_events.free(); };
 };
 
-void fetch_events(container::vector<events> &in_out_events);
+void fetch_events(container::range<events> &in_out_events);
 
 }; // namespace win

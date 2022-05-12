@@ -61,7 +61,7 @@ void win::draw(void *p_window, void *p_image, ui32 p_width, ui32 p_height) {
 
 container::vector<win::event> *
 get_events_from_window(Window p_window,
-                       container::vector<win::events> &p_events) {
+                       container::range<win::events> &p_events) {
   for (auto i = 0; i < p_events.count(); ++i) {
     if (p_events.at(i).m_window == (void *)p_window) {
       return &p_events.at(i).m_events;
@@ -85,7 +85,7 @@ eng::input::Key native_key_to_input(KeySym p_key_sym) {
   }
 };
 
-void win::fetch_events(container::vector<events> &in_out_events) {
+void win::fetch_events(container::range<events> &in_out_events) {
   int l_count = XPending(s_display);
   for (auto i = 0; i < l_count; ++i) {
     XEvent l_event;

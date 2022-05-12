@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cor/orm.hpp>
 #include <cor/types.hpp>
 #include <rast/model.hpp>
 #include <sys/win.hpp>
@@ -32,25 +33,118 @@ struct window_image_buffer {
 };
 
 namespace window {
-inline static window_handle open(ui32 p_width, ui32 p_height) {
-  window_handle l_handle;
-  l_handle.m_idx = win::create_window(p_width, p_height);
-  win::show_window(l_handle.m_idx);
-  return l_handle;
-};
 
-inline static void close(window_handle p_window) {
-  win::close_window(p_window.m_idx);
-};
+struct system {
+public:
+  void allocate() { __allocate(); };
+  void free() { __free(); };
+  window_handle create_window(ui16 p_width, ui16 p_height) {
+    return __create_window(p_width, p_height);
+  };
+  void open_window(window_handle p_window) { __open_window(p_window); };
+  void close_window(window_handle p_window) { __close_window(p_window); };
+  template <typename InputCallback, typename RedrawCallback>
+  ui8 fetch_events(const InputCallback &p_input_callback,
+                   const RedrawCallback &p_redraw_callback) {
+    return __fetch_events(p_input_callback, p_redraw_callback);
+  };
 
-inline static void fetch(container::vector<win::events> &in_out_events) {
-  win::fetch_events(in_out_events);
-};
+private:
+  struct window_table {
+    table_vector_meta;
+    table_cols_3(window_handle, window_image_buffer, win::events);
+    table_define_vector_3;
+  } m_window_table;
 
-inline static void draw(window_handle p_window, window_image_buffer p_image) {
-  win::draw(p_window.m_idx, p_image.m_native, p_image.m_width,
-            p_image.m_height);
+  void __allocate() { m_window_table.allocate(0); };
+
+  void __free() {
+    assert_debug(!m_window_table.has_allocated_elements());
+    m_window_table.free();
+  };
+
+  window_handle __create_window(ui16 p_width, ui16 p_height) {
+    window_handle l_handle;
+    window_image_buffer l_image_buffer;
+    win::events l_events;
+    l_handle = {win::create_window(p_width, p_height)};
+    l_image_buffer.allocate(l_handle, p_width, p_height);
+    l_events.m_window = l_handle.m_idx;
+    l_events.allocate();
+
+    m_window_table.push_back(l_handle, l_image_buffer, l_events);
+
+    return l_handle;
+  };
+
+  void __open_window(window_handle p_window) {
+    win::show_window(p_window.m_idx);
+  };
+
+  void __close_window(window_handle p_window) {
+    window_handle *l_handle;
+    window_image_buffer *l_image_buffer;
+    win::events *l_events;
+    for (auto i = 0; i < m_window_table.element_count(); ++i) {
+      m_window_table.at(i, &l_handle, &l_image_buffer, &l_events);
+      if (l_handle->m_idx == p_window.m_idx) {
+        l_image_buffer->free();
+        l_events->free();
+        m_window_table.remove_at(i);
+        return;
+      }
+    }
+    assert_debug(0);
+  };
+  template <typename InputCallback, typename RedrawCallback>
+  ui8 __fetch_events(const InputCallback &p_input_callback,
+                     const RedrawCallback &p_redraw_callback) {
+    ui8 l_window_index = 0;
+    window_handle *l_handle;
+    window_image_buffer *l_image_buffer;
+    win::events *l_events;
+    m_window_table.at(l_window_index, &l_handle, &l_image_buffer, &l_events);
+
+    {
+      auto l_events_for_fetch = container::range<win::events>::make(
+          m_window_table.m_col_2, m_window_table.element_count());
+      win::fetch_events(l_events_for_fetch);
+    }
+
+    for (auto i = 0; i < l_events->m_events.count(); ++i) {
+      auto &l_event = l_events->m_events.at(i);
+      if (l_event.m_type == win::event::type::InputPress) {
+        eng::input::Event l_input_event;
+        l_input_event.m_key = l_event.m_input.m_key;
+        l_input_event.m_flag = eng::input::Event::Flag::PRESSED;
+        p_input_callback(l_input_event);
+      } else if (l_event.m_type == win::event::type::InputRelease) {
+        eng::input::Event l_input_event;
+        l_input_event.m_key = l_event.m_input.m_key;
+        l_input_event.m_flag = eng::input::Event::Flag::RELEASED;
+        p_input_callback(l_input_event);
+      } else if (l_event.m_type == win::event::type::Redraw) {
+        if (l_event.m_draw.m_width != l_image_buffer->m_width &&
+            l_event.m_draw.m_height != l_image_buffer->m_height) {
+          l_image_buffer->free();
+          l_image_buffer->allocate(*l_handle, l_event.m_draw.m_width,
+                                   l_event.m_draw.m_height);
+        }
+        p_redraw_callback(*l_handle, *l_image_buffer);
+      } else if (l_event.m_type == win::event::type::Close) {
+        __close_window(*l_handle);
+      }
+    }
+    l_events->m_events.clear();
+
+    if (m_window_table.element_count() == 0) {
+      return 0;
+    }
+
+    return 1;
+  };
 };
 
 }; // namespace window
+
 }; // namespace eng
