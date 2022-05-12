@@ -37,7 +37,7 @@ struct engine {
     bgfx::shutdown();
   };
 
-  void update() {
+  ui8 update() {
     window::fetch(m_native_events);
     ui8 l_window_index = 0;
     window_handle l_window = m_windows.at(l_window_index);
@@ -70,20 +70,22 @@ struct engine {
             l_frame_buffer.m_width, l_frame_buffer.m_height,
             (m::vec<ui8, 4> *)l_image_buffer.m_data.m_data,
             l_image_buffer.m_width, l_image_buffer.m_height);
-        /*
-                // TODO -> fetch from the frame buffer
-                l_image_buffer.image_view().for_each<m::vec<ui8, 3>>(
-                    [&](m::vec<ui8, 3> &p_pixel) {
-                      p_pixel = {255, 0, 0};
-                    });
-        */
+
         win::draw(l_win_events.m_window, l_image_buffer.m_native,
                   l_event.m_draw.m_width, l_event.m_draw.m_height);
+      } else if (l_event.m_type == win::event::type::Close) {
+        window_close(l_window);
       }
     }
     l_events.clear();
 
+    if (m_windows.count() == 0) {
+      return 0;
+    }
+
     m_input_system.update();
+
+    return 1;
   };
 
   window_handle window_open(ui32 p_width, ui32 p_height) {

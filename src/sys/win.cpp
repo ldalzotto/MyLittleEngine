@@ -30,6 +30,9 @@ void *win::create_window(ui32 p_width, ui32 p_height) {
                     ButtonPressMask | ButtonReleaseMask | FocusChangeMask;
   XSelectInput(s_display, l_window, event_mask);
 
+  Atom wmDelete = XInternAtom(s_display, "WM_DELETE_WINDOW", True);
+  XSetWMProtocols(s_display, l_window, &wmDelete, 1);
+
   return (void *)l_window;
 };
 
@@ -87,50 +90,34 @@ void win::fetch_events(container::vector<events> &in_out_events) {
   for (auto i = 0; i < l_count; ++i) {
     XEvent l_event;
     XNextEvent(s_display, &l_event);
+    auto *l_events = get_events_from_window(l_event.xkey.window, in_out_events);
+
     if (l_event.type == KeyPress) {
-      auto *l_events =
-          get_events_from_window(l_event.xkey.window, in_out_events);
       event l_engine_event;
       l_engine_event.m_type = event::type::InputPress;
       l_engine_event.m_input.m_key =
           native_key_to_input(XLookupKeysym(&l_event.xkey, 0));
       l_events->push_back(l_engine_event);
     } else if (l_event.type == KeyRelease) {
-      auto *l_events =
-          get_events_from_window(l_event.xkey.window, in_out_events);
       event l_engine_event;
       l_engine_event.m_type = event::type::InputRelease;
       l_engine_event.m_input.m_key =
           native_key_to_input(XLookupKeysym(&l_event.xkey, 0));
       l_events->push_back(l_engine_event);
     } else if (l_event.type == Expose) {
-      auto *l_events =
-          get_events_from_window(l_event.xkey.window, in_out_events);
-      /*
-  XImage *l_image =
-      XGetImage(l_event.xexpose.display, l_event.xexpose.window,
-                l_event.xexpose.x, l_event.xexpose.y, l_event.xexpose.width,
-                l_event.xexpose.height, AllPlanes, ZPixmap);
-
-  ui8 *l_buffer = (ui8 *)l_image->data;
-  for (auto j = 0; j < l_image->height; j++) {
-    for (auto i = 0; i < l_image->width; i++) {
-      l_buffer[i + (j * l_image->width)] = 0;
-    }
-  }
-*/
-      /*
-            XCopyArea(l_event.xexpose.display, l_image, l_image, 0, 0, 0, 0, 0,
-         0, 0);
-      */
       event l_engine_event;
       l_engine_event.m_type = event::type::Redraw;
-      /*
-      l_engine_event.m_draw.m_buffer = l_image->data;
-      */
       l_engine_event.m_draw.m_width = l_event.xexpose.width;
       l_engine_event.m_draw.m_height = l_event.xexpose.height;
 
+      l_events->push_back(l_engine_event);
+    } else if (l_event.type == ClientMessage) {
+      event l_engine_event;
+      l_engine_event.m_type = event::type::Close;
+      l_events->push_back(l_engine_event);
+    } else if (l_event.type == DestroyNotify) {
+      event l_engine_event;
+      l_engine_event.m_type = event::type::Close;
       l_events->push_back(l_engine_event);
     }
   }
