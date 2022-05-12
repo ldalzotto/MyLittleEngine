@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cor/types.hpp>
+#include <rast/model.hpp>
 #include <sys/win.hpp>
 
 namespace eng {
@@ -10,19 +11,24 @@ struct window_handle {
 };
 
 struct window_image_buffer {
-  ui8 *m_data;
+  container::span<ui8> m_data;
   ui16 m_width;
   ui16 m_height;
   void *m_native;
 
-  void allocate(void *p_window, ui16 p_width, ui16 p_height) {
-    m_data = (ui8 *)sys::malloc(p_width * p_height * (sizeof(ui8) * 4));
+  void allocate(window_handle p_window, ui16 p_width, ui16 p_height) {
+    m_data.allocate(p_width * p_height * (sizeof(ui8) * 4));
     m_width = p_width;
     m_height = p_height;
-    m_native = win::allocate_image(p_window, m_data, p_width, p_height);
+    m_native =
+        win::allocate_image(p_window.m_idx, m_data.data(), p_width, p_height);
   };
 
-  void free() { sys::free(m_data); };
+  void free() { m_data.free(); };
+
+  rast::image_view image_view() {
+    return rast::image_view(m_width, m_height, sizeof(ui8) * 4, m_data.range());
+  };
 };
 
 namespace window {
