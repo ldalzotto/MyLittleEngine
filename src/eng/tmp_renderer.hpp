@@ -133,7 +133,8 @@ public:
     bgfx::frame();
   };
 
-  rast::image_view get_frame_buffer() {
+  rast::image_view frame_view() {
+    // TODO -> use bgfx api ?
     auto *l_texture =
         s_bgfx_impl.proxy().FrameBuffer(m_frame_buffer).RGBTexture().value();
     return rast::image_view(l_texture->info.width, l_texture->info.height,

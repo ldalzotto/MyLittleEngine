@@ -64,7 +64,7 @@ struct engine {
                                   l_event.m_draw.m_height);
         }
 
-        rast::image_view l_frame_buffer = m_tmp_renderer.get_frame_buffer();
+        rast::image_view l_frame_buffer = m_tmp_renderer.frame_view();
         rast::image_copy_stretch(
             (m::vec<ui8, 3> *)l_frame_buffer.m_buffer.m_begin,
             l_frame_buffer.m_width, l_frame_buffer.m_height,
@@ -131,10 +131,6 @@ private:
       }
     }
     assert_debug(false);
-  };
-
-  void __render_to_bgfx_just_to_test(){
-
   };
 };
 
