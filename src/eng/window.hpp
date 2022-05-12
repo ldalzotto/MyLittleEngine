@@ -38,15 +38,30 @@ struct system {
 public:
   void allocate() { __allocate(); };
   void free() { __free(); };
+
   window_handle create_window(ui16 p_width, ui16 p_height) {
     return __create_window(p_width, p_height);
   };
+
   void open_window(window_handle p_window) { __open_window(p_window); };
   void close_window(window_handle p_window) { __close_window(p_window); };
-  template <typename InputCallback, typename RedrawCallback>
-  ui8 fetch_events(const InputCallback &p_input_callback,
-                   const RedrawCallback &p_redraw_callback) {
-    return __fetch_events(p_input_callback, p_redraw_callback);
+  void draw_window(ui8 p_window_index, const rast::image_view &p_image) {
+    window_handle *l_handle;
+    window_image_buffer *l_image_buffer;
+    win::events *l_events;
+    m_window_table.at(p_window_index, &l_handle, &l_image_buffer, &l_events);
+    rast::image_copy_stretch((m::vec<ui8, 3> *)p_image.m_buffer.m_begin,
+                             p_image.m_width, p_image.m_height,
+                             (m::vec<ui8, 4> *)l_image_buffer->m_data.m_data,
+                             l_image_buffer->m_width, l_image_buffer->m_height);
+
+    win::draw(l_handle->m_idx, l_image_buffer->m_native,
+              l_image_buffer->m_width, l_image_buffer->m_height);
+  };
+
+  ui8 fetch_events() { return __fetch_events(); };
+  container::range<eng::input::Event> input_system_events() {
+    return m_input_system_events.range();
   };
 
 private:
@@ -56,11 +71,17 @@ private:
     table_define_vector_3;
   } m_window_table;
 
-  void __allocate() { m_window_table.allocate(0); };
+  container::vector<eng::input::Event> m_input_system_events;
+
+  void __allocate() {
+    m_window_table.allocate(0);
+    m_input_system_events.allocate(0);
+  };
 
   void __free() {
     assert_debug(!m_window_table.has_allocated_elements());
     m_window_table.free();
+    m_input_system_events.free();
   };
 
   window_handle __create_window(ui16 p_width, ui16 p_height) {
@@ -96,9 +117,10 @@ private:
     }
     assert_debug(0);
   };
-  template <typename InputCallback, typename RedrawCallback>
-  ui8 __fetch_events(const InputCallback &p_input_callback,
-                     const RedrawCallback &p_redraw_callback) {
+
+  ui8 __fetch_events() {
+    m_input_system_events.clear();
+
     ui8 l_window_index = 0;
     window_handle *l_handle;
     window_image_buffer *l_image_buffer;
@@ -117,12 +139,12 @@ private:
         eng::input::Event l_input_event;
         l_input_event.m_key = l_event.m_input.m_key;
         l_input_event.m_flag = eng::input::Event::Flag::PRESSED;
-        p_input_callback(l_input_event);
+        m_input_system_events.push_back(l_input_event);
       } else if (l_event.m_type == win::event::type::InputRelease) {
         eng::input::Event l_input_event;
         l_input_event.m_key = l_event.m_input.m_key;
         l_input_event.m_flag = eng::input::Event::Flag::RELEASED;
-        p_input_callback(l_input_event);
+        m_input_system_events.push_back(l_input_event);
       } else if (l_event.m_type == win::event::type::Redraw) {
         if (l_event.m_draw.m_width != l_image_buffer->m_width &&
             l_event.m_draw.m_height != l_image_buffer->m_height) {
@@ -130,7 +152,6 @@ private:
           l_image_buffer->allocate(*l_handle, l_event.m_draw.m_width,
                                    l_event.m_draw.m_height);
         }
-        p_redraw_callback(*l_handle, *l_image_buffer);
       } else if (l_event.m_type == win::event::type::Close) {
         __close_window(*l_handle);
       }

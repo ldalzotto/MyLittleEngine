@@ -31,23 +31,12 @@ struct engine {
     bgfx::shutdown();
   };
 
-  // TODO -> having an additional internal storage instead of callbacks ?
   ui8 update() {
 
-    if ((m_window_system.fetch_events(
-            [&](input::Event &p_event) { m_input_system.push_event(p_event); },
-            [&](window_handle p_window, window_image_buffer &p_window_buffer) {
-              rast::image_view l_frame_buffer = m_tmp_renderer.frame_view();
-              rast::image_copy_stretch(
-                  (m::vec<ui8, 3> *)l_frame_buffer.m_buffer.m_begin,
-                  l_frame_buffer.m_width, l_frame_buffer.m_height,
-                  (m::vec<ui8, 4> *)p_window_buffer.m_data.m_data,
-                  p_window_buffer.m_width, p_window_buffer.m_height);
+    if (m_window_system.fetch_events()) {
+      m_input_system.update(m_window_system.input_system_events());
+      m_window_system.draw_window(0, m_tmp_renderer.frame_view());
 
-              win::draw(p_window.m_idx, p_window_buffer.m_native,
-                        p_window_buffer.m_width, p_window_buffer.m_height);
-            }))) {
-      m_input_system.update();
       return 1;
     }
 
