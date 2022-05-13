@@ -54,7 +54,7 @@ endif()
 target_link_libraries(WIN PUBLIC WholeProject)
 target_link_libraries(WIN PUBLIC SYS)
 
-add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_engine.cpp)
+add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
 target_link_libraries(TESTS PUBLIC SYS)
 target_link_libraries(TESTS PUBLIC WIN)
 target_link_libraries(TESTS PUBLIC STB)
