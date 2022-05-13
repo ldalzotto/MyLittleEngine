@@ -21,6 +21,6 @@ let execute_command = async function (p_command: string[], p_working_directory: 
 
 fs.emptyDirSync(build_path);
 await execute_command(["cmake", "-Bbuild_ninja", "-D", "CMAKE_C_COMPILER=clang-10", "-D", "CMAKE_CXX_COMPILER=clang++-10", "-D", "ENABLE_SAFETY_CHECKS=true",
-    "-D", "ENABLE_ADDRESS=true", "-D", "ENABLE_UNDEFINED=true", "-H.", "-GNinja"], root_path);
+    "-D", "ENABLE_ADDRESS=true", "-D", "ENABLE_UNDEFINED=true", "-D", "WIN_HEADLESS=true", "-H.", "-GNinja"], root_path);
 await execute_command(["cmake", "--build", ".", "--target", "TESTS"], build_path);
 await execute_command(["./TESTS"], build_path);

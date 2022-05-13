@@ -6,6 +6,7 @@ set(CMAKE_CXX_STANDARD 17)
 # set(ENABLE_SAFETY_CHECKS true)
 # set(ENABLE_ADDRESS true)
 # set(ENABLE_UNDEFINED true)
+# set(WIN_HEADLESS true)
 
 add_compile_options(-fPIC)
 
@@ -25,7 +26,6 @@ if(ENABLE_UNDEFINED)
     add_link_options(-fsanitize=undefined)
 endif()
 
-
 add_library(BGFX_API INTERFACE)
 target_include_directories(BGFX_API INTERFACE ./tp/bgfx_api/)
 
@@ -44,17 +44,24 @@ target_link_libraries(SYS PUBLIC WholeProject)
 
 find_package(X11 REQUIRED)
 
-add_library(WIN STATIC ./src/sys/win.cpp)
+if (WIN_HEADLESS)
+    add_library(WIN STATIC ./src/sys/win_headless.cpp)
+else()
+    add_library(WIN STATIC ./src/sys/win_linux.cpp)
+    target_link_libraries(WIN PUBLIC ${X11_LIBRARIES})
+endif()
+
 target_link_libraries(WIN PUBLIC WholeProject)
 target_link_libraries(WIN PUBLIC SYS)
-target_link_libraries(WIN PUBLIC ${X11_LIBRARIES})
 
-add_library(API SHARED ./src/eng/api.cpp)
-target_link_libraries(API PUBLIC SYS)
-target_link_libraries(API PUBLIC WIN)
-
-add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp)
+add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
 target_link_libraries(TESTS PUBLIC SYS)
 target_link_libraries(TESTS PUBLIC WIN)
 target_link_libraries(TESTS PUBLIC STB)
 target_link_libraries(TESTS PUBLIC DOCTEST)
+
+add_library(API SHARED ./src/api/c_api.cpp)
+target_link_libraries(API PUBLIC SYS)
+target_link_libraries(API PUBLIC WIN)
+
+add_subdirectory(./sandbox)

@@ -32,30 +32,27 @@ struct system {
 
   struct heap {
     struct state_table {
-      table_vector_meta;
+      table_span_meta;
       table_cols_1(State);
-      table_define_vector_1;
+      table_define_span_1;
     } m_state_table;
 
     container::vector<uimax> m_just_pressed_keys;
     container::vector<uimax> m_just_released_keys;
-    container::vector<Event> m_input_events;
 
     void allocate() {
       m_state_table.allocate((uimax)Key::ENUM_MAX);
       State *l_state;
-      for (auto i = 0; i < m_state_table.m_meta.m_count; ++i) {
+      for (auto i = 0; i < m_state_table.m_meta; ++i) {
         m_state_table.at(i, &l_state);
         *l_state = State::UNDEFINED;
       }
-      m_input_events.allocate(0);
       m_just_pressed_keys.allocate(0);
       m_just_released_keys.allocate(0);
     };
 
     void free() {
       m_state_table.free();
-      m_input_events.free();
       m_just_pressed_keys.free();
       m_just_released_keys.free();
     };
@@ -65,13 +62,9 @@ struct system {
   void allocate() { m_heap.allocate(); };
   void free() { m_heap.free(); };
 
-  void push_event(const Event &p_event) {
-    m_heap.m_input_events.push_back(p_event);
-  };
-
-  void update() {
+  void update(const container::range<Event> &p_events) {
     __last_frame_events();
-    __consume_events();
+    __consume_events(p_events);
   };
 
 private:
@@ -95,10 +88,10 @@ private:
     m_heap.m_just_released_keys.clear();
   };
 
-  void __consume_events() {
+  void __consume_events(const container::range<Event> &p_events) {
 
-    for (auto i = 0; i < m_heap.m_input_events.count(); ++i) {
-      Event &l_event = m_heap.m_input_events.at(i);
+    for (auto i = 0; i < p_events.count(); ++i) {
+      const Event &l_event = p_events.at(i);
 
       State *l_state;
       m_heap.m_state_table.at((uimax)l_event.m_key, &l_state);
@@ -111,11 +104,9 @@ private:
         *l_state = State::JUST_RELEASED;
       }
     }
-
-    m_heap.m_input_events.clear();
   };
 };
 
 }; // namespace input
 
-}; // namespace engine
+}; // namespace eng
