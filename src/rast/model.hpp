@@ -82,6 +82,10 @@ struct image_view {
       p_callback(*(T *)at(i));
     }
   };
+
+  void copy_to(const image_view &p_other) {
+    m_buffer.copy_to(p_other.m_buffer);
+  };
 };
 
 struct shader_vertex_runtime_ctx {

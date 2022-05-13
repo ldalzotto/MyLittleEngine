@@ -10,6 +10,7 @@ void show_window(void *p_window);
 void close_window(void *p_window);
 void *allocate_image(void *p_window, void *p_buffer, ui32 p_width,
                      ui32 p_height);
+void free_image(void *p_image);
 void draw(void *p_window, void *p_image, ui32 p_width, ui32 p_height);
 
 struct event {
@@ -46,5 +47,7 @@ struct events {
 };
 
 void fetch_events(container::range<events> &in_out_events);
+
+void debug_simulate_event(void *p_window, const event &p_event);
 
 }; // namespace win

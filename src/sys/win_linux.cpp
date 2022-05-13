@@ -41,7 +41,10 @@ void win::show_window(void *p_window) {
   XMapWindow(s_display, (Window)p_window);
 };
 
-void win::close_window(void *p_window) { XCloseDisplay(s_display); };
+void win::close_window(void *p_window) {
+  XCloseDisplay(s_display);
+  s_display = 0;
+};
 
 void *win::allocate_image(void *p_window, void *p_buffer, ui32 p_width,
                           ui32 p_height) {
@@ -52,6 +55,8 @@ void *win::allocate_image(void *p_window, void *p_buffer, ui32 p_width,
                       DefaultDepth(s_display, DefaultScreen(s_display)),
                       ZPixmap, 0, (char *)p_buffer, p_width, p_height, 8, 0);
 };
+
+void win::free_image(void *p_image) {};
 
 void win::draw(void *p_window, void *p_image, ui32 p_width, ui32 p_height) {
   XPutImage(s_display, (Window)p_window,
@@ -82,6 +87,21 @@ eng::input::Key native_key_to_input(KeySym p_key_sym) {
     return eng::input::Key::ARROW_RIGHT;
   default:
     return eng::input::Key::UNDEFINED;
+  }
+};
+
+XID input_key_to_native(eng::input::Key p_key) {
+  switch (p_key) {
+  case eng::input::Key::ARROW_UP:
+    return XK_Up;
+  case eng::input::Key::ARROW_DOWN:
+    return XK_Down;
+  case eng::input::Key::ARROW_LEFT:
+    return XK_Left;
+  case eng::input::Key::ARROW_RIGHT:
+    return XK_Right;
+  default:
+    return 0;
   }
 };
 
@@ -121,4 +141,29 @@ void win::fetch_events(container::range<events> &in_out_events) {
       l_events->push_back(l_engine_event);
     }
   }
+};
+
+void win::debug_simulate_event(void *p_window, const event &p_event) {
+  long event_mask = ExposureMask | KeyPressMask | KeyReleaseMask |
+                    ButtonPressMask | ButtonReleaseMask | FocusChangeMask;
+  Window l_window = (Window)p_window;
+  if (p_event.m_type == event::type::InputPress) {
+    XEvent l_event;
+    l_event.type = KeyPress;
+    l_event.xkey.window = l_window;
+    l_event.xkey.root = DefaultRootWindow(s_display);
+    l_event.xkey.keycode = input_key_to_native(p_event.m_input.m_key);
+    l_event.xkey.send_event = 1;
+    XSendEvent(s_display, l_window, 0, KeyPressMask, &l_event);
+  } else if (p_event.m_type == event::type::InputRelease) {
+    XEvent l_event;
+    l_event.type = KeyRelease;
+    l_event.xkey.window = l_window;
+    l_event.xkey.root = DefaultRootWindow(s_display);
+    l_event.xkey.keycode = input_key_to_native(p_event.m_input.m_key);
+    l_event.xkey.send_event = 1;
+    XSendEvent(s_display, l_window, 0, KeyReleaseMask, &l_event);
+  }
+
+  XSync(s_display, 0);
 };

@@ -18,7 +18,6 @@ struct engine {
     m_input_system.allocate();
     bgfx::init();
     m_tmp_renderer.allocate();
-    m_tmp_renderer.draw();
 
     m_window_system.open_window(
         m_window_system.create_window(p_window_width, p_window_height));
@@ -35,6 +34,7 @@ struct engine {
 
     if (m_window_system.fetch_events()) {
       m_input_system.update(m_window_system.input_system_events());
+      m_tmp_renderer.draw();
       m_window_system.draw_window(0, m_tmp_renderer.frame_view());
 
       return 1;

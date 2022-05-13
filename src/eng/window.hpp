@@ -25,7 +25,10 @@ struct window_image_buffer {
         win::allocate_image(p_window.m_idx, m_data.data(), p_width, p_height);
   };
 
-  void free() { m_data.free(); };
+  void free() {
+    m_data.free();
+    win::free_image(m_native);
+  };
 
   rast::image_view image_view() {
     return rast::image_view(m_width, m_height, sizeof(ui8) * 4, m_data.range());
@@ -109,6 +112,7 @@ private:
     for (auto i = 0; i < m_window_table.element_count(); ++i) {
       m_window_table.at(i, &l_handle, &l_image_buffer, &l_events);
       if (l_handle->m_idx == p_window.m_idx) {
+        win::close_window(l_handle->m_idx);
         l_image_buffer->free();
         l_events->free();
         m_window_table.remove_at(i);
