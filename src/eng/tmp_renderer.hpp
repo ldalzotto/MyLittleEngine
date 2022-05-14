@@ -14,8 +14,8 @@ struct tmp_renderer {
   bgfx::IndexBufferHandle m_index_buffer;
 
 private:
-  inline static ui16 m_width = 256;
-  inline static ui16 m_height = 256;
+  inline static ui16 m_width = 128;
+  inline static ui16 m_height = 128;
 
 public:
   void allocate() {
@@ -87,7 +87,7 @@ public:
     m_triangle_vertices.free();
   };
 
-// f32 m_offset = 0;
+  // f32 m_offset = 0;
 
   void draw() {
 

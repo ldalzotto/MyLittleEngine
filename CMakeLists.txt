@@ -7,6 +7,17 @@ set(CMAKE_CXX_STANDARD 17)
 # set(ENABLE_ADDRESS true)
 # set(ENABLE_UNDEFINED true)
 # set(WIN_HEADLESS true)
+# set(PLATFORM_WEBASSEMBLY true)
+
+if(PLATFORM_WEBASSEMBLY)
+    set(CMAKE_C_COMPILER "emcc")
+    set(CMAKE_CXX_COMPILER "emcc")
+    add_link_options(--bind)
+    add_link_options(-sALLOW_MEMORY_GROWTH)
+    add_compile_definitions(PLATFORM_WEBASSEMBLY_PREPROCESS=1)
+else()
+    add_compile_definitions(PLATFORM_WEBASSEMBLY_PREPROCESS=0)
+endif()
 
 add_compile_options(-fPIC)
 
@@ -29,6 +40,9 @@ endif()
 add_library(BGFX_API INTERFACE)
 target_include_directories(BGFX_API INTERFACE ./tp/bgfx_api/)
 
+add_library(EMSCRIPTEN_API INTERFACE)
+target_include_directories(EMSCRIPTEN_API INTERFACE ./tp/emscripten/)
+
 add_library(STB INTERFACE)
 target_include_directories(STB INTERFACE ./tp/stb/)
 
@@ -46,6 +60,10 @@ find_package(X11 REQUIRED)
 
 if (WIN_HEADLESS)
     add_library(WIN STATIC ./src/sys/win_headless.cpp)
+elseif(PLATFORM_WEBASSEMBLY)
+    add_library(WIN STATIC ./src/sys/win_emscripten.cpp)
+    ## target_link_options(WIN PRIVATE --bind)
+    target_link_libraries(WIN PUBLIC EMSCRIPTEN_API)
 else()
     add_library(WIN STATIC ./src/sys/win_linux.cpp)
     target_link_libraries(WIN PUBLIC ${X11_LIBRARIES})

@@ -19,6 +19,7 @@ struct window_image_buffer {
 
   void allocate(window_handle p_window, ui16 p_width, ui16 p_height) {
     m_data.allocate(p_width * p_height * (sizeof(ui8) * 4));
+    m_data.range().memset(255);
     m_width = p_width;
     m_height = p_height;
     m_native =
@@ -57,7 +58,6 @@ public:
                              p_image.m_width, p_image.m_height,
                              (m::vec<ui8, 4> *)l_image_buffer->m_data.m_data,
                              l_image_buffer->m_width, l_image_buffer->m_height);
-
     win::draw(l_handle->m_idx, l_image_buffer->m_native,
               l_image_buffer->m_width, l_image_buffer->m_height);
   };

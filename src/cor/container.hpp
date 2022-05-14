@@ -50,6 +50,9 @@ template <typename T> struct range {
   };
 
   void zero() { sys::memset(m_begin, 0, m_count * sizeof(T)); };
+  void memset(const T &p_value) {
+    sys::memset(m_begin, p_value, m_count * sizeof(T));
+  };
 
   range<T> slide(uimax p_count) {
     assert_debug(m_count >= p_count);
@@ -100,6 +103,14 @@ template <typename T, int N> struct arr {
   const T *data() const { return m_data; };
   constexpr uimax count() { return N; }
   constexpr uimax count() const { return N; }
+  const T &at(uimax p_index) const {
+    assert_debug(p_index < N);
+    return m_data[p_index];
+  };
+  T &at(uimax p_index) {
+    assert_debug(p_index < N);
+    return m_data[p_index];
+  };
 };
 
 template <typename T, typename AllocFunctions = malloc_free_functions>

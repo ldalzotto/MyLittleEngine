@@ -38,4 +38,4 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@master
       
       - name: Build and run native
-        run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts
+        run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts BUILD_TESTS
