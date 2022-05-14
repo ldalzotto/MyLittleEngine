@@ -69,6 +69,8 @@ i32 on_key_event(i32 p_event_type, const EmscriptenKeyboardEvent *p_event,
 
 inline static const emscripten::val s_document =
     emscripten::val::global("document");
+inline static const emscripten::val s_library =
+    emscripten::val::global("Library");
 
 struct emscripten_window {
   emscripten::val m_canvas;
@@ -97,7 +99,7 @@ void *create_window(ui32 p_width, ui32 p_height) {
       "createElement", emscripten::val("canvas"));
   l_canvas.set("width", p_width);
   l_canvas.set("height", p_height);
-  l_canvas.set("tabindex", -1);
+  l_canvas.set("tabIndex", -1);
   l_canvas.call<void>("focus");
   l_body.call<emscripten::val>("appendChild", l_canvas);
 
@@ -140,19 +142,17 @@ void draw(void *p_window, void *p_image, ui32 p_width, ui32 p_height) {
   emscripten_window *l_window = (emscripten_window *)p_window;
   emscripten_image *l_image = (emscripten_image *)p_image;
 
-  s_document.call<void>(
-      "doACopy", l_window->m_ctx, p_width, p_height,
+  s_library.call<void>(
+      "blitToCanvas", l_window->m_ctx, p_width, p_height,
       emscripten::memory_view<ui8>(p_width * p_height * sizeof(ui8) * 4,
                                    l_image->m_data));
 };
 
 void fetch_events(container::range<events> &in_out_events) {
-  /*
   events &l_events = in_out_events.at(0);
   for (auto i = 0; i < s_events.count(); ++i) {
     l_events.m_events.push_back(s_events.at(i));
   }
-  */
   s_events.clear();
 };
 

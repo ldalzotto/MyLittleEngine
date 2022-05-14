@@ -1,12 +1,16 @@
 <head>
+  <script src="./library.js"></script>
   <script src="./TEST_0"></script>
   <script>
+    /*
     document.doACopy = function (p_ctx, p_width, p_height, p_buffer) {
       let pixels = new Uint8ClampedArray(p_buffer.buffer, p_buffer.byteOffset, p_buffer.byteLength);
       let l_image_data = new ImageData(pixels, p_width, p_height)
       p_ctx.putImageData(l_image_data, 0, 0);
     };
+    */
     Module['onRuntimeInitialized'] = function () {
+
       _initialize();
       let l_main_loop = (p_ok_cb) => {
         if (!_main_loop()) {
@@ -19,18 +23,6 @@
 
       l_main_loop();
     }
-/*
-    addEventListener("keydown", (p_event) => {
-      if (!p_event.repeat) {
-        console.log("keydown");
-      console.log(p_event);
-      }
-    });
-    addEventListener("keyup", (p_event) => {
-      console.log("keyup");
-      console.log(p_event);
-    });
-*/
   </script>
 </head>
 
