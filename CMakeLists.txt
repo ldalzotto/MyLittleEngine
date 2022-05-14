@@ -9,6 +9,8 @@ set(CMAKE_CXX_STANDARD 17)
 # set(WIN_HEADLESS true)
 # set(PLATFORM_WEBASSEMBLY true)
 
+
+
 if(PLATFORM_WEBASSEMBLY)
     set(CMAKE_C_COMPILER "emcc")
     set(CMAKE_CXX_COMPILER "emcc")

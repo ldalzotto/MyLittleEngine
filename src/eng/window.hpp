@@ -54,7 +54,9 @@ public:
     window_image_buffer *l_image_buffer;
     win::events *l_events;
     m_window_table.at(p_window_index, &l_handle, &l_image_buffer, &l_events);
-    rast::image_copy_stretch((m::vec<ui8, 3> *)p_image.m_buffer.m_begin,
+//    rast::image_copy_stretch_v2(p_image, l_image_buffer->image_view());
+    
+    rast::image_copy_stretch_v3((m::vec<ui8, 4> *)p_image.m_buffer.m_begin,
                              p_image.m_width, p_image.m_height,
                              (m::vec<ui8, 4> *)l_image_buffer->m_data.m_data,
                              l_image_buffer->m_width, l_image_buffer->m_height);

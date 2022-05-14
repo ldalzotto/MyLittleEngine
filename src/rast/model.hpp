@@ -2,6 +2,7 @@
 
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
+#include <cstring>
 #include <m/mat.hpp>
 #include <m/rect.hpp>
 
@@ -17,10 +18,45 @@ static void image_copy_stretch(m::vec<ui8, 3> *p_from, ui16 p_from_width,
     ui16 l_from_y = ui16(l_height_delta_ratio * y);
     for (auto x = 0; x < p_to_width; ++x) {
       ui16 l_from_x = ui16(l_width_delta_ratio * x);
-      *(m::vec<ui8, 3> *)&p_to[x + (y * p_to_width)] =
-          p_from[l_from_x + (l_from_y * p_from_height)];
+      ::memcpy(p_to + (x + (y * p_to_width)),
+               p_from + (l_from_x + (l_from_y * p_from_height)), 3);
     }
   }
+};
+
+static void image_copy_stretch_v3(m::vec<ui8, 4> *p_from, ui16 p_from_width,
+                                  ui16 p_from_height, m::vec<ui8, 4> *p_to,
+                                  ui16 p_to_width, ui16 p_to_height) {
+
+  f32 l_width_delta_ratio = f32(p_from_width) / p_to_width;
+  f32 l_height_delta_ratio = f32(p_from_height) / p_to_height;
+
+  container::span<ui16> l_from_x_mapping;
+  container::span<ui16> l_from_y_mapping;
+
+  l_from_x_mapping.allocate(p_to_width);
+  l_from_y_mapping.allocate(p_to_height);
+
+  for (auto x = 0; x < p_to_width; ++x) {
+    ui16 l_from_x = ui16(l_width_delta_ratio * x);
+    l_from_x_mapping.at(x) = l_from_x;
+  }
+  for (auto y = 0; y < p_to_height; ++y) {
+    ui16 l_from_y = ui16(l_height_delta_ratio * y);
+    l_from_y_mapping.at(y) = l_from_y;
+  }
+
+  for (auto y = 0; y < p_to_height; ++y) {
+    for (auto x = 0; x < p_to_width; ++x) {
+      ::memcpy(p_to + (x + (y * p_to_width)),
+               p_from + (l_from_x_mapping.at(x) +
+                         (l_from_y_mapping.at(y) * p_from_height)),
+               3);
+    }
+  }
+
+  l_from_x_mapping.free();
+  l_from_y_mapping.free();
 };
 
 struct image_view {
@@ -86,6 +122,35 @@ struct image_view {
   void copy_to(const image_view &p_other) {
     m_buffer.copy_to(p_other.m_buffer);
   };
+};
+
+static void image_copy_stretch_v2(const image_view &p_from,
+                                  const image_view &p_to) {
+  f32 l_width_delta_ratio = f32(p_from.m_width) / p_to.m_width;
+  f32 l_height_delta_ratio = f32(p_from.m_height) / p_to.m_height;
+
+  ui8 *l_from_iterator = p_from.m_buffer.m_begin;
+  ui8 *l_to_iterator = p_to.m_buffer.m_begin;
+
+  for (auto y = 0; y < p_to.m_height; ++y) {
+    ui16 l_from_y = ui16(l_height_delta_ratio * y);
+    for (auto x = 0; x < p_to.m_width; ++x) {
+      ui16 l_from_x = ui16(l_width_delta_ratio * x);
+
+      // l_from_iterator = l_from_iterator + p_from.m_bits_per_pixel;
+      l_to_iterator = l_to_iterator + p_to.m_bits_per_pixel;
+      l_from_iterator =
+          p_from.m_buffer.m_begin +
+          ((l_from_x + (l_from_y * p_from.m_width)) * p_from.m_bits_per_pixel);
+      sys::memcpy(l_to_iterator, l_from_iterator, p_from.m_bits_per_pixel);
+
+      /*
+            sys::memcpy(void *p_dest, void *p_src, uimax p_n) *
+                (m::vec<ui8, 3> *)&p_to[x + (y * p_to_width)] =
+                p_from[l_from_x + (l_from_y * p_from_height)];
+                */
+    }
+  }
 };
 
 struct shader_vertex_runtime_ctx {

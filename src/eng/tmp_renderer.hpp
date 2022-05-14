@@ -20,7 +20,7 @@ private:
 public:
   void allocate() {
     m_frame_buffer =
-        bgfx::createFrameBuffer(0, m_width, m_height, bgfx::TextureFormat::RGB8,
+        bgfx::createFrameBuffer(0, m_width, m_height, bgfx::TextureFormat::RGBA8,
                                 bgfx::TextureFormat::D32F);
 
     m_vertex_layout.begin()
