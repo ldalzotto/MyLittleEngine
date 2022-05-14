@@ -19,6 +19,7 @@ else()
     add_compile_definitions(PLATFORM_WEBASSEMBLY_PREPROCESS=0)
 endif()
 
+# FIXME -> remove this
 add_compile_options(-fPIC)
 
 if(ENABLE_SAFETY_CHECKS)

@@ -166,6 +166,14 @@ template <typename T> struct vec<T, 3> {
     return l_return;
   };
 
+  vec operator-(const T &p_other) const {
+    vec l_return;
+    l_return.m_data[0] = m_data[0] - p_other;
+    l_return.m_data[1] = m_data[1] - p_other;
+    l_return.m_data[2] = m_data[2] - p_other;
+    return l_return;
+  };
+
   vec &operator-=(const vec<T, 3> &p_other) {
     m_data[0] = m_data[0] - p_other.m_data[0];
     m_data[1] = m_data[1] - p_other.m_data[1];
@@ -289,6 +297,15 @@ template <typename T> struct vec<T, 4> {
     return l_return;
   };
 
+  vec operator*(const T &p_other) const {
+    vec l_return;
+    l_return.m_data[0] = m_data[0] * p_other;
+    l_return.m_data[1] = m_data[1] * p_other;
+    l_return.m_data[2] = m_data[2] * p_other;
+    l_return.m_data[3] = m_data[3] * p_other;
+    return l_return;
+  };
+
   vec &operator*=(const vec<T, 4> &p_other) {
     m_data[0] = m_data[0] * p_other.m_data[0];
     m_data[1] = m_data[1] * p_other.m_data[1];
@@ -357,6 +374,11 @@ template <typename T> f32 magnitude(const vec<T, 3> &thiz) {
 
 template <typename T> vec<T, 3> normalize(const vec<T, 3> &thiz) {
   return thiz / magnitude(thiz);
+};
+
+template <typename T> ui8 is_normalized(const vec<T, 3> &thiz) {
+  f32 l_magnitude = magnitude(thiz);
+  return l_magnitude >= 0.99 && l_magnitude <= 1.01;
 };
 
 template <typename T>
