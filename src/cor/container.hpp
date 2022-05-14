@@ -50,6 +50,9 @@ template <typename T> struct range {
   };
 
   void zero() { sys::memset(m_begin, 0, m_count * sizeof(T)); };
+  void memset(const T& p_value) {
+    sys::memset(m_begin, p_value, m_count * sizeof(T));
+  };
 
   range<T> slide(uimax p_count) {
     assert_debug(m_count >= p_count);

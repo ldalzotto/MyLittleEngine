@@ -1,0 +1,28 @@
+<head>
+    <script src="./TEST_0"></script>
+    <script>
+        document.doACopy = function(p_canvas, p_buffer){
+            // let l_image_data = new ImageData(new Uint8ClampedArray([0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1,0,0,0,1]), 800,800)
+            let pixels = new Uint8ClampedArray(p_buffer.buffer,p_buffer.byteOffset, p_buffer.byteLength);
+            /*
+            for (let y = 0; y < 256; y++) {
+  for (let x = 0; x < 256; x++) {
+    const i = (y*256 + x) * 4;
+    pixels[i  ] = x;   // red
+    pixels[i+1] = y;   // green
+    pixels[i+2] = 0;   // blue
+    pixels[i+3] = 255; // alpha
+  }
+}
+*/
+            let l_image_data = new ImageData(pixels, 800,800)
+            p_canvas.getContext("2d").putImageData(l_image_data, 0, 0);
+            // p_canvas.getContext("2d").fillStyle = "blue";
+            // p_canvas.getContext("2d").fill();
+            // Module.HEAP8.set(image.data, p_buffer) 
+        };
+    </script>
+</head>
+<body id="body">
+
+</body>

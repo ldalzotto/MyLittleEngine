@@ -56,7 +56,7 @@ void *win::allocate_image(void *p_window, void *p_buffer, ui32 p_width,
                       ZPixmap, 0, (char *)p_buffer, p_width, p_height, 8, 0);
 };
 
-void win::free_image(void *p_image) {};
+void win::free_image(void *p_image){};
 
 void win::draw(void *p_window, void *p_image, ui32 p_width, ui32 p_height) {
   XPutImage(s_display, (Window)p_window,

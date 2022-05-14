@@ -19,6 +19,7 @@ struct window_image_buffer {
 
   void allocate(window_handle p_window, ui16 p_width, ui16 p_height) {
     m_data.allocate(p_width * p_height * (sizeof(ui8) * 4));
+    m_data.range().memset(255);
     m_width = p_width;
     m_height = p_height;
     m_native =
