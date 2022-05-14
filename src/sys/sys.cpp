@@ -1,5 +1,6 @@
 #include <sys/sys.hpp>
 
+#include <cmath>
 #include <cstdlib>
 #include <cstring>
 
@@ -26,3 +27,6 @@ void sys::sassert(bool p_condition) {
   }
 };
 void sys::abort() { std::abort(); };
+
+f32 sys::sin(f32 p_angle) { return std::sin(p_angle); };
+f32 sys::cos(f32 p_angle) { return std::cos(p_angle); };
