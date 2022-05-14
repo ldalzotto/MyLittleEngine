@@ -7,9 +7,27 @@ const __dirname = path.resolve(new URL('.', import.meta.url).pathname);
 const root_path = path.resolve(__dirname, "../");
 const build_path = path.join(root_path, "/build_ninja");
 const emscripten_path = path.join(root_path, "/emscripten");
-// const tmp_path = path.join(path.resolve(root_path, "../"), "/.tmp");
 const tmp_path = path.join(root_path, "/.tmp");
 fs.emptyDirSync(tmp_path);
+
+class CommandResult {
+    m_success: boolean = false;
+    m_stdout: string = "";
+};
+
+let execute_command_unchecked = async function (p_command: string[], p_working_directory: string = "") {
+    console.log(p_command);
+    if (p_working_directory != "") {
+        Deno.chdir(p_working_directory);
+    }
+    console.log(Deno.cwd());
+    const l_command = Deno.run({ cmd: p_command, stdout: "piped" });
+    let l_result = new CommandResult();
+    l_result.m_success = (await l_command.status()).success;
+    l_result.m_stdout = new TextDecoder().decode(await l_command.output());
+    return l_result;
+};
+
 
 let execute_command = async function (p_command: string[], p_working_directory: string = "") {
     console.log(p_command);
@@ -85,11 +103,14 @@ if (l_type == "BUILD_TESTS") {
     await execute_command(["./TESTS"], build_path);
 }
 else if (l_type == "BUILD_EMSCRIPTEN") {
+
+    let l_github_token: string = Deno.args[1];
+
     fs.emptyDirSync(build_path);
     await build_cmake_project("TEST_0", new BuildConfig({ BUILD_TYPE: "Release", PLATFORM_WEBASSEMBLY: true }));
     const ninja_build_out_dir = path.join(build_path, "/sandbox");
 
-    await execute_command(["git", "clone", "https://github.com/ldalzotto/ldalzotto.github.io.git"], tmp_path);
+    await execute_command(["git", "clone", "https://github.com/ldalzotto/ldalzotto.github.io"], tmp_path);
     const github_page_path = path.join(tmp_path, "ldalzotto.github.io");
 
     const emscripten_out_dir = path.join(github_page_path, "/TEST_0");
@@ -105,17 +126,16 @@ else if (l_type == "BUILD_EMSCRIPTEN") {
     fs.copySync(path.join(emscripten_path, "/main.html"), path.join(emscripten_out_dir, "main.html"));
 
 
-    let l_last_commit_hash = execute_command_with_output(["git", "rev-parse", "HEAD"], root_path);
+    let l_last_commit_hash: string = await execute_command_with_output(["git", "rev-parse", "HEAD"], root_path);
     await execute_command(["git", "config", "--global", "user.email", "\"loic.dalzotto@hotmail.fr\""], github_page_path);
     await execute_command(["git", "config", "--global", "user.name", "\"ldalzotto\""], github_page_path);
     await execute_command(["git", "add", ".", "-f"], github_page_path);
-    await execute_command(["git", "commit", "-m", `Built from ${l_last_commit_hash}`], github_page_path);
-    await execute_command(["git", "push", "origin", "master"], github_page_path);
-
-
-    // "TEST_0.wasm"
-
-    // fs.emptyDirSync(build_path);
+    let l_commit_command: CommandResult = await execute_command_unchecked(["git", "commit", "-m", `Built from ${l_last_commit_hash}`], github_page_path);
+    if (l_commit_command.m_success) {
+        if (l_commit_command.m_stdout.indexOf("nothing to commit, working tree clean") == -1) {
+            await execute_command(["git", "push", `https://${l_github_token}@github.com/ldalzotto/ldalzotto.github.io.git`], github_page_path);
+        }
+    }
 }
 else {
     console.log("NOTHING TO DO");
