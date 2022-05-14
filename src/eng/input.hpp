@@ -7,7 +7,8 @@ namespace eng {
 
 namespace input {
 
-enum class Key {
+using Key_t = ui8;
+enum class Key : Key_t {
   UNDEFINED = 0,
   ARROW_DOWN = 1,
   ARROW_UP = 2,

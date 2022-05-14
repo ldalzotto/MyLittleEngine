@@ -58,7 +58,6 @@ public:
                              p_image.m_width, p_image.m_height,
                              (m::vec<ui8, 4> *)l_image_buffer->m_data.m_data,
                              l_image_buffer->m_width, l_image_buffer->m_height);
-
     win::draw(l_handle->m_idx, l_image_buffer->m_native,
               l_image_buffer->m_width, l_image_buffer->m_height);
   };

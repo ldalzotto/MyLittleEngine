@@ -7,16 +7,16 @@
 
 namespace rast {
 
+// TODO -> improve that
 static void image_copy_stretch(m::vec<ui8, 3> *p_from, ui16 p_from_width,
                                ui16 p_from_height, m::vec<ui8, 4> *p_to,
                                ui16 p_to_width, ui16 p_to_height) {
-
+  f32 l_width_delta_ratio = f32(p_from_width) / p_to_width;
+  f32 l_height_delta_ratio = f32(p_from_height) / p_to_height;
   for (auto y = 0; y < p_to_height; ++y) {
-    f32 l_height_ratio = f32(y) / p_to_height;
-    ui16 l_from_y = ui16(l_height_ratio * p_from_height);
+    ui16 l_from_y = ui16(l_height_delta_ratio * y);
     for (auto x = 0; x < p_to_width; ++x) {
-      f32 l_width_ratio = f32(x) / p_to_width;
-      ui16 l_from_x = ui16(l_width_ratio * p_from_width);
+      ui16 l_from_x = ui16(l_width_delta_ratio * x);
       *(m::vec<ui8, 3> *)&p_to[x + (y * p_to_width)] =
           p_from[l_from_x + (l_from_y * p_from_height)];
     }

@@ -14,8 +14,8 @@ struct tmp_renderer {
   bgfx::IndexBufferHandle m_index_buffer;
 
 private:
-  inline static ui16 m_width = 256;
-  inline static ui16 m_height = 256;
+  inline static ui16 m_width = 128;
+  inline static ui16 m_height = 128;
 
 public:
   void allocate() {
@@ -112,25 +112,23 @@ public:
     bgfx::touch(0);
 
     // Submit 11x11 cubes.
-    for (auto i = 0; i < 50; ++i) {
-      for (uint32_t yy = 0; yy < 11; ++yy) {
-        for (uint32_t xx = 0; xx < 11; ++xx) {
-          m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
-          l_transform.at(3, 0) = (-15.0f + xx * 3.0f);
-          l_transform.at(3, 1) = (-15.0f + yy * 3.0f);
-          l_transform.at(3, 2) = 0.0f;
+    for (uint32_t yy = 0; yy < 11; ++yy) {
+      for (uint32_t xx = 0; xx < 11; ++xx) {
+        m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
+        l_transform.at(3, 0) = (-15.0f + xx * 3.0f);
+        l_transform.at(3, 1) = (-15.0f + yy * 3.0f);
+        l_transform.at(3, 2) = 0.0f;
 
-          // Set model matrix for rendering.
-          bgfx::setTransform(l_transform.m_data);
+        // Set model matrix for rendering.
+        bgfx::setTransform(l_transform.m_data);
 
-          bgfx::setIndexBuffer(m_index_buffer);
-          bgfx::setVertexBuffer(0, m_vertex_buffer);
-          bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z |
-                         BGFX_STATE_CULL_CW);
+        bgfx::setIndexBuffer(m_index_buffer);
+        bgfx::setVertexBuffer(0, m_vertex_buffer);
+        bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z |
+                       BGFX_STATE_CULL_CW);
 
-          // Submit primitive for rendering to view 0.
-          bgfx::submit(0, m_frame_program);
-        }
+        // Submit primitive for rendering to view 0.
+        bgfx::submit(0, m_frame_program);
       }
     }
 
