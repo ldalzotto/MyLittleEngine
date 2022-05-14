@@ -1,0 +1,31 @@
+name: EMSCRIPTEN
+
+# Controls when the workflow will run
+on:
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  publish_emscripten:
+    runs-on: ubuntu-latest
+  
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Deno setup
+        uses: denoland/setup-deno@v1
+        with:
+          node-version: v1.x
+
+      - name: Cmake setup
+        uses: lukka/get-cmake@latest
+
+      - name: Ninja setup
+        uses: seanmiddleditch/gha-setup-ninja@master
+
+      - name: Emscripten setup
+        uses: mymindstorm/setup-emsdk@v11
+      
+      - name: Build and Publish
+        run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts BUILD_EMSCRIPTEN

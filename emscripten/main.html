@@ -1,0 +1,22 @@
+<head>
+    <script src="./library.js"></script>
+    <script src="./main.js"></script>
+    <script>
+      Module['onRuntimeInitialized'] = function () {
+  
+        _initialize();
+        let l_main_loop = (p_ok_cb) => {
+          if (!_main_loop()) {
+            _terminate();
+          }
+          else {
+            requestAnimationFrame(l_main_loop);
+          }
+        };
+  
+        l_main_loop();
+      }
+    </script>
+  </head>
+  
+  <body id="body"></body>
