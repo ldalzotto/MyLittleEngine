@@ -99,23 +99,6 @@ let run_cmake_project = async function (p_project_name: string, p_path: string) 
     await execute_command([`./${p_project_name}`], p_path);
 };
 
-let build_emscripten = async function (p_project_name: string, p_subdirectories: string[], p_output_path: string) {
-    fs.emptyDirSync(build_path);
-    await build_cmake_project(p_project_name, new BuildConfig({ BUILD_TYPE: "Release", PLATFORM_WEBASSEMBLY: true }));
-    const ninja_build_out_dir = path.join(build_path, "/" + p_subdirectories.join("/"));
-
-    const emscripten_out_dir = path.join(p_output_path, "/TEST_0");
-    fs.emptyDirSync(emscripten_out_dir);
-
-    let l_js: string = await Deno.readTextFile(path.join(ninja_build_out_dir, "/TEST_0"));
-    l_js = l_js.replace(`${p_project_name}.wasm`, "main.wasm");
-    Deno.writeTextFile(path.join(emscripten_out_dir, "main.js"), l_js);
-
-    fs.copySync(path.join(ninja_build_out_dir, `/${p_project_name}.wasm`), path.join(emscripten_out_dir, "main.wasm"));
-    fs.copySync(path.join(emscripten_path, "/library.js"), path.join(emscripten_out_dir, "library.js"));
-    fs.copySync(path.join(emscripten_path, "/main.html"), path.join(emscripten_out_dir, "main.html"));
-}
-
 let get_commit_message = async function (p_sha: string): Promise<string> {
     return execute_command_with_output(["git", "log", "--format=%B", "-n", "1", p_sha], root_path);
 };
@@ -132,7 +115,7 @@ let get_commit_PR_number = async function (p_sha: string): Promise<string> {
     return "";
 };
 
-let build_emscripten_v2 = async function (p_project_name: string, p_subdirectories: string[], p_output_path: string, p_commit_sha: string) {
+let build_emscripten = async function (p_project_name: string, p_subdirectories: string[], p_output_path: string, p_commit_sha: string) {
     fs.emptyDirSync(build_path);
     await build_cmake_project(p_project_name, new BuildConfig({ BUILD_TYPE: "Release", PLATFORM_WEBASSEMBLY: true }));
     const ninja_build_out_dir = path.join(build_path, "/" + p_subdirectories.join("/"));
@@ -161,10 +144,6 @@ let build_emscripten_v2 = async function (p_project_name: string, p_subdirectori
         }
         Deno.writeTextFile(path.join(emscripten_out_dir, "main.html"), l_html);
     }
-
-
-
-    // fs.copySync(path.join(emscripten_path, "/main.html"), path.join(emscripten_out_dir, "main.html"));
 };
 
 
@@ -184,7 +163,7 @@ else if (l_type == "BUILD_PUBLISH_EMSCRIPTEN") {
     fs.emptyDirSync(build_path);
     await execute_command(["git", "clone", "https://github.com/ldalzotto/ldalzotto.github.io"], tmp_path);
     const github_page_path = path.join(tmp_path, "ldalzotto.github.io");
-    await build_emscripten_v2("TEST_0", ["sandbox"], github_page_path, l_last_commit_hash);
+    await build_emscripten("TEST_0", ["sandbox"], github_page_path, l_last_commit_hash);
 
     let l_github_token: string = Deno.args[1];
 
