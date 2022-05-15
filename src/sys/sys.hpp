@@ -31,6 +31,9 @@ struct sys {
 
   static void sassert(bool p_condition);
   static void abort();
+
+  static f32 sin(f32 p_angle);
+  static f32 cos(f32 p_angle);
 };
 
 #define FORCE_INLINE __attribute__((always_inline))

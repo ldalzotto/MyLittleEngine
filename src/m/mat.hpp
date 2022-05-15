@@ -16,6 +16,15 @@ template <typename T> struct mat<T, 4, 4> {
 
   static mat getIdentity();
   static mat getZero() { return {0}; };
+
+  vec<T, 4> &col0() { return m_data[0]; }
+  vec<T, 4> &col1() { return m_data[1]; }
+  vec<T, 4> &col2() { return m_data[2]; }
+  vec<T, 4> &col3() { return m_data[3]; }
+  const vec<T, 4> &col0() const { return m_data[0]; }
+  const vec<T, 4> &col1() const { return m_data[1]; }
+  const vec<T, 4> &col2() const { return m_data[2]; }
+  const vec<T, 4> &col3() const { return m_data[3]; }
 };
 
 template <> inline mat<f32, 4, 4> mat<f32, 4, 4>::getIdentity() {
@@ -79,6 +88,44 @@ static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
   l_result.at(3, 0) = 0;
   l_result.at(3, 1) = 0;
   l_result.at(3, 3) = 0;
+  return l_result;
+};
+
+template <typename T>
+static mat<T, 4, 4> rotate_around(const mat<T, 4, 4> &thiz, f32 p_angle_rad,
+                                  const vec<T, 3> &p_axis) {
+  assert_debug(is_normalized(p_axis));
+
+  f32 c = sys::cos(p_angle_rad);
+  f32 s = sys::sin(p_angle_rad);
+  normalize(p_axis);
+
+  vec<T, 3> temp = (vec<T, 3>{1, 1, 1} - c) * p_axis;
+
+  mat<T, 4, 4> l_rotate;
+  l_rotate.at(0, 0) = c + temp.x() * p_axis.x();
+  l_rotate.at(0, 1) = temp.x() * p_axis.y() + s * p_axis.z();
+  l_rotate.at(0, 2) = temp.x() * p_axis.z() - s * p_axis.y();
+
+  l_rotate.at(1, 0) = temp.y() * p_axis.x() - s * p_axis.z();
+  l_rotate.at(1, 1) = c + temp.y() * p_axis.y();
+  l_rotate.at(1, 2) = temp.y() * p_axis.z() + s * p_axis.x();
+
+  l_rotate.at(2, 0) = temp.z() * p_axis.x() + s * p_axis.y();
+  l_rotate.at(2, 1) = temp.z() * p_axis.y() - s * p_axis.x();
+  l_rotate.at(2, 2) = c + temp.z() * p_axis.z();
+
+  mat<T, 4, 4> l_result;
+  l_result.col0() = thiz.col0() * l_rotate.at(0, 0) +
+                    thiz.col1() * l_rotate.at(0, 1) +
+                    thiz.col2() * l_rotate.at(0, 2);
+  l_result.col1() = thiz.col0() * l_rotate.at(1, 0) +
+                    thiz.col1() * l_rotate.at(1, 1) +
+                    thiz.col2() * l_rotate.at(1, 2);
+  l_result.col2() = thiz.col0() * l_rotate.at(2, 0) +
+                    thiz.col1() * l_rotate.at(2, 1) +
+                    thiz.col2() * l_rotate.at(2, 2);
+  l_result.col3() = thiz.col3();
   return l_result;
 };
 

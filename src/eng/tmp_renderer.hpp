@@ -31,35 +31,31 @@ public:
     m_triangle_vertices.allocate(m_vertex_layout.getSize(8));
 
     {
+      const uimax l_slide_offset = m_vertex_layout.getStride() -
+                                   sizeof(m::vec<f32, 3>) -
+                                   sizeof(m::vec<ui8, 3>);
       m_triangle_vertices.range()
           .stream(m::vec<f32, 3>{-1.0f, 1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 0, 0});
-      m_triangle_vertices.range()
-          .slide(m_vertex_layout.getSize(1))
+          .stream(m::vec<ui8, 3>{0, 0, 0})
+          .slide(l_slide_offset)
           .stream(m::vec<f32, 3>{1.0f, 1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 0, 255});
-      m_triangle_vertices.range()
-          .slide(m_vertex_layout.getSize(2))
+          .stream(m::vec<ui8, 3>{0, 0, 255})
+          .slide(l_slide_offset)
           .stream(m::vec<f32, 3>{-1.0f, -1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 255, 0});
-      m_triangle_vertices.range()
-          .slide(m_vertex_layout.getSize(3))
+          .stream(m::vec<ui8, 3>{0, 255, 0})
+          .slide(l_slide_offset)
           .stream(m::vec<f32, 3>{1.0f, -1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 255, 255});
-      m_triangle_vertices.range()
-          .slide(m_vertex_layout.getSize(4))
+          .stream(m::vec<ui8, 3>{0, 255, 255})
+          .slide(l_slide_offset)
           .stream(m::vec<f32, 3>{-1.0f, 1.0f, -1.0f})
-          .stream(m::vec<ui8, 3>{255, 0, 0});
-      m_triangle_vertices.range()
-          .slide(m_vertex_layout.getSize(5))
+          .stream(m::vec<ui8, 3>{255, 0, 0})
+          .slide(l_slide_offset)
           .stream(m::vec<f32, 3>{1.0f, 1.0f, -1.0f})
-          .stream(m::vec<ui8, 3>{255, 0, 255});
-      m_triangle_vertices.range()
-          .slide(m_vertex_layout.getSize(6))
+          .stream(m::vec<ui8, 3>{255, 0, 255})
+          .slide(l_slide_offset)
           .stream(m::vec<f32, 3>{-1.0f, -1.0f, -1.0f})
-          .stream(m::vec<ui8, 3>{255, 255, 0});
-      m_triangle_vertices.range()
-          .slide(m_vertex_layout.getSize(7))
+          .stream(m::vec<ui8, 3>{255, 255, 0})
+          .slide(l_slide_offset)
           .stream(m::vec<f32, 3>{1.0f, -1.0f, -1.0f})
           .stream(m::vec<ui8, 3>{255, 255, 255});
     }
@@ -89,12 +85,15 @@ public:
 
   // f32 m_offset = 0;
 
+  ui32 m_counter = 0;
+  f32 m_delta = 0.1f;
+
   void draw() {
 
     m::mat<f32, 4, 4> l_view, l_proj;
     {
       const m::vec<f32, 3> at = {0.0f, 0.0f, 0.0f};
-      const m::vec<f32, 3> eye = {0.0f, 0.0f, -35.0f};
+      const m::vec<f32, 3> eye = {-5.0f, 5.0f, -5.0f};
 
       // Set view and projection matrix for view 0.
       {
@@ -112,27 +111,22 @@ public:
     bgfx::touch(0);
 
     // Submit 11x11 cubes.
-    for (uint32_t yy = 0; yy < 11; ++yy) {
-      for (uint32_t xx = 0; xx < 11; ++xx) {
-        m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
-        l_transform.at(3, 0) = (-15.0f + xx * 3.0f);
-        l_transform.at(3, 1) = (-15.0f + yy * 3.0f);
-        l_transform.at(3, 2) = 0.0f;
+    m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
+    l_transform = m::rotate_around(l_transform, m_counter * m_delta, {0, 1, 0});
+    // l_transform.at(3, 0) = m_delta * m_counter;
+    // Set model matrix for rendering.
+    bgfx::setTransform(l_transform.m_data);
 
-        // Set model matrix for rendering.
-        bgfx::setTransform(l_transform.m_data);
+    bgfx::setIndexBuffer(m_index_buffer);
+    bgfx::setVertexBuffer(0, m_vertex_buffer);
+    bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z |
+                   BGFX_STATE_CULL_CW);
 
-        bgfx::setIndexBuffer(m_index_buffer);
-        bgfx::setVertexBuffer(0, m_vertex_buffer);
-        bgfx::setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z |
-                       BGFX_STATE_CULL_CW);
-
-        // Submit primitive for rendering to view 0.
-        bgfx::submit(0, m_frame_program);
-      }
-    }
+    // Submit primitive for rendering to view 0.
+    bgfx::submit(0, m_frame_program);
 
     // m_offset += 0.5;
+    m_counter += 1;
     bgfx::frame();
   };
 
