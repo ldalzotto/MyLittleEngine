@@ -30,4 +30,4 @@ jobs:
         uses: mymindstorm/setup-emsdk@v11
       
       - name: Build and Publish
-        run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts BUILD_EMSCRIPTEN ${{ secrets.GH_TOKEN }}
+        run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts BUILD_PUBLISH_EMSCRIPTEN ${{ secrets.GH_TOKEN }}
