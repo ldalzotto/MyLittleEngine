@@ -70,7 +70,7 @@ endif()
 
 target_link_libraries(WIN INTERFACE WholeProject)
 
-add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
+add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_math.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
 target_link_libraries(TESTS PUBLIC WIN)
 target_link_libraries(TESTS PUBLIC STB)
 target_link_libraries(TESTS PUBLIC DOCTEST)

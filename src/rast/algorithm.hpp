@@ -18,8 +18,8 @@ namespace algorithm {
 using screen_coord_t = i16;
 using polygon_vertex_indices = m::polygon<uimax, 3>;
 using pixel_coordinates = m::vec<screen_coord_t, 2>;
-using homogeneous_coordinates = m::vec<f32, 3>;
-using rasterization_weight = m::vec<f32, 3>;
+using homogeneous_coordinates = m::vec<ff32, 3>;
+using rasterization_weight = m::vec<ff32, 3>;
 using screen_polygon = m::polygon<m::vec<screen_coord_t, 2>, 3>;
 using screen_polygon_bounding_box = m::rect_min_max<screen_coord_t>;
 using screen_polygon_area = i32;
@@ -117,10 +117,10 @@ struct utils {
            ++x) {
 
         if (ex0 >= 0 && ex1 >= 0 && ex2 >= 0) {
-          f32 w0 = (f32)ex2 / p_polygon_area;
-          f32 w1 = (f32)ex0 / p_polygon_area;
-          f32 w2 = (f32)ex1 / p_polygon_area;
-          assert_debug(w0 + w1 + w2 <= 1.01f);
+          ff32 w0 = ff32(ex2) / p_polygon_area;
+          ff32 w1 = ff32(ex0) / p_polygon_area;
+          ff32 w2 = ff32(ex1) / p_polygon_area;
+          assert_debug(w0 + w1 + w2 <= ff32(1.01f));
           p_cb(x, y, w0, w1, w2);
         }
 
@@ -249,9 +249,9 @@ struct rasterize_unit {
   struct input {
     const program &m_program;
     m::rect_point_extend<ui16> &m_rect;
-    const m::mat<f32, 4, 4> &m_proj;
-    const m::mat<f32, 4, 4> &m_view;
-    const m::mat<f32, 4, 4> &m_transform;
+    const m::mat<ff32, 4, 4> &m_proj;
+    const m::mat<ff32, 4, 4> &m_view;
+    const m::mat<ff32, 4, 4> &m_transform;
     index_buffer_const_view m_index_buffer;
     bgfx::VertexLayout m_vertex_layout;
     const container::range<ui8> &m_vertex_buffer;
@@ -262,8 +262,8 @@ struct rasterize_unit {
     image_view m_target_depth_view;
 
     input(const program &p_program, m::rect_point_extend<ui16> &p_rect,
-          const m::mat<f32, 4, 4> &p_proj, const m::mat<f32, 4, 4> &p_view,
-          const m::mat<f32, 4, 4> &p_transform,
+          const m::mat<ff32, 4, 4> &p_proj, const m::mat<ff32, 4, 4> &p_view,
+          const m::mat<ff32, 4, 4> &p_transform,
           const container::range<ui8> &p_index_buffer,
           bgfx::VertexLayout p_vertex_layout,
           const container::range<ui8> &p_vertex_buffer, ui64 p_state,
@@ -284,7 +284,7 @@ struct rasterize_unit {
 
   rasterize_heap &m_heap;
   render_state m_state;
-  m::mat<f32, 4, 4> m_local_to_unit;
+  m::mat<ff32, 4, 4> m_local_to_unit;
   ui16 m_vertex_stride;
   uimax m_vertex_count;
 
@@ -294,9 +294,9 @@ struct rasterize_unit {
 
   rasterize_unit(rasterize_heap &p_heap, const program &p_program,
                  m::rect_point_extend<ui16> &p_rect,
-                 const m::mat<f32, 4, 4> &p_proj,
-                 const m::mat<f32, 4, 4> &p_view,
-                 const m::mat<f32, 4, 4> &p_transform,
+                 const m::mat<ff32, 4, 4> &p_proj,
+                 const m::mat<ff32, 4, 4> &p_view,
+                 const m::mat<ff32, 4, 4> &p_transform,
                  const container::range<ui8> &p_index_buffer,
                  bgfx::VertexLayout p_vertex_layout,
                  const container::range<ui8> &p_vertex_buffer, ui64 p_state,
@@ -429,7 +429,7 @@ private:
             m_heap.m_vertex_output.at(l_output_it, i);
       }
 
-      m::vec<f32, 4> l_vertex_shader_out;
+      m::vec<ff32, 4> l_vertex_shader_out;
       l_vertex_function(l_ctx, l_vertex_bytes, l_vertex_shader_out,
                         m_heap.m_vertex_output_send_to_vertex_shader.m_data);
 
@@ -440,11 +440,11 @@ private:
       }
 #endif
 
-      m::vec<f32, 2> l_pixel_coordinates_f32 =
-          m::vec<f32, 2>::make(l_vertex_shader_out);
+      m::vec<ff32, 2> l_pixel_coordinates_f32 =
+          m::vec<ff32, 2>::make(l_vertex_shader_out);
 
       l_pixel_coordinates_f32 = (l_pixel_coordinates_f32 + 1) * 0.5;
-      l_pixel_coordinates_f32.y() = 1 - l_pixel_coordinates_f32.y();
+      l_pixel_coordinates_f32.y() = ff32(1) - l_pixel_coordinates_f32.y();
       l_pixel_coordinates_f32 *= (m_input.m_rect.extend() - 1);
 
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_f32.cast<i16>();
@@ -594,7 +594,7 @@ private:
 
       utils::rasterize_polygon_weighted(
           *l_polygon, *l_area, *l_bounding_rect,
-          [&](screen_coord_t x, screen_coord_t y, f32 w0, f32 w1, f32 w2) {
+          [&](screen_coord_t x, screen_coord_t y, ff32 w0, ff32 w1, ff32 w2) {
             ui8 *l_visibility_boolean;
             rasterization_weight *l_visibility_weight;
             uimax *l_polygon_index;
@@ -623,7 +623,7 @@ private:
           });
 
       if (m_state.m_depth_read) {
-        m::polygon<f32, 3> l_attribute_polygon;
+        m::polygon<ff32, 3> l_attribute_polygon;
 
         l_attribute_polygon.p0() =
             m_heap.get_vertex_homogenous(l_polygon_indices->p0()).z();
@@ -646,10 +646,10 @@ private:
                     l_visibility_index, &l_visibility_boolean,
                     &l_visibility_weight, &l_polygon_index);
 
-                f32 l_interpolated_depth = m::interpolate(
+                ff32 l_interpolated_depth = m::interpolate(
                     l_attribute_polygon, *l_boundingrect_visibility_weight);
-                f32 *l_buffer_depth =
-                    (f32 *)m_input.m_target_depth_view.at(l_visibility_index);
+                ff32 *l_buffer_depth =
+                    (ff32 *)m_input.m_target_depth_view.at(l_visibility_index);
 
                 if (l_interpolated_depth < *l_buffer_depth) {
                   *l_visibility_boolean = 1;
@@ -674,10 +674,10 @@ private:
                     l_visibility_index, &l_visibility_boolean,
                     &l_visibility_weight, &l_polygon_index);
 
-                f32 l_interpolated_depth = m::interpolate(
+                ff32 l_interpolated_depth = m::interpolate(
                     l_attribute_polygon, *l_boundingrect_visibility_weight);
-                f32 *l_buffer_depth =
-                    (f32 *)m_input.m_target_depth_view.at(l_visibility_index);
+                ff32 *l_buffer_depth =
+                    (ff32 *)m_input.m_target_depth_view.at(l_visibility_index);
 
                 if (l_interpolated_depth < *l_buffer_depth) {
                   *l_visibility_boolean = 1;
@@ -752,7 +752,7 @@ private:
         shader_fragment_bytes::view{(ui8 *)m_input.m_program.m_fragment}
             .fonction();
 
-    m::vec<f32, 3> l_color_buffer;
+    m::vec<ff32, 3> l_color_buffer;
 
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       ui8 *l_visibility_boolean;
@@ -833,21 +833,21 @@ private:
 
     if (l_output_parameter_meta.m_attrib_type == bgfx::AttribType::Float) {
       if (l_output_parameter_meta.m_attrib_element_count == 3) {
-        m::vec<f32, 3> *l_interpolated_vertex_output =
-            (m::vec<f32, 3> *)m_heap.m_vertex_output_interpolated.at(
+        m::vec<ff32, 3> *l_interpolated_vertex_output =
+            (m::vec<ff32, 3> *)m_heap.m_vertex_output_interpolated.at(
                 p_vertex_output_index, p_pixel_index);
 
         *l_interpolated_vertex_output =
-            __interpolate(p_polygon_weight, *(m::vec<f32, 3> *)l_0,
-                          *(m::vec<f32, 3> *)l_1, *(m::vec<f32, 3> *)l_2);
+            __interpolate(p_polygon_weight, *(m::vec<ff32, 3> *)l_0,
+                          *(m::vec<ff32, 3> *)l_1, *(m::vec<ff32, 3> *)l_2);
 
       } else if (l_output_parameter_meta.m_attrib_element_count == 1) {
-        f32 *l_interpolated_vertex_output =
-            (f32 *)m_heap.m_vertex_output_interpolated.at(p_vertex_output_index,
-                                                          p_pixel_index);
+        ff32 *l_interpolated_vertex_output =
+            (ff32 *)m_heap.m_vertex_output_interpolated.at(
+                p_vertex_output_index, p_pixel_index);
 
         *l_interpolated_vertex_output = __interpolate(
-            p_polygon_weight, *(f32 *)l_0, *(f32 *)l_1, *(f32 *)l_2);
+            p_polygon_weight, *(ff32 *)l_0, *(ff32 *)l_1, *(ff32 *)l_2);
       };
     }
   };
@@ -867,8 +867,8 @@ private:
 
 static inline void
 rasterize(rasterize_heap &p_heap, const program &p_program,
-          m::rect_point_extend<ui16> &p_rect, const m::mat<f32, 4, 4> &p_proj,
-          const m::mat<f32, 4, 4> &p_view, const m::mat<f32, 4, 4> &p_transform,
+          m::rect_point_extend<ui16> &p_rect, const m::mat<ff32, 4, 4> &p_proj,
+          const m::mat<ff32, 4, 4> &p_view, const m::mat<ff32, 4, 4> &p_transform,
           const container::range<ui8> &p_index_buffer,
           bgfx::VertexLayout p_vertex_layout,
           const container::range<ui8> &p_vertex_buffer, ui64 p_state,

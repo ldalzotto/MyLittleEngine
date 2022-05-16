@@ -27,13 +27,13 @@ template <typename T> struct polygon<T, 2> {
   const T &p1() const { return m_data[1]; };
 };
 
-template <typename T>
-T interpolate(polygon<T, 3> &p_polygon, const polygon<f32, 3> &p_weight) {
+template <typename T, typename WeightT>
+T interpolate(polygon<T, 3> &p_polygon, const polygon<WeightT, 3> &p_weight) {
   return (p_polygon.p0() * p_weight.p0()) + (p_polygon.p1() * p_weight.p1()) +
          (p_polygon.p2() * p_weight.p2());
 };
-template <typename T>
-T interpolate(polygon<T, 3> &p_polygon, const vec<f32, 3> &p_weight) {
+template <typename T, typename WeightT>
+T interpolate(polygon<T, 3> &p_polygon, const vec<WeightT, 3> &p_weight) {
   return (p_polygon.p0() * p_weight.x()) + (p_polygon.p1() * p_weight.y()) +
          (p_polygon.p2() * p_weight.z());
 };

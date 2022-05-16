@@ -2,6 +2,7 @@
 
 #include <cor/assertions.hpp>
 #include <cor/types.hpp>
+#include <m/trig.hpp>
 #include <m/vec.hpp>
 
 namespace m {
@@ -14,7 +15,14 @@ template <typename T> struct mat<T, 4, 4> {
   T &at(uimax c, uimax r) { return m_data[c].at(r); }
   const T &at(uimax c, uimax r) const { return m_data[c].at(r); }
 
-  static mat getIdentity();
+  inline static mat getIdentity() {
+    mat l_mat = {0};
+    l_mat.at(0, 0) = 1;
+    l_mat.at(1, 1) = 1;
+    l_mat.at(2, 2) = 1;
+    l_mat.at(3, 3) = 1;
+    return l_mat;
+  };
   static mat getZero() { return {0}; };
 
   vec<T, 4> &col0() { return m_data[0]; }
@@ -25,15 +33,6 @@ template <typename T> struct mat<T, 4, 4> {
   const vec<T, 4> &col1() const { return m_data[1]; }
   const vec<T, 4> &col2() const { return m_data[2]; }
   const vec<T, 4> &col3() const { return m_data[3]; }
-};
-
-template <> inline mat<f32, 4, 4> mat<f32, 4, 4>::getIdentity() {
-  mat<f32, 4, 4> l_mat = {0};
-  l_mat.at(0, 0) = 1;
-  l_mat.at(1, 1) = 1;
-  l_mat.at(2, 2) = 1;
-  l_mat.at(3, 3) = 1;
-  return l_mat;
 };
 
 template <typename T>
@@ -50,54 +49,55 @@ static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
   l_result.at(0, 1) = u.x();
   l_result.at(1, 1) = u.y();
   l_result.at(2, 1) = u.z();
-  l_result.at(0, 2) = -f.x();
-  l_result.at(1, 2) = -f.y();
-  l_result.at(2, 2) = -f.z();
-  l_result.at(3, 0) = -dot(s, p_eye);
-  l_result.at(3, 1) = -dot(u, p_eye);
+  l_result.at(0, 2) = f.x() * -1;
+  l_result.at(1, 2) = f.y() * -1;
+  l_result.at(2, 2) = f.z() * -1;
+  l_result.at(3, 0) = dot(s, p_eye) * -1;
+  l_result.at(3, 1) = dot(u, p_eye) * -1;
   l_result.at(3, 2) = dot(f, p_eye);
-  l_result.at(0, 3) = 0;
-  l_result.at(1, 3) = 0;
-  l_result.at(2, 3) = 0;
-  l_result.at(3, 3) = 1;
+  l_result.at(0, 3) = T(0);
+  l_result.at(1, 3) = T(0);
+  l_result.at(2, 3) = T(0);
+  l_result.at(3, 3) = T(1);
 
   return l_result;
 };
 
 template <typename T>
 static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
-  sys::sassert(std::abs(p_aspect - std::numeric_limits<T>::epsilon()) > T(0));
+  // sys::sassert(std::abs(p_aspect - std::numeric_limits<T>::epsilon()) >
+  // T(0));
 
-  T const tanHalfFovy = std::tan(p_fovy / T(2));
+  T const tanHalfFovy = m::tan(p_fovy / T(2));
 
   mat<T, 4, 4> l_result;
   l_result.at(0, 0) = T(1) / (p_aspect * tanHalfFovy);
   l_result.at(1, 1) = T(1) / (tanHalfFovy);
-  l_result.at(2, 2) = -(p_zFar + p_zNear) / (p_zFar - p_zNear);
-  l_result.at(2, 3) = -T(1);
-  l_result.at(3, 2) = -(T(2) * p_zFar * p_zNear) / (p_zFar - p_zNear);
+  l_result.at(2, 2) = ((p_zFar + p_zNear) * -1) / (p_zFar - p_zNear);
+  l_result.at(2, 3) = T(1) * -1;
+  l_result.at(3, 2) = ((T(2) * p_zFar * p_zNear) * -1) / (p_zFar - p_zNear);
 
-  l_result.at(0, 1) = 0;
-  l_result.at(0, 2) = 0;
-  l_result.at(0, 3) = 0;
-  l_result.at(1, 0) = 0;
-  l_result.at(1, 2) = 0;
-  l_result.at(1, 3) = 0;
-  l_result.at(2, 0) = 0;
-  l_result.at(2, 1) = 0;
-  l_result.at(3, 0) = 0;
-  l_result.at(3, 1) = 0;
-  l_result.at(3, 3) = 0;
+  l_result.at(0, 1) = T(0);
+  l_result.at(0, 2) = T(0);
+  l_result.at(0, 3) = T(0);
+  l_result.at(1, 0) = T(0);
+  l_result.at(1, 2) = T(0);
+  l_result.at(1, 3) = T(0);
+  l_result.at(2, 0) = T(0);
+  l_result.at(2, 1) = T(0);
+  l_result.at(3, 0) = T(0);
+  l_result.at(3, 1) = T(0);
+  l_result.at(3, 3) = T(0);
   return l_result;
 };
 
-template <typename T>
-static mat<T, 4, 4> rotate_around(const mat<T, 4, 4> &thiz, f32 p_angle_rad,
+template <typename T, typename AngleT>
+static mat<T, 4, 4> rotate_around(const mat<T, 4, 4> &thiz, AngleT p_angle_rad,
                                   const vec<T, 3> &p_axis) {
   assert_debug(is_normalized(p_axis));
 
-  f32 c = sys::cos(p_angle_rad);
-  f32 s = sys::sin(p_angle_rad);
+  AngleT c = m::cos(p_angle_rad);
+  AngleT s = m::sin(p_angle_rad);
   normalize(p_axis);
 
   vec<T, 3> temp = (vec<T, 3>{1, 1, 1} - c) * p_axis;

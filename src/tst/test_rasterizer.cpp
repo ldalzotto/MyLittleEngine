@@ -96,17 +96,17 @@ struct WhiteShader {
       s_vertex_output = {};
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<f32, 4> &out_screen_position,
+                     const ui8 *p_vertex, m::vec<ff32, 4> &out_screen_position,
                      ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
-    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
+    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<ff32, 3>>(
         bgfx::Attrib::Enum::Position, p_vertex);
     out_screen_position =
-        p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+        p_ctx.m_local_to_unit * m::vec<ff32, 4>::make(l_vertex_pos, 1);
   };
 
   static void fragment(ui8 **p_vertex_output_interpolated,
-                       m::vec<f32, 3> &out_color) {
+                       m::vec<ff32, 3> &out_color) {
     out_color = {1, 1, 1};
   };
 
@@ -122,24 +122,24 @@ struct ColorInterpolationShader {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<f32, 4> &out_screen_position,
+                     const ui8 *p_vertex, m::vec<ff32, 4> &out_screen_position,
                      ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
-    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
+    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<ff32, 3>>(
         bgfx::Attrib::Enum::Position, p_vertex);
     const m::vec<ui8, 3> &l_color = l_shader.get_vertex<m::vec<ui8, 3>>(
         bgfx::Attrib::Enum::Color0, p_vertex);
     out_screen_position =
-        p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+        p_ctx.m_local_to_unit * m::vec<ff32, 4>::make(l_vertex_pos, 1);
 
-    m::vec<f32, 3> *l_vertex_color = (m::vec<f32, 3> *)out_vertex[0];
-    (*l_vertex_color) = l_color.cast<f32>() / 255;
+    m::vec<ff32, 3> *l_vertex_color = (m::vec<ff32, 3> *)out_vertex[0];
+    (*l_vertex_color) = l_color.cast<ff32>() / 255;
   };
 
   static void fragment(ui8 **p_vertex_output_interpolated,
-                       m::vec<f32, 3> &out_color) {
-    m::vec<f32, 3> *l_vertex_color =
-        (m::vec<f32, 3> *)p_vertex_output_interpolated[0];
+                       m::vec<ff32, 3> &out_color) {
+    m::vec<ff32, 3> *l_vertex_color =
+        (m::vec<ff32, 3> *)p_vertex_output_interpolated[0];
     out_color = *l_vertex_color;
   };
 
@@ -799,16 +799,17 @@ TEST_CASE("rast.3Dcube") {
 
   bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
 
-  m::mat<f32, 4, 4> l_view, l_proj;
+  m::mat<ff32, 4, 4> l_view, l_proj;
   {
-    const m::vec<f32, 3> at = {0.0f, 0.0f, 0.0f};
-    const m::vec<f32, 3> eye = {0.0f, 0.0f, -35.0f};
+    const m::vec<ff32, 3> at = {0.0f, 0.0f, 0.0f};
+    const m::vec<ff32, 3> eye = {0.0f, 0.0f, -35.0f};
 
     // Set view and projection matrix for view 0.
     {
       l_view = m::look_at(eye, at, {0, 1, 0});
-      l_proj = m::perspective(60.0f * m::deg_to_rad,
-                              float(l_width) / float(l_height), 0.1f, 100.0f);
+      l_proj = m::perspective(ff32(60.0f) * m::deg_to_rad,
+                              ff32(l_width) / ff32(l_height), ff32(0.1f),
+                              ff32(100.0f));
     }
   }
 

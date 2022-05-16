@@ -1,12 +1,37 @@
 #pragma once
 
-#include <cmath>
 #include <cor/types.hpp>
+#include <m/trig.hpp>
 #include <sys/sys.hpp>
 
 namespace m {
 
 template <typename T, int N> struct vec;
+
+template <typename ReturnType> struct vec_cast {
+  template <typename T> vec<ReturnType, 2> doit(vec<T, 2> &p_value) {
+    return {ReturnType(p_value.m_data[0]), ReturnType(p_value.m_data[1])};
+  };
+  template <typename T> vec<ReturnType, 3> doit(vec<T, 3> &p_value) {
+    return {ReturnType(p_value.m_data[0]), ReturnType(p_value.m_data[1]),
+            ReturnType(p_value.m_data[2])};
+  };
+  template <typename T> vec<ReturnType, 3> doit(const vec<T, 3> &p_value) {
+    return {ReturnType(p_value.m_data[0]), ReturnType(p_value.m_data[1]),
+            ReturnType(p_value.m_data[2])};
+  };
+  template <ui8 ScaleFactor>
+  vec<ReturnType, 2> doit(vec<fixed<ScaleFactor>, 2> &p_value) {
+    return {ReturnType(p_value.m_data[0].to_f32()),
+            ReturnType(p_value.m_data[1].to_f32())};
+  };
+  template <ui8 ScaleFactor>
+  vec<ReturnType, 3> doit(vec<fixed<ScaleFactor>, 3> &p_value) {
+    return {ReturnType(p_value.m_data[0].to_f32()),
+            ReturnType(p_value.m_data[1].to_f32()),
+            ReturnType(p_value.m_data[2].to_f32())};
+  };
+};
 
 template <typename T> struct vec<T, 2> {
   T m_data[2];
@@ -34,8 +59,10 @@ template <typename T> struct vec<T, 2> {
     return l_return;
   };
 
+  // template <typename TT> vec<TT, 2> cast() ;
   template <typename TT> vec<TT, 2> cast() {
-    return {TT(m_data[0]), TT(m_data[1])};
+    return vec_cast<TT>{}.doit(*this);
+    // return {TT(m_data[0]), TT(m_data[1])};
   };
 
   vec operator+(const vec<T, 2> &p_other) const {
@@ -93,8 +120,8 @@ template <typename T> struct vec<T, 2> {
   };
 
   template <typename TT> vec &operator*=(const vec<TT, 2> &p_other) {
-    m_data[0] = m_data[0] * p_other.m_data[0];
-    m_data[1] = m_data[1] * p_other.m_data[1];
+    m_data[0] = m_data[0] * T(p_other.m_data[0]);
+    m_data[1] = m_data[1] * T(p_other.m_data[1]);
     return *this;
   };
 
@@ -191,9 +218,9 @@ template <typename T> struct vec<T, 3> {
 
   template <typename TT> vec operator*(const TT &p_other) const {
     vec l_return;
-    l_return.m_data[0] = m_data[0] * p_other;
-    l_return.m_data[1] = m_data[1] * p_other;
-    l_return.m_data[2] = m_data[2] * p_other;
+    l_return.m_data[0] = m_data[0] * T(p_other);
+    l_return.m_data[1] = m_data[1] * T(p_other);
+    l_return.m_data[2] = m_data[2] * T(p_other);
     return l_return;
   };
 
@@ -230,10 +257,10 @@ template <typename T> struct vec<T, 3> {
   static vec getZero() { return {0}; };
 
   template <typename TT> vec<TT, 3> cast() {
-    return {TT(m_data[0]), TT(m_data[1]), TT(m_data[2])};
+    return vec_cast<TT>{}.doit(*this);
   };
   template <typename TT> const vec<TT, 3> cast() const {
-    return {TT(m_data[0]), TT(m_data[1]), TT(m_data[2])};
+    return vec_cast<TT>{}.doit(*this);
   };
 };
 
@@ -369,7 +396,12 @@ template <typename T> T dot(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
 };
 
 template <typename T> f32 magnitude(const vec<T, 3> &thiz) {
-  return std::sqrt(dot(thiz, thiz));
+  return m::sqrt(dot(thiz, thiz));
+};
+
+template <ui8 ScaleFactor>
+ff32 magnitude(const vec<fixed<ScaleFactor>, 3> &thiz) {
+  return m::sqrt(dot(thiz, thiz));
 };
 
 template <typename T> vec<T, 3> normalize(const vec<T, 3> &thiz) {
@@ -378,7 +410,7 @@ template <typename T> vec<T, 3> normalize(const vec<T, 3> &thiz) {
 
 template <typename T> ui8 is_normalized(const vec<T, 3> &thiz) {
   f32 l_magnitude = magnitude(thiz);
-  return l_magnitude >= 0.99 && l_magnitude <= 1.01;
+  return l_magnitude >= T(0.99) && l_magnitude <= T(1.01);
 };
 
 template <typename T>
