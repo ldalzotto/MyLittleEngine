@@ -22,3 +22,6 @@ unsigned char engine_update(engine_handle p_engine) {
   return l_engine->update();
 };
 }
+
+#include <sys/sys_impl.hpp>
+#include <sys/win_impl.hpp>

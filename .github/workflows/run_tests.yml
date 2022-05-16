@@ -39,3 +39,26 @@ jobs:
       
       - name: Build and run native
         run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts BUILD_TESTS
+
+  build_check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Deno setup
+        uses: denoland/setup-deno@v1
+        with:
+          node-version: v1.x
+
+      - name: Emscripten setup
+        uses: mymindstorm/setup-emsdk@v11
+
+      - name: Cmake setup
+        uses: lukka/get-cmake@latest
+
+      - name: Ninja setup
+        uses: seanmiddleditch/gha-setup-ninja@master
+      
+      - name: Build Emscripten
+        run: deno run --allow-run --allow-read --allow-write ${GITHUB_WORKSPACE}/scripts/build.ts BUILD_EMSCRIPTEN

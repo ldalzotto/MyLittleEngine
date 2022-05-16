@@ -5,3 +5,5 @@
 #include <doctest.h>
 
 bgfx_impl s_bgfx_impl = bgfx_impl();
+
+#include <sys/sys_impl.hpp>

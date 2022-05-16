@@ -47,3 +47,6 @@ TEST_CASE("window_system.input") {
 
   l_window_system.free();
 }
+
+#include <sys/sys_impl.hpp>
+#include <sys/win_impl.hpp>

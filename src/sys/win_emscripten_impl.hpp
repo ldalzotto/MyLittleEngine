@@ -1,3 +1,5 @@
+#pragma once
+
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <emscripten/val.h>
