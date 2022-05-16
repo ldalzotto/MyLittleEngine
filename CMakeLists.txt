@@ -62,7 +62,6 @@ add_library(WIN INTERFACE)
 
 if (WIN_HEADLESS)
 elseif(PLATFORM_WEBASSEMBLY)
-    add_library(WIN INTERFACE)
     target_link_libraries(WIN INTERFACE EMSCRIPTEN_API)
 else()
     find_package(X11 REQUIRED)
