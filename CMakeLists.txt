@@ -19,8 +19,11 @@ else()
     add_compile_definitions(PLATFORM_WEBASSEMBLY_PREPROCESS=0)
 endif()
 
-# FIXME -> remove this
-add_compile_options(-fPIC)
+if(WIN_HEADLESS)
+    add_compile_definitions(WIN_HEADLESS_PREPROCESS=1)
+else()
+    add_compile_definitions(WIN_HEADLESS_PREPROCESS=0)
+endif()
 
 if(ENABLE_SAFETY_CHECKS)
     add_compile_definitions(DEBUG_PREPROCESS=1)
@@ -54,20 +57,19 @@ add_library(WholeProject INTERFACE)
 target_include_directories(WholeProject INTERFACE ./src/)
 target_link_libraries(WholeProject INTERFACE BGFX_API)
 
-find_package(X11 REQUIRED)
+
+add_library(WIN INTERFACE)
 
 if (WIN_HEADLESS)
-    add_library(WIN STATIC ./src/sys/win_headless.cpp)
 elseif(PLATFORM_WEBASSEMBLY)
-    add_library(WIN STATIC ./src/sys/win_emscripten.cpp)
-    ## target_link_options(WIN PRIVATE --bind)
-    target_link_libraries(WIN PUBLIC EMSCRIPTEN_API)
+    add_library(WIN INTERFACE)
+    target_link_libraries(WIN INTERFACE EMSCRIPTEN_API)
 else()
-    add_library(WIN STATIC ./src/sys/win_linux.cpp)
-    target_link_libraries(WIN PUBLIC ${X11_LIBRARIES})
+    find_package(X11 REQUIRED)
+    target_link_libraries(WIN INTERFACE ${X11_LIBRARIES})
 endif()
 
-target_link_libraries(WIN PUBLIC WholeProject)
+target_link_libraries(WIN INTERFACE WholeProject)
 
 add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
 target_link_libraries(TESTS PUBLIC WIN)

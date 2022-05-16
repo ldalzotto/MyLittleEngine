@@ -78,5 +78,3 @@ void debug_simulate_event(void* p_window, const event &p_event) {
 };
 
 }; // namespace win
-
-#include <sys/sys_impl.hpp>

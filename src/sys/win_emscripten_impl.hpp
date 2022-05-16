@@ -1,3 +1,5 @@
+#pragma once
+
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
 #include <emscripten/val.h>
@@ -160,5 +162,3 @@ void debug_simulate_event(void *p_window, const event &p_event){
 
 };
 }; // namespace win
-
-#include <sys/sys_impl.hpp>

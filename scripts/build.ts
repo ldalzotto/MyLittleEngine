@@ -154,6 +154,16 @@ if (l_type == "BUILD_TESTS") {
     await build_cmake_project("TESTS", new BuildConfig({ ENABLE_ADDRESS: true, ENABLE_SAFETY_CHECKS: true, ENABLE_UNDEFINED: true, WIN_HEADLESS: true }));
     await run_cmake_project("TESTS", build_path);
 }
+else if (l_type == "BUILD_EMSCRIPTEN") {
+    let l_last_commit_hash: string = await execute_command_with_output(["git", "rev-parse", "HEAD"], root_path);
+    l_last_commit_hash = l_last_commit_hash.trim();
+
+    fs.emptyDirSync(tmp_path);
+    fs.emptyDirSync(build_path);
+    await execute_command(["git", "clone", "https://github.com/ldalzotto/ldalzotto.github.io"], tmp_path);
+    const github_page_path = path.join(tmp_path, "ldalzotto.github.io");
+    await build_emscripten("TEST_0", ["sandbox"], github_page_path, l_last_commit_hash);
+}
 else if (l_type == "BUILD_PUBLISH_EMSCRIPTEN") {
 
     let l_last_commit_hash: string = await execute_command_with_output(["git", "rev-parse", "HEAD"], root_path);
