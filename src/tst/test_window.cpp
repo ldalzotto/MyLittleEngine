@@ -49,3 +49,4 @@ TEST_CASE("window_system.input") {
 }
 
 #include <sys/sys_impl.hpp>
+#include <sys/win_impl.hpp>
