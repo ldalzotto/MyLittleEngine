@@ -54,9 +54,6 @@ add_library(WholeProject INTERFACE)
 target_include_directories(WholeProject INTERFACE ./src/)
 target_link_libraries(WholeProject INTERFACE BGFX_API)
 
-add_library(SYS STATIC ./src/sys/sys.cpp)
-target_link_libraries(SYS PUBLIC WholeProject)
-
 find_package(X11 REQUIRED)
 
 if (WIN_HEADLESS)
@@ -71,16 +68,13 @@ else()
 endif()
 
 target_link_libraries(WIN PUBLIC WholeProject)
-target_link_libraries(WIN PUBLIC SYS)
 
 add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
-target_link_libraries(TESTS PUBLIC SYS)
 target_link_libraries(TESTS PUBLIC WIN)
 target_link_libraries(TESTS PUBLIC STB)
 target_link_libraries(TESTS PUBLIC DOCTEST)
 
 add_library(API SHARED ./src/api/c_api.cpp)
-target_link_libraries(API PUBLIC SYS)
 target_link_libraries(API PUBLIC WIN)
 
 add_subdirectory(./sandbox)

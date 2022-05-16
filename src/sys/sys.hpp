@@ -36,4 +36,4 @@ struct sys {
   static f32 cos(f32 p_angle);
 };
 
-#define FORCE_INLINE __attribute__((always_inline))
+#define FORCE_INLINE __attribute__((always_inline)) inline

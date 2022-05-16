@@ -857,3 +857,5 @@ TEST_CASE("rast.3Dcube") {
 }
 
 #undef WRITE_OUTPUT
+
+#include <sys/sys_impl.hpp>

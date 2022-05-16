@@ -167,3 +167,5 @@ void win::debug_simulate_event(void *p_window, const event &p_event) {
 
   XSync(s_display, 0);
 };
+
+#include <sys/sys_impl.hpp>
