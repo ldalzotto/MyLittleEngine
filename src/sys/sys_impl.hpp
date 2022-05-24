@@ -32,3 +32,4 @@ FORCE_INLINE void sys::abort() { std::abort(); };
 
 FORCE_INLINE f32 sys::sin(f32 p_angle) { return std::sin(p_angle); };
 FORCE_INLINE f32 sys::cos(f32 p_angle) { return std::cos(p_angle); };
+FORCE_INLINE f32 sys::tan(f32 p_angle) { return std::tan(p_angle); };
