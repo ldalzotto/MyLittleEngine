@@ -17,19 +17,25 @@ template <typename T> struct number;
       return m_value;                                                          \
     };                                                                         \
                                                                                \
-    template <typename TT> number operator+(number<TT> p_other) const;         \
-    template <typename TT> number &operator+=(number<TT> p_other);             \
-    template <typename TT> number operator-(number<TT> p_other) const;         \
-    template <typename TT> number operator-=(number<TT> p_other);              \
-    template <typename TT> number operator*(number<TT> p_other) const;         \
-    template <typename TT> number operator*=(number<TT> p_other);              \
-    template <typename TT> number operator/(number<TT> p_other) const;         \
-    template <typename TT> number operator/=(number<TT> p_other);              \
-    template <typename TT> ui8 operator==(number<TT> p_other) const;           \
-    template <typename TT> number operator%(number<TT> p_other) const;         \
-    number cos() const;                                                        \
-    number sin() const;                                                        \
+    template <typename TT>                                                     \
+    constexpr number operator+(number<TT> p_other) const;                      \
+    template <typename TT> constexpr number &operator+=(number<TT> p_other);   \
+    template <typename TT>                                                     \
+    constexpr number operator-(number<TT> p_other) const;                      \
+    template <typename TT> constexpr number operator-=(number<TT> p_other);    \
+    template <typename TT>                                                     \
+    constexpr number operator*(number<TT> p_other) const;                      \
+    template <typename TT> constexpr number operator*=(number<TT> p_other);    \
+    template <typename TT>                                                     \
+    constexpr number operator/(number<TT> p_other) const;                      \
+    template <typename TT> constexpr number operator/=(number<TT> p_other);    \
+    template <typename TT> constexpr ui8 operator==(number<TT> p_other) const; \
+    template <typename TT>                                                     \
+    constexpr number operator%(number<TT> p_other) const;                      \
+    declare_number_struct_trig                                                 \
   }
+
+#define declare_number_struct_trig
 
 declare_number_struct(i8);
 declare_number_struct(ui8);
@@ -37,8 +43,20 @@ declare_number_struct(i16);
 declare_number_struct(ui16);
 declare_number_struct(i32);
 declare_number_struct(ui32);
+
+#undef declare_number_struct_trig
+#define declare_number_struct_trig                                             \
+  static const number pi_8;                                                    \
+  static const number pi_4;                                                    \
+  static const number pi_2;                                                    \
+  static const number pi;                                                      \
+  static const number e;                                                       \
+  number cos() const;                                                          \
+  number sin() const;
+
 declare_number_struct(f32);
 
+#undef declare_number_struct_trig
 #undef declare_number_struct
 
 #define declare_add_operator(left_type, right_type)                            \
@@ -106,6 +124,18 @@ declare_number_struct(f32);
       <right_type>(number<right_type> p_other) const {                         \
     return number<left_type>(m_value % p_other.m_value);                       \
   };
+
+#define declare_trig_constants(number_type)                                    \
+  constexpr number number<number_type>::pi_8 =                                 \
+      number<number_type>(3.14159265358979323846 / 8);                         \
+  constexpr number number<number_type>::pi_4 =                                 \
+      number<number_type>::pi_8 * number<number_type>(2);                      \
+  constexpr number number<number_type>::pi_2 =                                 \
+      number<number_type>::pi_8 * number<number_type>(4);                      \
+  constexpr number number<number_type>::pi =                                   \
+      number<number_type>::pi_8 * number<number_type>(8);                      \
+  constexpr number number<number_type>::e =                                    \
+      number<number_type>(2.7182818284590);
 
 #define declare_trig_operations(number_type)                                   \
   FORCE_INLINE number<number_type> number<number_type>::cos() const {          \
@@ -311,6 +341,7 @@ f32_multiplicative_operations;
 f32_eq_operations;
 #undef X
 declare_trig_operations(f32);
+declare_trig_constants(f32);
 
 #undef ui8_additive_operations
 #undef ui8_multiplicative_operations
@@ -334,6 +365,8 @@ declare_trig_operations(f32);
 #undef declare_div_operator
 #undef declare_eq_operator
 #undef declare_mod_operator
+#undef declare_trig_operations
+#undef declare_trig_constants
 
 using int8 = number<i8>;
 using int16 = number<i16>;

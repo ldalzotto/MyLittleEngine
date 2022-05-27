@@ -27,6 +27,7 @@ TEST_CASE("math.numbers") {
   REQUIRE((int8(-20) / uint8(10)) == int8(-2));
 
   REQUIRE((float32(2.5f) * uint8(2)) == float32(5.0f));
+  REQUIRE(float32::pi.cos() == float32(-1));
 };
 
 TEST_CASE("math.fixed") {
@@ -58,44 +59,44 @@ struct trigo_test_accumulator {
 
 void math_cos_test(ff32 p_angle, trigo_test_accumulator &p_accs,
                    trigo_test_accumulator &p_arc_accs, uimax p_acc_index) {
-  ff32 l_cos = m::cos(p_angle);
+  ff32 l_cos = m::cos_polynomial(p_angle);
   f32 l_cos_real = m::cos(p_angle.to_f32());
-  p_accs.m_errors.at(p_acc_index) = m::abs(ff32(l_cos_real) - l_cos);
+  p_accs.m_errors.at(p_acc_index) = (ff32(l_cos_real) - l_cos).abs();
 
-  ff32 l_arc_cos = m::arccos(l_cos);
+  ff32 l_arc_cos = m::arccos_polynomial(l_cos);
   f32 l_arc_cos_real = m::arccos(l_cos.to_f32());
   p_arc_accs.m_errors.at(p_acc_index) =
-      m::abs(ff32(l_arc_cos_real) - l_arc_cos);
+      (ff32(l_arc_cos_real) - l_arc_cos).abs();
 };
 
 void math_sin_test(ff32 p_angle, trigo_test_accumulator &p_accs,
                    trigo_test_accumulator &p_arc_accs, uimax p_acc_index) {
-  ff32 l_sin = m::sin(p_angle);
+  ff32 l_sin = m::sin_polynomial(p_angle);
   f32 l_sin_real = m::sin(p_angle.to_f32());
   ff32 l_sin_real_fixed = ff32(l_sin_real);
-  ff32 l_diff = m::abs(l_sin_real_fixed - l_sin);
+  ff32 l_diff = (l_sin_real_fixed - l_sin).abs();
   p_accs.m_errors.at(p_acc_index) = l_diff;
 
-  ff32 l_arc_sin = m::arcsin(l_sin);
+  ff32 l_arc_sin = m::arcsin_polynomial(l_sin);
   f32 l_arc_sin_real = m::arcsin(l_sin.to_f32());
   p_arc_accs.m_errors.at(p_acc_index) =
-      m::abs(ff32(l_arc_sin_real) - l_arc_sin);
+      (ff32(l_arc_sin_real) - l_arc_sin).abs();
 };
 
 void math_tan_test(ff32 p_angle, trigo_test_accumulator &p_accs,
                    trigo_test_accumulator &p_arc_accs, uimax p_acc_index) {
-  ff32 l_tan = m::tan(p_angle);
+  ff32 l_tan = m::tan_polynomial(p_angle);
   f32 l_tan_real = sys::tan(p_angle.to_f32());
   if (p_angle % ff32::pi_2 == 0) {
     p_accs.m_errors.at(p_acc_index) = 0;
   } else {
-    p_accs.m_errors.at(p_acc_index) = m::abs(ff32(l_tan_real) - l_tan);
+    p_accs.m_errors.at(p_acc_index) = (ff32(l_tan_real) - l_tan).abs();
   }
 
-  ff32 l_arc_tan = m::arctan(l_tan);
+  ff32 l_arc_tan = m::arctan_polynomial(l_tan);
   f32 l_arc_tan_real = m::arctan(l_tan.to_f32());
   p_arc_accs.m_errors.at(p_acc_index) =
-      m::abs(ff32(l_arc_tan_real) - l_arc_tan);
+      (ff32(l_arc_tan_real) - l_arc_tan).abs();
 };
 
 TEST_CASE("math.fixed.sin_cos_tan") {
@@ -156,10 +157,10 @@ TEST_CASE("math.fixed.sqrt") {
   trigo_test_accumulator l_acc;
   l_acc.allocate(l_sqrt_inputs.count());
   for (auto i = 0; i < l_sqrt_inputs.count(); ++i) {
-    ff32 l_sqrt = m::sqrt(l_sqrt_inputs.at(i));
+    ff32 l_sqrt = m::sqrt_polynomial(l_sqrt_inputs.at(i));
     f32 l_real_sqrtf = m::sqrt(l_sqrt_inputs.at(i).to_f32());
     ff32 l_real_sqrtf_fix = ff32(l_real_sqrtf);
-    l_acc.m_errors.at(i) = m::abs(l_sqrt - l_real_sqrtf_fix);
+    l_acc.m_errors.at(i) = (l_sqrt - l_real_sqrtf_fix).abs();
   }
   ff32 l_sqrt_error = l_acc.get_accumulated();
   REQUIRE(l_sqrt_error.m_value == 699);

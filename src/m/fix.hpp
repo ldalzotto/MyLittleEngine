@@ -8,114 +8,203 @@ namespace m {
 
 template <ui8 ScaleFactor> struct fixed {
 
-  template <typename Int> FORCE_INLINE static fixed make_no_scale(Int p_value) {
-    fixed l_fixed;
-    l_fixed.m_value = p_value;
-    return l_fixed;
-  };
-
   static constexpr ui8 scale_factor = ScaleFactor;
   static constexpr ui32 scale = 1 << scale_factor;
 
-  inline static constexpr fixed one() {
-    fixed l_fixed;
-    l_fixed.m_value = scale;
-    return l_fixed;
-  };
+  // static constexpr fixed pi_8();
+  static constexpr fixed pi_8();
+  static const fixed pi_4;
+  static const fixed pi_2;
+  static const fixed pi;
+  static const fixed e;
 
-  // inline static const fixed one = make_no_scale(scale);
-  inline static const fixed pi_8 = fixed(3.14159265358979323846 / 8) * one();
-  inline static const fixed pi_4 = pi_8 * 2;
-  inline static const fixed pi_2 = pi_8 * 4;
-  inline static const fixed pi = pi_8 * 8;
-  inline static const fixed e = 2.7182818284590;
-
-  static const i32 whole_mask = 0xFFFFFFFF << scale_factor;
+  static constexpr i32 whole_mask = 0xFFFFFFFF << scale_factor;
 
   i32 m_value;
 
   fixed() = default;
-  FORCE_INLINE fixed(f32 p_value) {
-    m_value = sys::nearest(p_value * one().m_value);
-  };
-  FORCE_INLINE fixed(f64 p_value) {
-    m_value = sys::nearest(p_value * one().m_value);
-  };
-  FORCE_INLINE fixed(const fixed &p_value) { *this = p_value; };
+  constexpr fixed(f32 p_value);
+  constexpr fixed(f64 p_value);
+  constexpr fixed(const fixed &p_value);
 
-  FORCE_INLINE fixed(ui8 p_value) { m_value = one().m_value * p_value; };
-  FORCE_INLINE fixed(ui16 p_value) { m_value = one().m_value * p_value; };
-  FORCE_INLINE fixed(ui32 p_value) { m_value = one().m_value * p_value; };
-  FORCE_INLINE fixed(ui64 p_value) { m_value = one().m_value * p_value; };
-  FORCE_INLINE fixed(i8 p_value) { m_value = one().m_value * p_value; };
-  FORCE_INLINE fixed(i16 p_value) { m_value = one().m_value * p_value; };
-  FORCE_INLINE fixed(i32 p_value) { m_value = one().m_value * p_value; };
-  FORCE_INLINE fixed(i64 p_value) { m_value = one().m_value * p_value; };
-  f32 to_f32() { return (f32)m_value / scale; };
+  constexpr fixed(ui8 p_value);
+  constexpr fixed(ui16 p_value);
+  constexpr fixed(ui32 p_value);
+  constexpr fixed(ui64 p_value);
+  constexpr fixed(i8 p_value);
+  constexpr fixed(i16 p_value);
+  constexpr fixed(i32 p_value);
+  constexpr fixed(i64 p_value);
+  constexpr f32 to_f32() { return (f32)m_value / scale; };
 
-  FORCE_INLINE
-  fixed operator+(fixed p_other) const {
-    fixed l_value_fixed;
-    l_value_fixed.m_value = m_value + p_other.m_value;
-    return l_value_fixed;
-  };
-  FORCE_INLINE
-  fixed &operator+=(fixed p_other) {
-    m_value += p_other.m_value;
-    return *this;
-  };
-  FORCE_INLINE
-  fixed operator-(fixed p_other) const {
-    fixed l_value_fixed;
-    l_value_fixed.m_value = m_value - p_other.m_value;
-    return l_value_fixed;
-  };
-  FORCE_INLINE
-  fixed &operator-=(fixed p_other) {
-    m_value -= p_other.m_value;
-    return *this;
-  };
-  FORCE_INLINE
-  fixed operator*(fixed p_other) const {
-    fixed l_value_fixed;
-    l_value_fixed.m_value =
-        (((long long)m_value * (long long)p_other.m_value) + (scale >> 1)) >>
-        scale_factor;
-    return l_value_fixed;
-  };
-  FORCE_INLINE
-  fixed &operator*=(fixed p_other) {
-    *this = *this * p_other;
-    return *this;
-  };
-  FORCE_INLINE
-  fixed operator/(fixed p_other) const {
-    fixed l_value_fixed;
-    l_value_fixed.m_value =
-        (((((long long)m_value) * scale) + (scale >> 1))) / p_other.m_value;
-    return l_value_fixed;
-  };
-  FORCE_INLINE
-  fixed operator%(fixed p_other) const {
-    fixed l_value_fixed;
-    l_value_fixed.m_value = m_value % p_other.m_value;
-    return l_value_fixed;
-  };
-  FORCE_INLINE
-  ui8 operator>=(fixed p_other) const { return m_value >= p_other.m_value; };
-  FORCE_INLINE
-  ui8 operator>(fixed p_other) const { return m_value > p_other.m_value; };
-  FORCE_INLINE
-  ui8 operator<=(fixed p_other) const { return m_value <= p_other.m_value; };
-  FORCE_INLINE
-  ui8 operator<(fixed p_other) const { return m_value < p_other.m_value; };
-  FORCE_INLINE
-  ui8 operator==(fixed p_other) const { return m_value == p_other.m_value; };
+  constexpr fixed operator+(fixed p_other) const;
+  constexpr fixed &operator+=(fixed p_other);
+  constexpr fixed operator-(fixed p_other) const;
+  constexpr fixed &operator-=(fixed p_other);
+  constexpr fixed operator*(fixed p_other) const;
+  constexpr fixed &operator*=(fixed p_other);
+  constexpr fixed operator/(fixed p_other) const;
+  constexpr fixed operator%(fixed p_other) const;
+  constexpr ui8 operator>=(fixed p_other) const;
+  constexpr ui8 operator>(fixed p_other) const;
+  constexpr ui8 operator<=(fixed p_other) const;
+  constexpr ui8 operator<(fixed p_other) const;
+  constexpr ui8 operator==(fixed p_other) const;
+
+  constexpr fixed abs() const;
 };
 
-template <ui8 ScaleFactor> fixed<ScaleFactor> abs(fixed<ScaleFactor> p_value) {
+template <ui8 ScaleFactor>
+inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_8() {
+  return fixed<ScaleFactor>(3.14159265358979323846 / 8);
+};
+
+template <ui8 ScaleFactor>
+inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_4 =
+    fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(2);
+
+template <ui8 ScaleFactor>
+inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_2 =
+    fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(4);
+
+template <ui8 ScaleFactor>
+inline constexpr fixed<ScaleFactor>
+    fixed<ScaleFactor>::pi = fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(8);
+
+template <ui8 ScaleFactor>
+inline constexpr fixed<ScaleFactor>
+    fixed<ScaleFactor>::e = fixed<ScaleFactor>(2.7182818284590);
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(const fixed &p_value) {
+  m_value = p_value.m_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(f32 p_value) {
+  m_value = sys::nearest(p_value * fixed<ScaleFactor>::scale);
+};
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(f64 p_value) {
+  m_value = sys::nearest(p_value * fixed<ScaleFactor>::scale);
+};
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(ui8 p_value) {
+  m_value = fixed<ScaleFactor>::scale * p_value;
+};
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(ui16 p_value) {
+  m_value = fixed<ScaleFactor>::scale * p_value;
+};
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(ui32 p_value) {
+  m_value = fixed<ScaleFactor>::scale * p_value;
+};
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(i8 p_value) {
+  m_value = fixed<ScaleFactor>::scale * p_value;
+};
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(i16 p_value) {
+  m_value = fixed<ScaleFactor>::scale * p_value;
+};
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(i32 p_value) {
+  m_value = fixed<ScaleFactor>::scale * p_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>
+fixed<ScaleFactor>::operator+(fixed p_other) const {
+  fixed l_value_fixed;
+  l_value_fixed.m_value = m_value + p_other.m_value;
+  return l_value_fixed;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor> &
+fixed<ScaleFactor>::operator+=(fixed p_other) {
+  m_value += p_other.m_value;
+  return *this;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>
+fixed<ScaleFactor>::operator-(fixed p_other) const {
+  fixed l_value_fixed;
+  l_value_fixed.m_value = m_value - p_other.m_value;
+  return l_value_fixed;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor> &
+fixed<ScaleFactor>::operator-=(fixed p_other) {
+  m_value -= p_other.m_value;
+  return *this;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>
+fixed<ScaleFactor>::operator*(fixed p_other) const {
+  fixed<ScaleFactor> l_value = fixed<ScaleFactor>(0);
+  l_value.m_value =(((long long)m_value * (long long)p_other.m_value) + (scale >> 1)) >>
+      scale_factor;  
+  return l_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor> &
+fixed<ScaleFactor>::operator*=(fixed p_other) {
+  *this = *this * p_other;
+  return *this;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>
+fixed<ScaleFactor>::operator/(fixed p_other) const {
+  fixed l_value_fixed;
+  l_value_fixed.m_value =
+      (((((long long)m_value) * scale) + (scale >> 1))) / p_other.m_value;
+  return l_value_fixed;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor>
+fixed<ScaleFactor>::operator%(fixed p_other) const {
+  fixed l_value_fixed;
+  l_value_fixed.m_value = m_value % p_other.m_value;
+  return l_value_fixed;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr ui8 fixed<ScaleFactor>::operator>=(fixed p_other) const {
+  return m_value >= p_other.m_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr ui8 fixed<ScaleFactor>::operator>(fixed p_other) const {
+  return m_value > p_other.m_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr ui8 fixed<ScaleFactor>::operator<=(fixed p_other) const {
+  return m_value <= p_other.m_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr ui8 fixed<ScaleFactor>::operator<(fixed p_other) const {
+  return m_value < p_other.m_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr ui8 fixed<ScaleFactor>::operator==(fixed p_other) const {
+  return m_value == p_other.m_value;
+};
+
+template <ui8 ScaleFactor>
+FORCE_INLINE constexpr fixed<ScaleFactor> fixed<ScaleFactor>::abs() const {
   fixed<ScaleFactor> l_fixed;
-  l_fixed.m_value = std::abs(p_value.m_value);
+  l_fixed.m_value = std::abs(m_value);
   return l_fixed;
 };
 

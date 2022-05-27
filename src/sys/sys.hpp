@@ -36,7 +36,7 @@ struct sys {
   static f32 cos(f32 p_angle);
   static f32 tan(f32 p_angle);
 
-  static inline i32 nearest(f32 v) {
+  static inline constexpr i32 nearest(f32 v) {
     i32 lx = (i32)v;
     i32 lxr = (i32)(v + 0.5f);
     if (lxr == lx) {
