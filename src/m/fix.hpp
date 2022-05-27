@@ -11,12 +11,11 @@ template <ui8 ScaleFactor> struct fixed {
   static constexpr ui8 scale_factor = ScaleFactor;
   static constexpr ui32 scale = 1 << scale_factor;
 
-  // static constexpr fixed pi_8();
   static constexpr fixed pi_8();
-  static const fixed pi_4;
-  static const fixed pi_2;
-  static const fixed pi;
-  static const fixed e;
+  static constexpr fixed pi_4();
+  static constexpr fixed pi_2();
+  static constexpr fixed pi();
+  static constexpr fixed e();
 
   static constexpr i32 whole_mask = 0xFFFFFFFF << scale_factor;
 
@@ -59,20 +58,24 @@ inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_8() {
 };
 
 template <ui8 ScaleFactor>
-inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_4 =
-    fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(2);
+inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_4() {
+  return fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(2);
+};
 
 template <ui8 ScaleFactor>
-inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_2 =
-    fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(4);
+inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi_2() {
+  return fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(4);
+};
 
 template <ui8 ScaleFactor>
-inline constexpr fixed<ScaleFactor>
-    fixed<ScaleFactor>::pi = fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(8);
+inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::pi() {
+  return fixed<ScaleFactor>::pi_8() * fixed<ScaleFactor>(8);
+};
 
 template <ui8 ScaleFactor>
-inline constexpr fixed<ScaleFactor>
-    fixed<ScaleFactor>::e = fixed<ScaleFactor>(2.7182818284590);
+inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::e() {
+  return fixed<ScaleFactor>(2.7182818284590);
+};
 
 template <ui8 ScaleFactor>
 FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(f32 p_value) {
@@ -141,8 +144,9 @@ template <ui8 ScaleFactor>
 FORCE_INLINE constexpr fixed<ScaleFactor>
 fixed<ScaleFactor>::operator*(fixed p_other) const {
   fixed<ScaleFactor> l_value = fixed<ScaleFactor>(0);
-  l_value.m_value =(((long long)m_value * (long long)p_other.m_value) + (scale >> 1)) >>
-      scale_factor;  
+  l_value.m_value =
+      (((long long)m_value * (long long)p_other.m_value) + (scale >> 1)) >>
+      scale_factor;
   return l_value;
 };
 

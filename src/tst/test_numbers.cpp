@@ -27,7 +27,7 @@ TEST_CASE("math.numbers") {
   REQUIRE((int8(-20) / uint8(10)) == int8(-2));
 
   REQUIRE((float32(2.5f) * uint8(2)) == float32(5.0f));
-  REQUIRE(float32::pi.cos() == float32(-1));
+  REQUIRE(float32::pi().cos() == float32(-1));
 };
 
 TEST_CASE("math.fixed") {
@@ -87,7 +87,7 @@ void math_tan_test(ff32 p_angle, trigo_test_accumulator &p_accs,
                    trigo_test_accumulator &p_arc_accs, uimax p_acc_index) {
   ff32 l_tan = m::tan_polynomial(p_angle);
   f32 l_tan_real = sys::tan(p_angle.to_f32());
-  if (p_angle % ff32::pi_2 == 0) {
+  if (p_angle % ff32::pi_2() == 0) {
     p_accs.m_errors.at(p_acc_index) = 0;
   } else {
     p_accs.m_errors.at(p_acc_index) = (ff32(l_tan_real) - l_tan).abs();
@@ -101,14 +101,17 @@ void math_tan_test(ff32 p_angle, trigo_test_accumulator &p_accs,
 
 TEST_CASE("math.fixed.sin_cos_tan") {
   container::arr<ff32, 4 * 8> l_cos_angles = {
-      ff32::pi_4 * 1,   ff32::pi_4 * 2,   ff32::pi_4 * 3,   ff32::pi_4 * 4,
-      ff32::pi_4 * 5,   ff32::pi_4 * 6,   ff32::pi_4 * 7,   ff32::pi_4 * 8,
-      ff32::pi_4 * 9,   ff32::pi_4 * 10,  ff32::pi_4 * 11,  ff32::pi_4 * 12,
-      ff32::pi_4 * 13,  ff32::pi_4 * 14,  ff32::pi_4 * 15,  ff32::pi_4 * 16,
-      ff32::pi_4 * -1,  ff32::pi_4 * -2,  ff32::pi_4 * -3,  ff32::pi_4 * -4,
-      ff32::pi_4 * -5,  ff32::pi_4 * -6,  ff32::pi_4 * -7,  ff32::pi_4 * -8,
-      ff32::pi_4 * -9,  ff32::pi_4 * -10, ff32::pi_4 * -11, ff32::pi_4 * -12,
-      ff32::pi_4 * -13, ff32::pi_4 * -14, ff32::pi_4 * -15, ff32::pi_4 * -16};
+      ff32::pi_4() * 1,   ff32::pi_4() * 2,   ff32::pi_4() * 3,
+      ff32::pi_4() * 4,   ff32::pi_4() * 5,   ff32::pi_4() * 6,
+      ff32::pi_4() * 7,   ff32::pi_4() * 8,   ff32::pi_4() * 9,
+      ff32::pi_4() * 10,  ff32::pi_4() * 11,  ff32::pi_4() * 12,
+      ff32::pi_4() * 13,  ff32::pi_4() * 14,  ff32::pi_4() * 15,
+      ff32::pi_4() * 16,  ff32::pi_4() * -1,  ff32::pi_4() * -2,
+      ff32::pi_4() * -3,  ff32::pi_4() * -4,  ff32::pi_4() * -5,
+      ff32::pi_4() * -6,  ff32::pi_4() * -7,  ff32::pi_4() * -8,
+      ff32::pi_4() * -9,  ff32::pi_4() * -10, ff32::pi_4() * -11,
+      ff32::pi_4() * -12, ff32::pi_4() * -13, ff32::pi_4() * -14,
+      ff32::pi_4() * -15, ff32::pi_4() * -16};
 
   container::arr<trigo_test_accumulator, 6> l_err_accumulators;
   for (auto l_acc_iter = 0; l_acc_iter < l_err_accumulators.count();

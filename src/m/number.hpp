@@ -46,11 +46,11 @@ declare_number_struct(ui32);
 
 #undef declare_number_struct_trig
 #define declare_number_struct_trig                                             \
-  static const number pi_8;                                                    \
-  static const number pi_4;                                                    \
-  static const number pi_2;                                                    \
-  static const number pi;                                                      \
-  static const number e;                                                       \
+  static constexpr number pi_8();                                              \
+  static constexpr number pi_4();                                              \
+  static constexpr number pi_2();                                              \
+  static constexpr number pi();                                                \
+  static constexpr number e();                                                 \
   number cos() const;                                                          \
   number sin() const;
 
@@ -126,16 +126,21 @@ declare_number_struct(f32);
   };
 
 #define declare_trig_constants(number_type)                                    \
-  constexpr number number<number_type>::pi_8 =                                 \
-      number<number_type>(3.14159265358979323846 / 8);                         \
-  constexpr number number<number_type>::pi_4 =                                 \
-      number<number_type>::pi_8 * number<number_type>(2);                      \
-  constexpr number number<number_type>::pi_2 =                                 \
-      number<number_type>::pi_8 * number<number_type>(4);                      \
-  constexpr number number<number_type>::pi =                                   \
-      number<number_type>::pi_8 * number<number_type>(8);                      \
-  constexpr number number<number_type>::e =                                    \
-      number<number_type>(2.7182818284590);
+  constexpr number<number_type> number<number_type>::pi_8() {                  \
+    return number<number_type>(3.14159265358979323846 / 8);                    \
+  };                                                                           \
+  constexpr number<number_type> number<number_type>::pi_4() {                  \
+    return number<number_type>::pi_8() * number<number_type>(2);                 \
+  };                                                                           \
+  constexpr number<number_type> number<number_type>::pi_2() {                  \
+    return number<number_type>::pi_8() * number<number_type>(4);                 \
+  };                                                                           \
+  constexpr number<number_type> number<number_type>::pi() {                    \
+    return number<number_type>::pi_8() * number<number_type>(8);                 \
+  };                                                                           \
+  constexpr number<number_type> number<number_type>::e() {                     \
+    return number<number_type>(2.7182818284590);                               \
+  };
 
 #define declare_trig_operations(number_type)                                   \
   FORCE_INLINE number<number_type> number<number_type>::cos() const {          \
