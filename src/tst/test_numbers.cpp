@@ -141,7 +141,7 @@ TEST_CASE("math.fixed.sin_cos_tan") {
   }
 
   REQUIRE(l_sin_error.m_value == 1);
-  REQUIRE(l_arcsin_error.m_value == 42);
+  REQUIRE(l_arcsin_error.m_value == 41);
   REQUIRE(l_cos_error.m_value == 1);
   REQUIRE(l_arccos_error.m_value == 41);
   REQUIRE(l_tan_error.m_value == 2);

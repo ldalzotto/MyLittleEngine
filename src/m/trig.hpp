@@ -202,8 +202,8 @@ inline static NumberType arcsin_polynomial(NumberType p_length) {
   if (p_length == NumberType(-1)) {
     return NumberType(-1) * NumberType::pi_2();
   }
-  assert_debug(p_length < fix32_one);
-  assert_debug(p_length > -1 * fix32_one);
+  assert_debug(p_length < NumberType(1));
+  assert_debug(p_length > NumberType(-1));
   NumberType l_atan_length =
       p_length / sqrt_polynomial(NumberType(1) - (p_length * p_length));
   return arctan_polynomial(l_atan_length);

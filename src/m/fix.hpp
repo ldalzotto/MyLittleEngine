@@ -23,16 +23,7 @@ template <ui8 ScaleFactor> struct fixed {
 
   fixed() = default;
   constexpr fixed(f32 p_value);
-  constexpr fixed(f64 p_value);
 
-  constexpr fixed(ui8 p_value);
-  constexpr fixed(ui16 p_value);
-  constexpr fixed(ui32 p_value);
-  constexpr fixed(ui64 p_value);
-  constexpr fixed(i8 p_value);
-  constexpr fixed(i16 p_value);
-  constexpr fixed(i32 p_value);
-  constexpr fixed(i64 p_value);
   constexpr f32 to_f32() { return (f32)m_value / scale; };
 
   constexpr fixed operator+(fixed p_other) const;
@@ -80,34 +71,6 @@ inline constexpr fixed<ScaleFactor> fixed<ScaleFactor>::e() {
 template <ui8 ScaleFactor>
 FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(f32 p_value) {
   m_value = sys::nearest(p_value * fixed<ScaleFactor>::scale);
-};
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(f64 p_value) {
-  m_value = sys::nearest(p_value * fixed<ScaleFactor>::scale);
-};
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(ui8 p_value) {
-  m_value = fixed<ScaleFactor>::scale * p_value;
-};
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(ui16 p_value) {
-  m_value = fixed<ScaleFactor>::scale * p_value;
-};
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(ui32 p_value) {
-  m_value = fixed<ScaleFactor>::scale * p_value;
-};
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(i8 p_value) {
-  m_value = fixed<ScaleFactor>::scale * p_value;
-};
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(i16 p_value) {
-  m_value = fixed<ScaleFactor>::scale * p_value;
-};
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(i32 p_value) {
-  m_value = fixed<ScaleFactor>::scale * p_value;
 };
 
 template <ui8 ScaleFactor>
