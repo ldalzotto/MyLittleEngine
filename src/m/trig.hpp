@@ -23,7 +23,7 @@ inline static NumberType sqrt_polynomial(NumberType p_value) {
   NumberType l_estimate = p_value;
   NumberType l_value =
       (l_estimate / NumberType(2)) + (p_value / (l_estimate * NumberType(2)));
-  while ((l_estimate - l_value).abs() > NumberType(1)) {
+  while ((l_estimate - l_value).abs().m_value > 1) {
     l_estimate = l_value;
     l_value =
         (l_estimate / NumberType(2)) + (p_value / (l_estimate * NumberType(2)));

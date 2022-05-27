@@ -25,7 +25,6 @@ template <ui8 ScaleFactor> struct fixed {
   fixed() = default;
   constexpr fixed(f32 p_value);
   constexpr fixed(f64 p_value);
-  constexpr fixed(const fixed &p_value);
 
   constexpr fixed(ui8 p_value);
   constexpr fixed(ui16 p_value);
@@ -74,11 +73,6 @@ inline constexpr fixed<ScaleFactor>
 template <ui8 ScaleFactor>
 inline constexpr fixed<ScaleFactor>
     fixed<ScaleFactor>::e = fixed<ScaleFactor>(2.7182818284590);
-
-template <ui8 ScaleFactor>
-FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(const fixed &p_value) {
-  m_value = p_value.m_value;
-};
 
 template <ui8 ScaleFactor>
 FORCE_INLINE constexpr fixed<ScaleFactor>::fixed(f32 p_value) {
