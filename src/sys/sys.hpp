@@ -44,10 +44,6 @@ struct sys {
     }
     return lxr;
   };
-
-  template <typename T> static inline constexpr T abs(T v) {
-    return v >= 0 ? v : (v * -1);
-  };
 };
 
 #define FORCE_INLINE __attribute__((always_inline)) inline

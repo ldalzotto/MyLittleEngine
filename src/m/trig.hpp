@@ -1,8 +1,10 @@
 #pragma once
 
-#include "m/numbers_template.hpp"
 #include <cmath>
 #include <cor/assertions.hpp>
+#include <m/math.hpp>
+
+// TODO -> remove NumberType(1) that is being used to properly convert type.
 
 namespace m {
 
@@ -16,14 +18,14 @@ inline static NumberType __trig_helper_mirror(NumberType p_value,
 
 template <typename NumberType>
 inline static NumberType sqrt_polynomial(NumberType p_value) {
-  if (p_value.m_value == 0) {
+  if (p_value == 0) {
     return 0;
   };
   assert_debug(p_value > 0);
 
   NumberType l_estimate = p_value;
   NumberType l_value = (l_estimate / 2) + (p_value / (l_estimate * 2));
-  while ((l_estimate - l_value).abs().m_value > 1) {
+  while (m::abs(l_estimate - l_value) > m::epsilon<NumberType>::value()) {
     l_estimate = l_value;
     l_value = (l_estimate / 2) + (p_value / (l_estimate * 2));
   }
@@ -36,7 +38,7 @@ inline static f32 sqrt(f32 p_value) { return std::sqrt(p_value); };
 template <typename NumberType>
 inline static NumberType sin_polynomial(NumberType p_angle) {
   NumberType l_angle = p_angle;
-  NumberType l_pi_times_2 = NumberType::pi() * 2;
+  NumberType l_pi_times_2 = m::pi<NumberType>() * 2;
   i8 l_sign = 1;
   l_angle = l_angle % l_pi_times_2; // periodicity
   if (l_angle < 0) {
@@ -45,21 +47,21 @@ inline static NumberType sin_polynomial(NumberType p_angle) {
   }
   // symmetry
 
-  if (l_angle >= NumberType::pi_2()) {
-    if (l_angle >= NumberType::pi()) {
+  if (l_angle >= m::pi_2<NumberType>()) {
+    if (l_angle >= m::pi<NumberType>()) {
       l_sign *= -1;
-      if (l_angle >= (NumberType::pi() + NumberType::pi_2())) {
+      if (l_angle >= (m::pi<NumberType>() + m::pi_2<NumberType>())) {
         // 3pi/4 - 2pi
-        l_angle -= NumberType::pi();
-        l_angle = details::__trig_helper_mirror(l_angle, NumberType::pi_2());
+        l_angle -= m::pi<NumberType>();
+        l_angle = details::__trig_helper_mirror(l_angle, m::pi_2<NumberType>());
       } else {
         // pi - 3pi/4
-        l_angle -= NumberType::pi();
+        l_angle -= m::pi<NumberType>();
       }
     } else {
-      if (l_angle >= NumberType::pi_4()) {
+      if (l_angle >= m::pi_4<NumberType>()) {
         // pi/4 - pi
-        l_angle = (NumberType::pi() - l_angle);
+        l_angle = (m::pi<NumberType>() - l_angle);
       }
     }
   }
@@ -75,7 +77,7 @@ inline static NumberType sin_polynomial(NumberType p_angle) {
     l_sin = 1;
   }
 
-  l_sin.m_value *= l_sign;
+  l_sin *= l_sign;
   return l_sin;
 };
 
@@ -84,7 +86,7 @@ inline static f32 sin(f32 p_angle) { return sys::sin(p_angle); };
 
 template <typename NumberType>
 inline static NumberType cos_polynomial(NumberType p_angle) {
-  return sin_polynomial(p_angle + NumberType::pi_2());
+  return sin_polynomial(p_angle + m::pi_2<NumberType>());
 };
 
 // TODO -> remove this
@@ -107,7 +109,8 @@ template <typename NumberType>
 inline static NumberType __fix_tan_identity(NumberType p_angle) {
   NumberType l_angle_half = p_angle / 2;
   NumberType l_angle_half_tan = __fix_tan_polynomial(l_angle_half);
-  return (NumberType(2) * l_angle_half_tan) / (NumberType(1) - (l_angle_half_tan * l_angle_half_tan));
+  return (NumberType(2) * l_angle_half_tan) /
+         (NumberType(1) - (l_angle_half_tan * l_angle_half_tan));
 };
 
 }; // namespace details
@@ -115,21 +118,21 @@ inline static NumberType __fix_tan_identity(NumberType p_angle) {
 template <typename NumberType>
 inline static NumberType tan_polynomial(NumberType p_angle) {
   NumberType l_angle = p_angle;
-  l_angle = l_angle % NumberType::pi(); // periodicity
+  l_angle = l_angle % m::pi<NumberType>(); // periodicity
   i8 l_sign = 1;
   if (l_angle < 0) {
     l_sign = -1;
-    l_angle.m_value *= -1;
+    l_angle *= -1;
   }
 
-  if (l_angle >= NumberType::pi_2()) {
-    l_angle = details::__trig_helper_mirror(l_angle, NumberType::pi_2());
+  if (l_angle >= m::pi_2<NumberType>()) {
+    l_angle = details::__trig_helper_mirror(l_angle, m::pi_2<NumberType>());
     l_sign *= -1;
   }
 
   // reciprocity
-  if (l_angle >= NumberType::pi_4()) {
-    l_angle = NumberType::pi_2() - l_angle;
+  if (l_angle >= m::pi_4<NumberType>()) {
+    l_angle = m::pi_2<NumberType>() - l_angle;
 
     NumberType l_tan = details::__fix_tan_identity(l_angle);
     return l_tan * l_sign;
@@ -156,12 +159,13 @@ inline static NumberType __arctan_identitiy(NumberType p_length) {
   const NumberType l_sqrt_3 = sqrt_polynomial(NumberType(3));
   NumberType l_new_length = (l_sqrt_3 * p_length) - 1;
   l_new_length = l_new_length / (l_sqrt_3 + p_length);
-  return (NumberType::pi() / 6) + __arctan_polynomial(l_new_length);
+  return (m::pi<NumberType>() / 6) + __arctan_polynomial(l_new_length);
 };
 
 template <typename NumberType>
 inline static NumberType __arctan_complement(NumberType p_length) {
-  return (NumberType::pi_4() * 2) - __arctan_polynomial(NumberType(1) / p_length);
+  return (m::pi_4<NumberType>() * 2) -
+         __arctan_polynomial(NumberType(1) / p_length);
 };
 
 }; // namespace details
@@ -179,7 +183,8 @@ inline static NumberType arctan_polynomial(NumberType p_length) {
     return NumberType(l_sign) * details::__arctan_complement(l_length);
   }
 
-  const NumberType l_identity_criteria = NumberType(2) - sqrt_polynomial(NumberType(3));
+  const NumberType l_identity_criteria =
+      NumberType(2) - sqrt_polynomial(NumberType(3));
   if (l_length <= l_identity_criteria) {
     return NumberType(l_sign) * details::__arctan_identitiy(l_length);
   }
@@ -193,10 +198,10 @@ inline static f32 arctan(f32 p_length) { return std::atan(p_length); };
 template <typename NumberType>
 inline static NumberType arcsin_polynomial(NumberType p_length) {
   if (p_length == 1) {
-    return NumberType::pi_2();
+    return m::pi_2<NumberType>();
   }
   if (p_length == -1) {
-    return NumberType(-1) * NumberType::pi_2();
+    return NumberType(-1) * m::pi_2<NumberType>();
   }
   assert_debug(p_length < 1);
   assert_debug(p_length > -1);
@@ -209,7 +214,7 @@ inline static f32 arcsin(f32 p_length) { return std::asin(p_length); };
 
 template <typename NumberType>
 inline static NumberType arccos_polynomial(NumberType p_length) {
-  return NumberType::pi_2() - arcsin_polynomial(p_length);
+  return m::pi_2<NumberType>() - arcsin_polynomial(p_length);
 };
 
 // TODO Remove that
