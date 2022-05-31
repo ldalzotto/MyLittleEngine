@@ -2,6 +2,7 @@
 
 #include <cor/assertions.hpp>
 #include <cor/types.hpp>
+#include <m/trig.hpp>
 #include <m/vec.hpp>
 
 namespace m {
@@ -96,8 +97,8 @@ static mat<T, 4, 4> rotate_around(const mat<T, 4, 4> &thiz, f32 p_angle_rad,
                                   const vec<T, 3> &p_axis) {
   assert_debug(is_normalized(p_axis));
 
-  f32 c = sys::cos(p_angle_rad);
-  f32 s = sys::sin(p_angle_rad);
+  f32 c = m::cos(p_angle_rad);
+  f32 s = m::sin(p_angle_rad);
   normalize(p_axis);
 
   vec<T, 3> temp = (vec<T, 3>{1, 1, 1} - c) * p_axis;

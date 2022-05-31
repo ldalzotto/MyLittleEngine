@@ -16,6 +16,7 @@ inline static NumberType __trig_helper_mirror(NumberType p_value,
 };
 }; // namespace details
 
+namespace details {
 template <typename NumberType>
 inline static NumberType sqrt_polynomial(NumberType p_value) {
   if (p_value == 0) {
@@ -31,9 +32,6 @@ inline static NumberType sqrt_polynomial(NumberType p_value) {
   }
   return l_value;
 };
-
-// TODO -> remove this
-inline static f32 sqrt(f32 p_value) { return std::sqrt(p_value); };
 
 template <typename NumberType>
 inline static NumberType sin_polynomial(NumberType p_angle) {
@@ -81,16 +79,10 @@ inline static NumberType sin_polynomial(NumberType p_angle) {
   return l_sin;
 };
 
-// TODO -> remove this
-inline static f32 sin(f32 p_angle) { return sys::sin(p_angle); };
-
 template <typename NumberType>
 inline static NumberType cos_polynomial(NumberType p_angle) {
   return sin_polynomial(p_angle + m::pi_2<NumberType>());
 };
-
-// TODO -> remove this
-inline static f32 cos(f32 p_angle) { return sys::cos(p_angle); };
 
 namespace details {
 template <typename NumberType>
@@ -126,7 +118,7 @@ inline static NumberType tan_polynomial(NumberType p_angle) {
   }
 
   if (l_angle >= m::pi_2<NumberType>()) {
-    l_angle = details::__trig_helper_mirror(l_angle, m::pi_2<NumberType>());
+    l_angle = __trig_helper_mirror(l_angle, m::pi_2<NumberType>());
     l_sign *= -1;
   }
 
@@ -192,9 +184,6 @@ inline static NumberType arctan_polynomial(NumberType p_length) {
   return NumberType(l_sign) * details::__arctan_polynomial(l_length);
 };
 
-// TODO Remove this
-inline static f32 arctan(f32 p_length) { return std::atan(p_length); };
-
 template <typename NumberType>
 inline static NumberType arcsin_polynomial(NumberType p_length) {
   if (p_length == 1) {
@@ -210,14 +199,116 @@ inline static NumberType arcsin_polynomial(NumberType p_length) {
   return arctan_polynomial(l_atan_length);
 };
 
-inline static f32 arcsin(f32 p_length) { return std::asin(p_length); };
-
 template <typename NumberType>
 inline static NumberType arccos_polynomial(NumberType p_length) {
   return m::pi_2<NumberType>() - arcsin_polynomial(p_length);
 };
 
-// TODO Remove that
-inline static f32 arccos(f32 p_length) { return std::acos(p_length); };
+}; // namespace details
 
 }; // namespace m
+
+namespace m {
+
+template <typename T>
+FORCE_INLINE T
+sqrt(T p_value,
+     enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+  return std::sqrt(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+sqrt(T p_value,
+     enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+  return m::details::sqrt_polynomial(p_value);
+};
+
+}; // namespace m
+
+namespace m {
+template <typename T>
+FORCE_INLINE T
+sin(T p_value,
+    enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+  return std::sin(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+sin(T p_value,
+    enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+  return m::details::sin_polynomial(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+cos(T p_value,
+    enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+  return std::cos(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+cos(T p_value,
+    enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+  return m::details::cos_polynomial(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+tan(T p_value,
+    enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+  return std::tan(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+tan(T p_value,
+    enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+  return m::details::tan_polynomial(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+arcsin(T p_value,
+       enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+  return std::asin(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+arcsin(T p_value,
+       enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+  return m::details::arcsin_polynomial(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+arccos(T p_value,
+       enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+  return std::acos(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+arccos(T p_value,
+       enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+  return m::details::arccos_polynomial(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+arctan(T p_value,
+       enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+  return std::atan(p_value);
+};
+
+template <typename T>
+FORCE_INLINE T
+arctan(T p_value,
+       enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+  return m::details::arctan_polynomial(p_value);
+};
+
+} // namespace m
