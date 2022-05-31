@@ -9,7 +9,7 @@ struct sys {
   static void memmove(void *p_dest, void *p_src, uimax p_n);
   static void memcpy(void *p_dest, void *p_src, uimax p_n);
   static void memset(void *p_dest, ui32 p_value, uimax p_n);
-  static ui8 memcmp(void* p_left, void* p_right, uimax p_n);
+  static ui8 memcmp(void *p_left, void *p_right, uimax p_n);
 
   template <typename T>
   inline static void memmove_up_t(T *p_ptr, uimax p_break_index,
@@ -31,9 +31,6 @@ struct sys {
 
   static void sassert(bool p_condition);
   static void abort();
-
-  static f32 sin(f32 p_angle);
-  static f32 cos(f32 p_angle);
 };
 
 #define FORCE_INLINE __attribute__((always_inline)) inline

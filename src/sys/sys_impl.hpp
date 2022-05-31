@@ -2,7 +2,6 @@
 
 #include <sys/sys.hpp>
 
-#include <cmath>
 #include <cstdlib>
 #include <cstring>
 
@@ -29,6 +28,3 @@ FORCE_INLINE void sys::sassert(bool p_condition) {
   }
 };
 FORCE_INLINE void sys::abort() { std::abort(); };
-
-FORCE_INLINE f32 sys::sin(f32 p_angle) { return std::sin(p_angle); };
-FORCE_INLINE f32 sys::cos(f32 p_angle) { return std::cos(p_angle); };
