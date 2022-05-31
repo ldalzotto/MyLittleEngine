@@ -19,7 +19,12 @@ template <> struct is_builtin<i32> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<f32> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<f64> { static constexpr ui8 value = 1; };
 
-template <ui8 Value> struct is_builtin_dispatcher {};
+template <typename T> struct is_signed { static constexpr ui8 value = 0; };
+template <> struct is_signed<i8> { static constexpr ui8 value = 1; };
+template <> struct is_signed<i16> { static constexpr ui8 value = 1; };
+template <> struct is_signed<i32> { static constexpr ui8 value = 1; };
+template <> struct is_signed<f32> { static constexpr ui8 value = 1; };
+template <> struct is_signed<f64> { static constexpr ui8 value = 1; };
 
 template <typename T> struct is_builtin_floating {
   static constexpr ui8 value = 0;
@@ -147,9 +152,21 @@ private:
 
   template <typename TT>
   FORCE_INLINE constexpr void __make(
-      TT p_value,
+      TT p_value, enable_if_t<!is_signed<TT>::value, void *> = 0,
       enable_if_t<get_number_type<TT>() == NumberType::Integer, void *> = 0) {
     m_value = i32(p_value) << ScaleFactor;
+  };
+
+  template <typename TT>
+  FORCE_INLINE constexpr void __make(
+      TT p_value, enable_if_t<is_signed<TT>::value, void *> = 0,
+      enable_if_t<get_number_type<TT>() == NumberType::Integer, void *> = 0) {
+    if (p_value < 0) {
+      m_value = -(i32(-p_value) << ScaleFactor);
+
+    } else {
+      m_value = i32(p_value) << ScaleFactor;
+    }
   };
 
   template <typename TT>
