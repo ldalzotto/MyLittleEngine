@@ -4,7 +4,7 @@
 #include <rast/rast.hpp>
 #include <tst/test_rasterizer_assets.hpp>
 
-#define WRITE_OUTPUT 1
+#define WRITE_OUTPUT 0
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_write.h>
