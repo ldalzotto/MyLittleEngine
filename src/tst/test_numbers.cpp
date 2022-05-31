@@ -38,11 +38,11 @@ struct trigo_test_accumulator {
 void math_cos_test(fix32 p_angle, trigo_test_accumulator &p_accs,
                    trigo_test_accumulator &p_arc_accs, uimax p_acc_index) {
   fix32 l_cos = m::cos_polynomial(p_angle);
-  f32 l_cos_real = m::cos(p_angle.to_f32());
+  f32 l_cos_real = m::cos(f32(p_angle));
   p_accs.m_errors.at(p_acc_index) = m::abs(fix32(l_cos_real) - l_cos);
 
   fix32 l_arc_cos = m::arccos_polynomial(l_cos);
-  f32 l_arc_cos_real = m::arccos(l_cos.to_f32());
+  f32 l_arc_cos_real = m::arccos(f32(l_cos));
   p_arc_accs.m_errors.at(p_acc_index) =
       m::abs(fix32(l_arc_cos_real) - l_arc_cos);
 };
@@ -50,13 +50,13 @@ void math_cos_test(fix32 p_angle, trigo_test_accumulator &p_accs,
 void math_sin_test(fix32 p_angle, trigo_test_accumulator &p_accs,
                    trigo_test_accumulator &p_arc_accs, uimax p_acc_index) {
   fix32 l_sin = m::sin_polynomial(p_angle);
-  f32 l_sin_real = m::sin(p_angle.to_f32());
+  f32 l_sin_real = m::sin(f32(p_angle));
   fix32 l_sin_real_fixed = l_sin_real;
   fix32 l_diff = m::abs(l_sin_real_fixed - l_sin);
   p_accs.m_errors.at(p_acc_index) = l_diff;
 
   fix32 l_arc_sin = m::arcsin_polynomial(l_sin);
-  f32 l_arc_sin_real = m::arcsin(l_sin.to_f32());
+  f32 l_arc_sin_real = m::arcsin(f32(l_sin));
   p_arc_accs.m_errors.at(p_acc_index) =
       m::abs(fix32(l_arc_sin_real) - l_arc_sin);
 };
@@ -64,7 +64,7 @@ void math_sin_test(fix32 p_angle, trigo_test_accumulator &p_accs,
 void math_tan_test(fix32 p_angle, trigo_test_accumulator &p_accs,
                    trigo_test_accumulator &p_arc_accs, uimax p_acc_index) {
   fix32 l_tan = m::tan_polynomial(p_angle);
-  f32 l_tan_real = sys::tan(p_angle.to_f32());
+  f32 l_tan_real = sys::tan(f32(p_angle));
   if (p_angle % m::pi_2<fix32>() == 0) {
     p_accs.m_errors.at(p_acc_index) = 0;
   } else {
@@ -72,7 +72,7 @@ void math_tan_test(fix32 p_angle, trigo_test_accumulator &p_accs,
   }
 
   fix32 l_arc_tan = m::arctan_polynomial(l_tan);
-  f32 l_arc_tan_real = m::arctan(l_tan.to_f32());
+  f32 l_arc_tan_real = m::arctan(f32(l_tan));
   p_arc_accs.m_errors.at(p_acc_index) =
       m::abs(fix32(l_arc_tan_real) - l_arc_tan);
 };
@@ -144,7 +144,7 @@ TEST_CASE("math.fixed.sqrt") {
   l_acc.allocate(l_sqrt_inputs.count());
   for (auto i = 0; i < l_sqrt_inputs.count(); ++i) {
     fix32 l_sqrt = m::sqrt_polynomial(l_sqrt_inputs.at(i));
-    f32 l_real_sqrtf = m::sqrt(l_sqrt_inputs.at(i).to_f32());
+    f32 l_real_sqrtf = m::sqrt(f32(l_sqrt_inputs.at(i)));
     fix32 l_real_sqrtf_fix = fix32(l_real_sqrtf);
     l_acc.m_errors.at(i) = m::abs(l_sqrt - l_real_sqrtf_fix);
   }

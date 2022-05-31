@@ -62,7 +62,7 @@ template <typename T, ui8 ScaleFactor> struct fixed {
 
   FORCE_INLINE fixed() = default;
 
-  FORCE_INLINE constexpr f32 to_f32() { return (f32)m_value / scale; };
+  FORCE_INLINE constexpr operator f32() { return (f32)m_value / scale; };
 
   template <typename TT> FORCE_INLINE constexpr fixed(TT p_other) {
     __make(p_other);
@@ -241,3 +241,4 @@ template <typename T, ui8 ScaleFactor> struct is_fixed<fixed<T, ScaleFactor>> {
 }; // namespace m
 
 using fix32 = m::fixed<i32, 10>;
+// using fix32 = f32;
