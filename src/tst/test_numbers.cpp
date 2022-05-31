@@ -168,6 +168,7 @@ TEST_CASE("math.fixed.exp") {
   fix32 l_exp_error = l_acc.get_accumulated();
   REQUIRE(l_exp_error.m_value == 955);
   l_acc.free();
+  l_exp_input.free();
 };
 
 TEST_CASE("math.fixed.ln") {
@@ -188,6 +189,7 @@ TEST_CASE("math.fixed.ln") {
   fix32 l_ln_error = l_acc.get_accumulated();
   REQUIRE(l_ln_error.m_value == 6804); // TODO -> check from where the error come from ?
   l_acc.free();
+  l_ln_input.free();
 };
 
 TEST_CASE("math.fixed.pow") {
@@ -213,6 +215,7 @@ TEST_CASE("math.fixed.pow") {
   fix32 l_ln_error = l_acc.get_accumulated();
   REQUIRE(l_ln_error.m_value == 2916); // TODO -> check from where the error come from ?
   l_acc.free();
+  l_pow_input.free();
 };
 
 #endif
