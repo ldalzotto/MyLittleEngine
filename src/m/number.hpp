@@ -4,6 +4,10 @@
 #include <sys/sys.hpp>
 
 namespace m {
+template <typename T> static constexpr i32 nearest(T v);
+}
+
+namespace m {
 
 enum class NumberType { Integer = 0, Floating = 1, Fixed = 2, Undefined = 3 };
 
@@ -68,6 +72,13 @@ template <typename T, ui8 ScaleFactor> struct fixed {
   FORCE_INLINE fixed() = default;
 
   FORCE_INLINE constexpr operator f32() { return (f32)m_value / scale; };
+  FORCE_INLINE constexpr operator i32() {
+    if (m_value >= 0) {
+      return m_value >> ScaleFactor;
+    } else {
+      return -1 * ((-m_value) >> ScaleFactor);
+    }
+  };
 
   template <typename TT> FORCE_INLINE constexpr fixed(TT p_other) {
     __make(p_other);
@@ -91,6 +102,12 @@ template <typename T, ui8 ScaleFactor> struct fixed {
   template <typename TT> FORCE_INLINE constexpr fixed &operator-=(TT p_other) {
     *this = *this - p_other;
     return *this;
+  };
+
+  FORCE_INLINE constexpr fixed operator-() const {
+    fixed l_fixed = *this;
+    l_fixed.m_value *= -1;
+    return l_fixed;
   };
 
   template <typename TT>
@@ -147,7 +164,7 @@ private:
   FORCE_INLINE constexpr void __make(
       TT p_value,
       enable_if_t<get_number_type<TT>() == NumberType::Floating, void *> = 0) {
-    m_value = sys::nearest(p_value * scale);
+    m_value = m::nearest(p_value * scale);
   };
 
   template <typename TT>

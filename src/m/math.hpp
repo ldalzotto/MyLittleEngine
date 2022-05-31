@@ -54,4 +54,14 @@ template <typename T> FORCE_INLINE static constexpr T e() {
   return 2.7182818284590;
 };
 
+
+template <typename T> static FORCE_INLINE constexpr i32 nearest(T v) {
+  i32 lx = i32(v);
+  i32 lxr = i32(v + (T(0.5f) * (v > 0)));
+  if (lxr == lx) {
+    return lx;
+  }
+  return lxr;
+};
+
 } // namespace m

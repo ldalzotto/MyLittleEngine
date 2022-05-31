@@ -31,15 +31,6 @@ struct sys {
 
   static void sassert(bool p_condition);
   static void abort();
-
-  static inline constexpr i32 nearest(f32 v) {
-    i32 lx = (i32)v;
-    i32 lxr = (i32)(v + (0.5f * (v > 0)));
-    if (lxr == lx) {
-      return lx;
-    }
-    return lxr;
-  };
 };
 
 #define FORCE_INLINE __attribute__((always_inline)) inline

@@ -79,21 +79,16 @@ void math_tan_test(fix32 p_angle, trigo_test_accumulator &p_accs,
 
 TEST_CASE("math.fixed.sin_cos_tan") {
   container::arr<fix32, 4 * 8> l_cos_angles = {
-      m::pi_4<fix32>() * 1,   m::pi_4<fix32>() * 2,
-      m::pi_4<fix32>() * 3,   m::pi_4<fix32>() * 4,
-      m::pi_4<fix32>() * 5,   m::pi_4<fix32>() * 6,
-      m::pi_4<fix32>() * 7,   m::pi_4<fix32>() * 8,
-      m::pi_4<fix32>() * 9,   m::pi_4<fix32>() * 10,
-      m::pi_4<fix32>() * 11,  m::pi_4<fix32>() * 12,
-      m::pi_4<fix32>() * 13,  m::pi_4<fix32>() * 14,
-      m::pi_4<fix32>() * 15,  m::pi_4<fix32>() * 16,
-      m::pi_4<fix32>() * -1,  m::pi_4<fix32>() * -2,
-      m::pi_4<fix32>() * -3,  m::pi_4<fix32>() * -4,
-      m::pi_4<fix32>() * -5,  m::pi_4<fix32>() * -6,
-      m::pi_4<fix32>() * -7,  m::pi_4<fix32>() * -8,
-      m::pi_4<fix32>() * -9,  m::pi_4<fix32>() * -10,
-      m::pi_4<fix32>() * -11, m::pi_4<fix32>() * -12,
-      m::pi_4<fix32>() * -13, m::pi_4<fix32>() * -14,
+      m::pi_4<fix32>() * 1,   m::pi_4<fix32>() * 2,   m::pi_4<fix32>() * 3,
+      m::pi_4<fix32>() * 4,   m::pi_4<fix32>() * 5,   m::pi_4<fix32>() * 6,
+      m::pi_4<fix32>() * 7,   m::pi_4<fix32>() * 8,   m::pi_4<fix32>() * 9,
+      m::pi_4<fix32>() * 10,  m::pi_4<fix32>() * 11,  m::pi_4<fix32>() * 12,
+      m::pi_4<fix32>() * 13,  m::pi_4<fix32>() * 14,  m::pi_4<fix32>() * 15,
+      m::pi_4<fix32>() * 16,  m::pi_4<fix32>() * -1,  m::pi_4<fix32>() * -2,
+      m::pi_4<fix32>() * -3,  m::pi_4<fix32>() * -4,  m::pi_4<fix32>() * -5,
+      m::pi_4<fix32>() * -6,  m::pi_4<fix32>() * -7,  m::pi_4<fix32>() * -8,
+      m::pi_4<fix32>() * -9,  m::pi_4<fix32>() * -10, m::pi_4<fix32>() * -11,
+      m::pi_4<fix32>() * -12, m::pi_4<fix32>() * -13, m::pi_4<fix32>() * -14,
       m::pi_4<fix32>() * -15, m::pi_4<fix32>() * -16};
 
   container::arr<trigo_test_accumulator, 6> l_err_accumulators;
@@ -153,6 +148,71 @@ TEST_CASE("math.fixed.sqrt") {
   l_acc.free();
 
   l_sqrt_inputs.free();
+};
+
+TEST_CASE("math.fixed.exp") {
+  container::span<fix32> l_exp_input;
+  l_exp_input.allocate(1000);
+  fix32 l_value_delta = 0.001f;
+  for (auto i = 0; i < l_exp_input.count(); ++i) {
+    l_exp_input.at(i) = l_value_delta * i;
+  }
+
+  trigo_test_accumulator l_acc;
+  l_acc.allocate(l_exp_input.count());
+  for (auto i = 0; i < l_exp_input.count(); ++i) {
+    fix32 l_exp = m::exp(l_exp_input.at(i));
+    f32 l_real_exp = m::exp(f32(l_exp_input.at(i)));
+    l_acc.m_errors.at(i) = m::abs(l_exp - l_real_exp);
+  }
+  fix32 l_exp_error = l_acc.get_accumulated();
+  REQUIRE(l_exp_error.m_value == 955);
+  l_acc.free();
+};
+
+TEST_CASE("math.fixed.ln") {
+  container::span<fix32> l_ln_input;
+  l_ln_input.allocate(1000);
+  fix32 l_value_delta = 0.001f;
+  for (auto i = 0; i < l_ln_input.count(); ++i) {
+    l_ln_input.at(i) = (l_value_delta * i) + 0.01f;
+  }
+
+  trigo_test_accumulator l_acc;
+  l_acc.allocate(l_ln_input.count());
+  for (auto i = 0; i < l_ln_input.count(); ++i) {
+    fix32 l_ln = m::ln(l_ln_input.at(i));
+    f32 l_real_ln = m::ln(f32(l_ln_input.at(i)));
+    l_acc.m_errors.at(i) = m::abs(l_ln - l_real_ln);
+  }
+  fix32 l_ln_error = l_acc.get_accumulated();
+  REQUIRE(l_ln_error.m_value == 6804); // TODO -> check from where the error come from ?
+  l_acc.free();
+};
+
+TEST_CASE("math.fixed.pow") {
+  struct pow_input {
+    fix32 low, high;
+  };
+  container::span<pow_input> l_pow_input;
+  l_pow_input.allocate(1000);
+  fix32 l_value_delta = 0.001f;
+  for (auto i = 0; i < l_pow_input.count(); ++i) {
+    fix32 l_value = fix32(0.01f) + (l_value_delta * i);
+    l_pow_input.at(i).low = l_value;
+    l_pow_input.at(i).high = l_value;
+  }
+
+  trigo_test_accumulator l_acc;
+  l_acc.allocate(l_pow_input.count());
+  for (auto i = 0; i < l_pow_input.count(); ++i) {
+    fix32 l_ln = m::pow(l_pow_input.at(i).low, l_pow_input.at(i).high);
+    f32 l_real_ln = m::pow(f32(l_pow_input.at(i).low), f32(l_pow_input.at(i).high));
+    l_acc.m_errors.at(i) = m::abs(l_ln - l_real_ln);
+  }
+  fix32 l_ln_error = l_acc.get_accumulated();
+  REQUIRE(l_ln_error.m_value == 2916); // TODO -> check from where the error come from ?
+  l_acc.free();
 };
 
 #endif
