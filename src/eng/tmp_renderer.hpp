@@ -32,31 +32,31 @@ public:
 
     {
       const uimax l_slide_offset = m_vertex_layout.getStride() -
-                                   sizeof(m::vec<f32, 3>) -
+                                   sizeof(m::vec<fix32, 3>) -
                                    sizeof(m::vec<ui8, 3>);
       m_triangle_vertices.range()
-          .stream(m::vec<f32, 3>{-1.0f, 1.0f, 1.0f})
+          .stream(m::vec<fix32, 3>{-1.0f, 1.0f, 1.0f})
           .stream(m::vec<ui8, 3>{0, 0, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<f32, 3>{1.0f, 1.0f, 1.0f})
+          .stream(m::vec<fix32, 3>{1.0f, 1.0f, 1.0f})
           .stream(m::vec<ui8, 3>{0, 0, 255})
           .slide(l_slide_offset)
-          .stream(m::vec<f32, 3>{-1.0f, -1.0f, 1.0f})
+          .stream(m::vec<fix32, 3>{-1.0f, -1.0f, 1.0f})
           .stream(m::vec<ui8, 3>{0, 255, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<f32, 3>{1.0f, -1.0f, 1.0f})
+          .stream(m::vec<fix32, 3>{1.0f, -1.0f, 1.0f})
           .stream(m::vec<ui8, 3>{0, 255, 255})
           .slide(l_slide_offset)
-          .stream(m::vec<f32, 3>{-1.0f, 1.0f, -1.0f})
+          .stream(m::vec<fix32, 3>{-1.0f, 1.0f, -1.0f})
           .stream(m::vec<ui8, 3>{255, 0, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<f32, 3>{1.0f, 1.0f, -1.0f})
+          .stream(m::vec<fix32, 3>{1.0f, 1.0f, -1.0f})
           .stream(m::vec<ui8, 3>{255, 0, 255})
           .slide(l_slide_offset)
-          .stream(m::vec<f32, 3>{-1.0f, -1.0f, -1.0f})
+          .stream(m::vec<fix32, 3>{-1.0f, -1.0f, -1.0f})
           .stream(m::vec<ui8, 3>{255, 255, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<f32, 3>{1.0f, -1.0f, -1.0f})
+          .stream(m::vec<fix32, 3>{1.0f, -1.0f, -1.0f})
           .stream(m::vec<ui8, 3>{255, 255, 255});
     }
 
@@ -83,23 +83,24 @@ public:
     m_triangle_vertices.free();
   };
 
-  // f32 m_offset = 0;
+  // fix32 m_offset = 0;
 
   ui32 m_counter = 0;
-  f32 m_delta = 0.1f;
+  fix32 m_delta = 0.1f;
 
   void draw() {
 
-    m::mat<f32, 4, 4> l_view, l_proj;
+    m::mat<fix32, 4, 4> l_view, l_proj;
     {
-      const m::vec<f32, 3> at = {0.0f, 0.0f, 0.0f};
-      const m::vec<f32, 3> eye = {-5.0f, 5.0f, -5.0f};
+      const m::vec<fix32, 3> at = {0.0f, 0.0f, 0.0f};
+      const m::vec<fix32, 3> eye = {-5.0f, 5.0f, -5.0f};
 
       // Set view and projection matrix for view 0.
       {
         l_view = m::look_at(eye, at, {0, 1, 0});
-        l_proj = m::perspective(60.0f * m::deg_to_rad,
-                                float(m_width) / float(m_height), 0.1f, 100.0f);
+        l_proj = m::perspective(fix32(60.0f) * m::deg_to_rad,
+                                fix32(m_width) / m_height, fix32(0.1f),
+                                fix32(100.0f));
       }
     }
 
@@ -111,8 +112,8 @@ public:
     bgfx::touch(0);
 
     // Submit 11x11 cubes.
-    m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
-    l_transform = m::rotate_around(l_transform, m_counter * m_delta, {0, 1, 0});
+    m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
+    l_transform = m::rotate_around(l_transform, fix32(m_counter) * m_delta, {0, 1, 0});
     // l_transform.at(3, 0) = m_delta * m_counter;
     // Set model matrix for rendering.
     bgfx::setTransform(l_transform.m_data);
@@ -145,24 +146,25 @@ private:
             rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
     static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                       const ui8 *p_vertex, m::vec<f32, 4> &out_screen_position,
+                       const ui8 *p_vertex,
+                       m::vec<fix32, 4> &out_screen_position,
                        ui8 **out_vertex) {
       rast::shader_vertex l_shader = {p_ctx};
-      const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
+      const auto &l_vertex_pos = l_shader.get_vertex<m::vec<fix32, 3>>(
           bgfx::Attrib::Enum::Position, p_vertex);
       const m::vec<ui8, 3> &l_color = l_shader.get_vertex<m::vec<ui8, 3>>(
           bgfx::Attrib::Enum::Color0, p_vertex);
       out_screen_position =
-          p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+          p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
 
-      m::vec<f32, 3> *l_vertex_color = (m::vec<f32, 3> *)out_vertex[0];
-      (*l_vertex_color) = l_color.cast<f32>() / 255;
+      m::vec<fix32, 3> *l_vertex_color = (m::vec<fix32, 3> *)out_vertex[0];
+      (*l_vertex_color) = l_color.cast<fix32>() / 255;
     };
 
     static void fragment(ui8 **p_vertex_output_interpolated,
-                         m::vec<f32, 3> &out_color) {
-      m::vec<f32, 3> *l_vertex_color =
-          (m::vec<f32, 3> *)p_vertex_output_interpolated[0];
+                         m::vec<fix32, 3> &out_color) {
+      m::vec<fix32, 3> *l_vertex_color =
+          (m::vec<fix32, 3> *)p_vertex_output_interpolated[0];
       out_color = *l_vertex_color;
     };
 

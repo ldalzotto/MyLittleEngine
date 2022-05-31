@@ -76,7 +76,7 @@ struct bgfx_impl {
   };
 
   struct CommandTemporaryStack {
-    m::mat<f32, 4, 4> transform;
+    m::mat<fix32, 4, 4> transform;
     bgfx::VertexBufferHandle vertex_buffer;
     bgfx::IndexBufferHandle index_buffer;
     ui64 state;
@@ -93,7 +93,7 @@ struct bgfx_impl {
 
   struct CommandDrawCall {
     bgfx::ProgramHandle program;
-    m::mat<f32, 4, 4> transform;
+    m::mat<fix32, 4, 4> transform;
     bgfx::IndexBufferHandle index_buffer;
     bgfx::VertexBufferHandle vertex_buffer;
     ui64 state;
@@ -123,7 +123,7 @@ struct bgfx_impl {
 
     flags m_flags;
     m::color_packed m_rgba;
-    f32 m_depth;
+    fix32 m_depth;
 
     void reset() {
       m_flags.m_int = 0;
@@ -137,8 +137,8 @@ struct bgfx_impl {
     clear_state clear;
     m::rect_point_extend<ui16> rect;
     m::vec<ui16, 4> scissor;
-    m::mat<f32, 4, 4> view;
-    m::mat<f32, 4, 4> proj;
+    m::mat<fix32, 4, 4> view;
+    m::mat<fix32, 4, 4> proj;
 
     container::vector<CommandDrawCall> commands;
 
@@ -660,15 +660,15 @@ struct bgfx_impl {
   };
 
   void view_set_clear(bgfx::ViewId p_id, ui16 p_flags, ui32 p_rgba,
-                      f32 p_depth) {
+                      fix32 p_depth) {
     clear_state &l_clear = proxy().RenderPass(p_id).value()->clear;
     l_clear.m_rgba.rgba = p_rgba;
     l_clear.m_flags.m_int = p_flags;
     l_clear.m_depth = p_depth;
   };
 
-  void view_set_transform(bgfx::ViewId p_id, const m::mat<f32, 4, 4> &p_view,
-                          const m::mat<f32, 4, 4> &p_proj) {
+  void view_set_transform(bgfx::ViewId p_id, const m::mat<fix32, 4, 4> &p_view,
+                          const m::mat<fix32, 4, 4> &p_proj) {
     RenderPassProxy l_render_pass = proxy().RenderPass(p_id);
     l_render_pass.value()->view = p_view;
     l_render_pass.value()->proj = p_proj;
@@ -683,7 +683,7 @@ struct bgfx_impl {
     proxy().RenderPass(p_id).value()->commands.push_back(l_draw_call);
   };
 
-  void set_transform(const m::mat<f32, 4, 4> &p_transform) {
+  void set_transform(const m::mat<fix32, 4, 4> &p_transform) {
     command_temporary_stack.transform = p_transform;
   };
 
@@ -742,8 +742,8 @@ struct bgfx_impl {
                                         l_frame_depth_texture_info.height,
                                         l_frame_depth_texture_info.bitsPerPixel,
                                         l_frame_depth_texture_range);
-          l_depth_view.for_each<f32>(
-              [&](f32 &p_pixel) { p_pixel = l_clear_state.m_depth; });
+          l_depth_view.for_each<fix32>(
+              [&](fix32 &p_pixel) { p_pixel = l_clear_state.m_depth; });
         }
       }
 
@@ -799,7 +799,7 @@ private:
     case bgfx::TextureFormat::Enum::RGBA8:
       return sizeof(ui8) * 4;
     case bgfx::TextureFormat::Enum::D32F:
-      return sizeof(f32);
+      return sizeof(fix32);
     }
     return ui8(0);
   };
@@ -962,12 +962,12 @@ inline void setViewClear(ViewId _id, uint16_t _flags, uint32_t _rgba,
 };
 
 inline void setViewTransform(ViewId _id, const void *_view, const void *_proj) {
-  s_bgfx_impl.view_set_transform(_id, *(const m::mat<f32, 4, 4> *)_view,
-                                 *(const m::mat<f32, 4, 4> *)_proj);
+  s_bgfx_impl.view_set_transform(_id, *(const m::mat<fix32, 4, 4> *)_view,
+                                 *(const m::mat<fix32, 4, 4> *)_proj);
 };
 
 inline uint32_t setTransform(const void *_mtx, uint16_t _num) {
-  s_bgfx_impl.set_transform(*(const m::mat<f32, 4, 4> *)_mtx);
+  s_bgfx_impl.set_transform(*(const m::mat<fix32, 4, 4> *)_mtx);
   return -1;
 };
 

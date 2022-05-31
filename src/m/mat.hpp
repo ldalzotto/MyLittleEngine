@@ -15,7 +15,14 @@ template <typename T> struct mat<T, 4, 4> {
   T &at(uimax c, uimax r) { return m_data[c].at(r); }
   const T &at(uimax c, uimax r) const { return m_data[c].at(r); }
 
-  static mat getIdentity();
+  static mat getIdentity() {
+    mat<T, 4, 4> l_mat = {0};
+    l_mat.at(0, 0) = T(1);
+    l_mat.at(1, 1) = T(1);
+    l_mat.at(2, 2) = T(1);
+    l_mat.at(3, 3) = T(1);
+    return l_mat;
+  };
   static mat getZero() { return {0}; };
 
   vec<T, 4> &col0() { return m_data[0]; }
@@ -26,15 +33,6 @@ template <typename T> struct mat<T, 4, 4> {
   const vec<T, 4> &col1() const { return m_data[1]; }
   const vec<T, 4> &col2() const { return m_data[2]; }
   const vec<T, 4> &col3() const { return m_data[3]; }
-};
-
-template <> inline mat<f32, 4, 4> mat<f32, 4, 4>::getIdentity() {
-  mat<f32, 4, 4> l_mat = {0};
-  l_mat.at(0, 0) = 1;
-  l_mat.at(1, 1) = 1;
-  l_mat.at(2, 2) = 1;
-  l_mat.at(3, 3) = 1;
-  return l_mat;
 };
 
 template <typename T>
@@ -67,9 +65,9 @@ static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
 
 template <typename T>
 static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
-  sys::sassert(std::abs(p_aspect - std::numeric_limits<T>::epsilon()) > T(0));
+  sys::sassert(m::abs(p_aspect - m::epsilon<T>::value()) > T(0));
 
-  T const tanHalfFovy = std::tan(p_fovy / T(2));
+  T const tanHalfFovy = m::tan(p_fovy / T(2));
 
   mat<T, 4, 4> l_result;
   l_result.at(0, 0) = T(1) / (p_aspect * tanHalfFovy);
@@ -92,13 +90,13 @@ static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
   return l_result;
 };
 
-template <typename T>
-static mat<T, 4, 4> rotate_around(const mat<T, 4, 4> &thiz, f32 p_angle_rad,
+template <typename T, typename AngleT>
+static mat<T, 4, 4> rotate_around(const mat<T, 4, 4> &thiz, AngleT p_angle_rad,
                                   const vec<T, 3> &p_axis) {
   assert_debug(is_normalized(p_axis));
 
-  f32 c = m::cos(p_angle_rad);
-  f32 s = m::sin(p_angle_rad);
+  AngleT c = m::cos(p_angle_rad);
+  AngleT s = m::sin(p_angle_rad);
   normalize(p_axis);
 
   vec<T, 3> temp = (vec<T, 3>{1, 1, 1} - c) * p_axis;

@@ -11,8 +11,8 @@ namespace rast {
 static void image_copy_stretch(m::vec<ui8, 3> *p_from, ui16 p_from_width,
                                ui16 p_from_height, m::vec<ui8, 4> *p_to,
                                ui16 p_to_width, ui16 p_to_height) {
-  f32 l_width_delta_ratio = f32(p_from_width) / p_to_width;
-  f32 l_height_delta_ratio = f32(p_from_height) / p_to_height;
+  fix32 l_width_delta_ratio = fix32(p_from_width) / p_to_width;
+  fix32 l_height_delta_ratio = fix32(p_from_height) / p_to_height;
   for (auto y = 0; y < p_to_height; ++y) {
     ui16 l_from_y = ui16(l_height_delta_ratio * y);
     for (auto x = 0; x < p_to_width; ++x) {
@@ -89,16 +89,16 @@ struct image_view {
 };
 
 struct shader_vertex_runtime_ctx {
-  const m::mat<f32, 4, 4> &m_proj;
-  const m::mat<f32, 4, 4> &m_view;
-  const m::mat<f32, 4, 4> &m_transform;
-  const m::mat<f32, 4, 4> &m_local_to_unit;
+  const m::mat<fix32, 4, 4> &m_proj;
+  const m::mat<fix32, 4, 4> &m_view;
+  const m::mat<fix32, 4, 4> &m_transform;
+  const m::mat<fix32, 4, 4> &m_local_to_unit;
   const bgfx::VertexLayout &m_vertex_layout;
 
-  shader_vertex_runtime_ctx(const m::mat<f32, 4, 4> &p_proj,
-                            const m::mat<f32, 4, 4> &p_view,
-                            const m::mat<f32, 4, 4> &p_transform,
-                            const m::mat<f32, 4, 4> &p_local_to_unit,
+  shader_vertex_runtime_ctx(const m::mat<fix32, 4, 4> &p_proj,
+                            const m::mat<fix32, 4, 4> &p_view,
+                            const m::mat<fix32, 4, 4> &p_transform,
+                            const m::mat<fix32, 4, 4> &p_local_to_unit,
                             const bgfx::VertexLayout &p_vertex_layout)
       : m_proj(p_proj), m_view(p_view), m_transform(p_transform),
         m_local_to_unit(p_local_to_unit), m_vertex_layout(p_vertex_layout){};
@@ -106,11 +106,11 @@ struct shader_vertex_runtime_ctx {
 
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         const ui8 *p_vertex,
-                                        m::vec<f32, 4> &out_screen_position,
+                                        m::vec<fix32, 4> &out_screen_position,
                                         ui8 **out_vertex);
 
 using shader_fragment_function = void (*)(ui8 **p_vertex_output_interpolated,
-                                          m::vec<f32, 3> &out_color);
+                                          m::vec<fix32, 3> &out_color);
 
 struct shader_vertex {
   const shader_vertex_runtime_ctx &m_ctx;
@@ -134,7 +134,7 @@ struct shader_vertex_output_parameter {
     m_single_element_size = 0;
     switch (p_attrib_type) {
     case bgfx::AttribType::Float:
-      m_single_element_size = sizeof(f32);
+      m_single_element_size = sizeof(fix32);
       break;
     default:
       m_single_element_size = 0;

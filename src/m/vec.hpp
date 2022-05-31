@@ -3,6 +3,7 @@
 #include <cmath>
 #include <cor/types.hpp>
 #include <sys/sys.hpp>
+#include <m/trig.hpp>
 
 namespace m {
 
@@ -368,8 +369,8 @@ template <typename T> T dot(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
          (p_left.z() * p_right.z());
 };
 
-template <typename T> f32 magnitude(const vec<T, 3> &thiz) {
-  return std::sqrt(dot(thiz, thiz));
+template <typename T> fix32 magnitude(const vec<T, 3> &thiz) {
+  return m::sqrt(dot(thiz, thiz));
 };
 
 template <typename T> vec<T, 3> normalize(const vec<T, 3> &thiz) {
@@ -377,7 +378,7 @@ template <typename T> vec<T, 3> normalize(const vec<T, 3> &thiz) {
 };
 
 template <typename T> ui8 is_normalized(const vec<T, 3> &thiz) {
-  f32 l_magnitude = magnitude(thiz);
+  auto l_magnitude = magnitude(thiz);
   return l_magnitude >= 0.99 && l_magnitude <= 1.01;
 };
 
