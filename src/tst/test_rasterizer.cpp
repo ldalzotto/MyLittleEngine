@@ -4,7 +4,7 @@
 #include <rast/rast.hpp>
 #include <tst/test_rasterizer_assets.hpp>
 
-#define WRITE_OUTPUT 0
+#define WRITE_OUTPUT 1
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_write.h>
@@ -96,17 +96,17 @@ struct WhiteShader {
       s_vertex_output = {};
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<f32, 4> &out_screen_position,
+                     const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
                      ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
-    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
+    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<fix32, 3>>(
         bgfx::Attrib::Enum::Position, p_vertex);
     out_screen_position =
-        p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+        p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
   };
 
   static void fragment(ui8 **p_vertex_output_interpolated,
-                       m::vec<f32, 3> &out_color) {
+                       m::vec<fix32, 3> &out_color) {
     out_color = {1, 1, 1};
   };
 
@@ -122,24 +122,24 @@ struct ColorInterpolationShader {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<f32, 4> &out_screen_position,
+                     const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
                      ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
-    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<f32, 3>>(
+    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<fix32, 3>>(
         bgfx::Attrib::Enum::Position, p_vertex);
     const m::vec<ui8, 3> &l_color = l_shader.get_vertex<m::vec<ui8, 3>>(
         bgfx::Attrib::Enum::Color0, p_vertex);
     out_screen_position =
-        p_ctx.m_local_to_unit * m::vec<f32, 4>::make(l_vertex_pos, 1);
+        p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
 
-    m::vec<f32, 3> *l_vertex_color = (m::vec<f32, 3> *)out_vertex[0];
-    (*l_vertex_color) = l_color.cast<f32>() / 255;
+    m::vec<fix32, 3> *l_vertex_color = (m::vec<fix32, 3> *)out_vertex[0];
+    (*l_vertex_color) = l_color.cast<fix32>() / 255;
   };
 
   static void fragment(ui8 **p_vertex_output_interpolated,
-                       m::vec<f32, 3> &out_color) {
-    m::vec<f32, 3> *l_vertex_color =
-        (m::vec<f32, 3> *)p_vertex_output_interpolated[0];
+                       m::vec<fix32, 3> &out_color) {
+    m::vec<fix32, 3> *l_vertex_color =
+        (m::vec<fix32, 3> *)p_vertex_output_interpolated[0];
     out_color = *l_vertex_color;
   };
 
@@ -157,7 +157,7 @@ TEST_CASE("rast.single_triangle.visibility") {
   l_vertex_layout.begin();
   l_vertex_layout.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
 
-  container::arr<m::vec<f32, 3>, 3> l_triangle_vertices = {
+  container::arr<m::vec<fix32, 3>, 3> l_triangle_vertices = {
       .m_data = {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}}};
   container::arr<ui16, 3> l_triangle_indices = {0, 1, 2};
 
@@ -175,7 +175,7 @@ TEST_CASE("rast.single_triangle.visibility") {
 
   bgfx::ProgramHandle l_program = WhiteShader::load_program();
 
-  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+  m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
@@ -222,15 +222,15 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{0, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 255, 0});
   }
 
@@ -250,7 +250,7 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
 
-  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+  m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
@@ -292,7 +292,7 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
   l_vertex_layout.begin();
   l_vertex_layout.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
 
-  container::arr<m::vec<f32, 3>, 6> l_triangle_vertices = {
+  container::arr<m::vec<fix32, 3>, 6> l_triangle_vertices = {
       .m_data = {
           {0.0, 0.0, 0.0},
           {1.0, 0.0, 0.0},
@@ -317,7 +317,7 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
 
   bgfx::ProgramHandle l_program = WhiteShader::load_program();
 
-  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+  m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
@@ -383,28 +383,28 @@ TEST_CASE("rast.depth.comparison") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<f32, 3>{-0.5, 0.0, 0.1})
+        .stream(m::vec<fix32, 3>{-0.5, 0.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.1})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.1})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
   }
 
@@ -425,7 +425,7 @@ TEST_CASE("rast.depth.comparison") {
 
   bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
 
-  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+  m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
@@ -473,28 +473,28 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
         .stream(m::vec<ui8, 3>{0, 0, 255});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<f32, 3>{-0.5, 0.0, 0.1})
+        .stream(m::vec<fix32, 3>{-0.5, 0.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.1})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.1})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
   }
 
@@ -515,7 +515,7 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
 
   bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
 
-  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+  m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
@@ -564,28 +564,28 @@ TEST_CASE("rast.depth.comparison.readonly") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<f32, 3>{-0.5, 0.0, 0.1})
+        .stream(m::vec<fix32, 3>{-0.5, 0.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.1})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.1})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
   }
 
@@ -606,7 +606,7 @@ TEST_CASE("rast.depth.comparison.readonly") {
 
   bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
 
-  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+  m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
@@ -655,28 +655,28 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<f32, 3>{0.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<f32, 3>{2.0, 0.0, 0.0})
+        .stream(m::vec<fix32, 3>{2.0, 0.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<f32, 3>{0.0, 2.0, 0.0})
+        .stream(m::vec<fix32, 3>{0.0, 2.0, 0.0})
         .stream(m::vec<ui8, 3>{255, 0, 0});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<f32, 3>{-2, -2, 0.1})
+        .stream(m::vec<fix32, 3>{-2, -2, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<f32, 3>{1.0, 0.0, 0.1})
+        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<f32, 3>{0.0, 1.0, 0.1})
+        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
         .stream(m::vec<ui8, 3>{0, 255, 0});
   }
 
@@ -697,7 +697,7 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
 
   bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
 
-  m::mat<f32, 4, 4> l_indentity = l_indentity.getIdentity();
+  m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
   bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH);
   bgfx::setViewRect(0, 0, 0, l_width, l_height);
@@ -744,35 +744,35 @@ TEST_CASE("rast.3Dcube") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<f32, 3>{-1.0f, 1.0f, 1.0f})
+        .stream(m::vec<fix32, 3>{-1.0f, 1.0f, 1.0f})
         .stream(m::vec<ui8, 3>{0, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<f32, 3>{1.0f, 1.0f, 1.0f})
+        .stream(m::vec<fix32, 3>{1.0f, 1.0f, 1.0f})
         .stream(m::vec<ui8, 3>{0, 0, 255});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<f32, 3>{-1.0f, -1.0f, 1.0f})
+        .stream(m::vec<fix32, 3>{-1.0f, -1.0f, 1.0f})
         .stream(m::vec<ui8, 3>{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<f32, 3>{1.0f, -1.0f, 1.0f})
+        .stream(m::vec<fix32, 3>{1.0f, -1.0f, 1.0f})
         .stream(m::vec<ui8, 3>{0, 255, 255});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<f32, 3>{-1.0f, 1.0f, -1.0f})
+        .stream(m::vec<fix32, 3>{-1.0f, 1.0f, -1.0f})
         .stream(m::vec<ui8, 3>{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<f32, 3>{1.0f, 1.0f, -1.0f})
+        .stream(m::vec<fix32, 3>{1.0f, 1.0f, -1.0f})
         .stream(m::vec<ui8, 3>{255, 0, 255});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(6))
-        .stream(m::vec<f32, 3>{-1.0f, -1.0f, -1.0f})
+        .stream(m::vec<fix32, 3>{-1.0f, -1.0f, -1.0f})
         .stream(m::vec<ui8, 3>{255, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(7))
-        .stream(m::vec<f32, 3>{1.0f, -1.0f, -1.0f})
+        .stream(m::vec<fix32, 3>{1.0f, -1.0f, -1.0f})
         .stream(m::vec<ui8, 3>{255, 255, 255});
   }
 
@@ -799,16 +799,17 @@ TEST_CASE("rast.3Dcube") {
 
   bgfx::ProgramHandle l_program = ColorInterpolationShader::load_program();
 
-  m::mat<f32, 4, 4> l_view, l_proj;
+  m::mat<fix32, 4, 4> l_view, l_proj;
   {
-    const m::vec<f32, 3> at = {0.0f, 0.0f, 0.0f};
-    const m::vec<f32, 3> eye = {0.0f, 0.0f, -35.0f};
+    const m::vec<fix32, 3> at = {0.0f, 0.0f, 0.0f};
+    const m::vec<fix32, 3> eye = {0.0f, 0.0f, -35.0f};
 
     // Set view and projection matrix for view 0.
     {
       l_view = m::look_at(eye, at, {0, 1, 0});
-      l_proj = m::perspective(60.0f * m::deg_to_rad,
-                              float(l_width) / float(l_height), 0.1f, 100.0f);
+      l_proj =
+          m::perspective(fix32(60.0f) * m::deg_to_rad,
+                         fix32(l_width) / l_height, fix32(0.1f), fix32(100.0f));
     }
   }
 
@@ -822,7 +823,7 @@ TEST_CASE("rast.3Dcube") {
   // Submit 11x11 cubes.
   for (uint32_t yy = 0; yy < 11; ++yy) {
     for (uint32_t xx = 0; xx < 11; ++xx) {
-      m::mat<f32, 4, 4> l_transform = m::mat<f32, 4, 4>::getIdentity();
+      m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
       l_transform.at(3, 0) = -15.0f + xx * 3.0f;
       l_transform.at(3, 1) = -15.0f + yy * 3.0f;
       l_transform.at(3, 2) = 0.0f;

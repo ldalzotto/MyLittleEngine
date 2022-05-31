@@ -79,6 +79,11 @@ template <typename T, ui8 ScaleFactor> struct fixed {
       return -1 * ((-m_value) >> ScaleFactor);
     }
   };
+  FORCE_INLINE constexpr operator ui32() { return i32(*this); };
+  FORCE_INLINE constexpr operator i16() { return i32(*this); };
+  FORCE_INLINE constexpr operator ui16() { return i32(*this); };
+  FORCE_INLINE constexpr operator i8() { return i32(*this); };
+  FORCE_INLINE constexpr operator ui8() { return i32(*this); };
 
   template <typename TT> FORCE_INLINE constexpr fixed(TT p_other) {
     __make(p_other);
