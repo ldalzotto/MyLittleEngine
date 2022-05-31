@@ -12,7 +12,6 @@ TEST_CASE("math.fixed") {
   fix32 l_value_div = l_value / 2;
   REQUIRE(((l_value_div >= fix32(5.20f)) && (l_value_div <= 5.30f)));
 };
-#if 1
 
 struct trigo_test_accumulator {
   container::span<fix32> m_errors;
@@ -217,7 +216,5 @@ TEST_CASE("math.fixed.pow") {
   l_acc.free();
   l_pow_input.free();
 };
-
-#endif
 
 #include <sys/sys_impl.hpp>

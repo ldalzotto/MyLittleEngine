@@ -4,8 +4,6 @@
 #include <cor/assertions.hpp>
 #include <m/math.hpp>
 
-// TODO -> remove NumberType(1) that is being used to properly convert type.
-
 namespace m {
 
 namespace details {
