@@ -39,7 +39,7 @@ vc 50 50 50
         container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
     auto l_view =
-        assets::mesh_compiled_bytes::view{.m_data = l_compiled_mesh.data()};
+        assets::mesh_intermediary_bytes::view{.m_data = l_compiled_mesh.data()};
 
     container::arr<m::vec<fix32, 3>, 8> l_expected_vertices = {
         m::vec<fix32, 3>{1.000000f, -1.000000f, -1.000000f},
@@ -106,7 +106,7 @@ vn 0.000000 0.000000 -1.000000
         container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
     auto l_view =
-        assets::mesh_compiled_bytes::view{.m_data = l_compiled_mesh.data()};
+        assets::mesh_intermediary_bytes::view{.m_data = l_compiled_mesh.data()};
 
     container::arr<m::vec<fix32, 3>, 8> l_expected_vertices = {
         m::vec<fix32, 3>{1.000000f, -1.000000f, -1.000000f},

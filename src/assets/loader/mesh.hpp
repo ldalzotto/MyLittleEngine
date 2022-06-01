@@ -7,7 +7,7 @@
 namespace assets {
 
 // TODO -> improving this format to be more generic ?
-struct mesh_compiled_bytes {
+struct mesh_intermediary_bytes {
 
   struct header {
     uimax m_position_begin;
@@ -111,7 +111,7 @@ struct obj_mesh_bytes {
     deserializer{*this}.mesh_header_pass();
   };
 
-  void mesh_fill_pass(const mesh_compiled_bytes::view &p_mesh_view) {
+  void mesh_fill_pass(const mesh_intermediary_bytes::view &p_mesh_view) {
     deserializer{*this}.mesh_fill_pass(p_mesh_view);
   };
 
@@ -138,7 +138,7 @@ private:
       }
     };
 
-    void mesh_fill_pass(const mesh_compiled_bytes::view &p_mesh_view) {
+    void mesh_fill_pass(const mesh_intermediary_bytes::view &p_mesh_view) {
 
       p_mesh_view.initialize_header(thiz.m_position_count,
                                     thiz.m_color_begin != -1, thiz.m_uv_count,
@@ -378,11 +378,11 @@ private:
     l_mesh_bytes.mesh_header_pass();
 
     container::span<ui8> l_value;
-    l_value.allocate(mesh_compiled_bytes::size_of(
+    l_value.allocate(mesh_intermediary_bytes::size_of(
         l_mesh_bytes.m_position_count, l_mesh_bytes.m_color_begin != -1,
         l_mesh_bytes.m_uv_count, l_mesh_bytes.m_normal_count));
 
-    l_mesh_bytes.mesh_fill_pass(mesh_compiled_bytes::view{l_value.data()});
+    l_mesh_bytes.mesh_fill_pass(mesh_intermediary_bytes::view{l_value.data()});
     return l_value;
   };
 };
