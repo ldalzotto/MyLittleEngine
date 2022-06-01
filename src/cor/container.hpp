@@ -44,8 +44,7 @@ template <typename T> struct range {
     sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
   };
 
-  template<typename TT>
-  void copy_from(const range<TT> &p_from) const {
+  template <typename TT> void copy_from(const range<TT> &p_from) const {
     range l_casted_range = p_from.template cast_to<T>();
     copy_from(l_casted_range);
   };
@@ -455,21 +454,21 @@ static inline void defragment(vector<heap_chunk> &p_chunks) {
 }; // namespace heap_chunks
 
 struct heap_intrusive {
-  uimax m_single_page_capacity;
   uimax m_element_count;
   vector<heap_chunk> m_free_chunks;
   pool<heap_chunk> m_allocated_chunk;
 
   enum class state { Undefined = 0, NewChunkPushed = 1 } m_state;
+  uimax m_last_pushed_chunk_size;
 
   uimax &count() { return m_element_count; };
 
-  void allocate(uimax p_chunk_size) {
-    m_single_page_capacity = p_chunk_size;
+  void allocate() {
     m_free_chunks.allocate(0);
     m_allocated_chunk.allocate(0);
     m_element_count = 0;
     m_state = state::Undefined;
+    m_last_pushed_chunk_size = 0;
   };
 
   void free() {
@@ -477,7 +476,10 @@ struct heap_intrusive {
     m_allocated_chunk.free();
   };
 
-  void clear_state() { m_state = state::Undefined; };
+  void clear_state() {
+    m_state = state::Undefined;
+    m_last_pushed_chunk_size = 0;
+  };
 
   uimax find_next_chunk(uimax p_size) {
     uimax l_chunk_index = -1;
@@ -486,8 +488,9 @@ struct heap_intrusive {
       heap_chunks::defragment(m_free_chunks);
       if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                         &l_chunk_index)) {
-        __push_new_chunk();
+        __push_new_chunk(p_size);
         m_state = state::NewChunkPushed;
+        m_last_pushed_chunk_size = p_size;
         heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                      &l_chunk_index);
       }
@@ -529,10 +532,10 @@ struct heap_intrusive {
   };
 
 private:
-  void __push_new_chunk() {
+  void __push_new_chunk(uimax p_desired_size) {
     heap_chunk l_chunk;
     l_chunk.m_begin = m_element_count;
-    l_chunk.m_size = m_single_page_capacity;
+    l_chunk.m_size = p_desired_size;
     m_free_chunks.push_back(l_chunk);
     m_element_count += l_chunk.m_size;
   };
@@ -662,8 +665,8 @@ struct heap {
   heap_intrusive m_intrusive;
   span<ui8> m_buffer;
 
-  void allocate(uimax p_chunk_size) {
-    m_intrusive.allocate(p_chunk_size);
+  void allocate() {
+    m_intrusive.allocate();
     m_buffer.allocate(0);
   };
 
@@ -690,7 +693,7 @@ struct heap {
 
 private:
   void __push_new_chunk() {
-    m_buffer.realloc(m_buffer.count() + m_intrusive.m_single_page_capacity);
+    m_buffer.realloc(m_buffer.count() + m_intrusive.m_last_pushed_chunk_size);
   };
 };
 

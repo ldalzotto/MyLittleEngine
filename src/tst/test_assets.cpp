@@ -37,9 +37,6 @@ vc 50 50 50
     auto l_compiled_mesh = assets::obj_mesh_loader().compile(
         container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-    auto l_view =
-        assets::mesh_intermediary_bytes::view{.m_data = l_compiled_mesh.data()};
-
     container::arr<m::vec<fix32, 3>, 8> l_expected_vertices = {
         m::vec<fix32, 3>{1.000000f, -1.000000f, -1.000000f},
         m::vec<fix32, 3>{1.000000f, -1.000000f, 1.000000f},
@@ -50,7 +47,8 @@ vc 50 50 50
         m::vec<fix32, 3>{-1.000000, 1.000000, 1.000000},
         m::vec<fix32, 3>{-1.000000, 1.000000, -1.000000}};
 
-    REQUIRE(l_expected_vertices.range().is_contained_by(l_view.position()));
+    REQUIRE(l_expected_vertices.range().is_contained_by(
+        l_compiled_mesh.position().range()));
 
     container::arr<m::vec<ui8, 3>, 7> l_expected_colors = {
         m::vec<ui8, 3>{0, 0, 0},    m::vec<ui8, 3>{10, 10, 10},
@@ -59,8 +57,8 @@ vc 50 50 50
         m::vec<ui8, 3>{50, 50, 50},
     };
 
-    REQUIRE(l_view.header().has_color());
-    REQUIRE(l_expected_colors.range().is_contained_by(l_view.color()));
+    REQUIRE(l_expected_colors.range().is_contained_by(
+        l_compiled_mesh.color().range()));
 
     l_compiled_mesh.free();
   }
@@ -104,9 +102,6 @@ vn 0.000000 0.000000 -1.000000
     auto l_compiled_mesh = assets::obj_mesh_loader().compile(
         container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-    auto l_view =
-        assets::mesh_intermediary_bytes::view{.m_data = l_compiled_mesh.data()};
-
     container::arr<m::vec<fix32, 3>, 8> l_expected_vertices = {
         m::vec<fix32, 3>{1.000000f, -1.000000f, -1.000000f},
         m::vec<fix32, 3>{1.000000f, -1.000000f, 1.000000f},
@@ -117,7 +112,8 @@ vn 0.000000 0.000000 -1.000000
         m::vec<fix32, 3>{-1.000000, 1.000000, 1.000000},
         m::vec<fix32, 3>{-1.000000, 1.000000, -1.000000}};
 
-    REQUIRE(l_expected_vertices.range().is_contained_by(l_view.position()));
+    REQUIRE(l_expected_vertices.range().is_contained_by(
+        l_compiled_mesh.position().range()));
 
     container::arr<m::vec<fix32, 2>, 14> l_expected_uvs = {
         m::vec<fix32, 2>{1.000000, 0.333333},
@@ -135,8 +131,8 @@ vn 0.000000 0.000000 -1.000000
         m::vec<fix32, 2>{0.333333, 0.666667},
         m::vec<fix32, 2>{1.000000, 0.000000}};
 
-    REQUIRE(l_view.header().has_uv());
-    REQUIRE(l_expected_uvs.range().is_contained_by(l_view.uv()));
+    REQUIRE(
+        l_expected_uvs.range().is_contained_by(l_compiled_mesh.uv().range()));
 
     container::arr<m::vec<fix32, 3>, 6> l_expected_normals = {
         m::vec<fix32, 3>{0.000000, -1.000000, 0.000000},
@@ -147,8 +143,8 @@ vn 0.000000 0.000000 -1.000000
         m::vec<fix32, 3>{0.000000, 0.000000, -1.000000},
     };
 
-    REQUIRE(l_view.header().has_normal());
-    REQUIRE(l_expected_normals.range().is_contained_by(l_view.normal()));
+    REQUIRE(l_expected_normals.range().is_contained_by(
+        l_compiled_mesh.normal().range()));
 
     l_compiled_mesh.free();
   }

@@ -14,96 +14,39 @@ enum class mesh_composition : ui8 {
   Normal = Uv * 2
 };
 
-struct mesh {
-  container::heap m_heap;
-
-  void allocate() { m_heap.allocate(2); };
-  // struct view {};
-};
-
 // Everything below is details
 
 // TODO -> improving this format to be more generic ?
-struct mesh_intermediary_bytes {
+struct mesh_intermediary {
 
-  struct header {
-    uimax m_position_begin;
-    uimax m_position_count;
-    uimax m_color_begin;
-    uimax m_color_count;
-    uimax m_uv_begin;
-    uimax m_uv_count;
-    uimax m_normal_begin;
-    uimax m_normal_count;
+  mesh_composition m_order[4]; // TODO
 
-    ui8 has_color() const { return m_color_count != 0; };
-    ui8 has_uv() const { return m_uv_count != 0; };
-    ui8 has_normal() const { return m_normal_count != 0; }
+  struct heap {
+    container::span<m::vec<fix32, 3>> m_positions;
+    container::span<m::vec<ui8, 3>> m_colors;
+    container::span<m::vec<fix32, 2>> m_uvs;
+    container::span<m::vec<fix32, 3>> m_normals;
+  } m_heap;
+
+  void allocate(uimax p_position_count, uimax p_color_count, uimax p_uv_count,
+                uimax p_normal_count) {
+    m_heap.m_positions.allocate(p_position_count);
+    m_heap.m_colors.allocate(p_color_count);
+    m_heap.m_uvs.allocate(p_uv_count);
+    m_heap.m_normals.allocate(p_normal_count);
   };
 
-  static uimax size_of(uimax p_position_count, ui8 p_color, uimax p_uv_count,
-                       uimax p_normal_count) {
-    return sizeof(header) + (sizeof(m::vec<fix32, 3>) * p_position_count) +
-           (p_color ? (sizeof(m::vec<ui8, 3>) * p_position_count) : 0) +
-           (sizeof(m::vec<fix32, 2>) * p_uv_count) +
-           (sizeof(m::vec<fix32, 3>) * p_normal_count);
+  void free() {
+    m_heap.m_positions.free();
+    m_heap.m_colors.free();
+    m_heap.m_uvs.free();
+    m_heap.m_normals.free();
   };
 
-  struct view {
-    ui8 *m_data;
-
-    header &header() const { return *(struct header *)m_data; };
-
-    void initialize_header(uimax p_position_count, uimax p_color_count,
-                           uimax p_uv_count, uimax p_normal_count) const {
-
-      uimax l_it = 0;
-      auto &l_header = header();
-      l_it += sizeof(struct header);
-      l_header.m_position_count = p_position_count;
-      l_header.m_position_begin = l_it;
-      l_it += (l_header.m_position_count * sizeof(m::vec<fix32, 3>));
-      
-      l_header.m_color_count = p_color_count;
-      l_header.m_color_begin = l_it;
-      l_it += (p_color_count * sizeof(m::vec<fix32, 3>));
-
-      l_header.m_uv_count = p_uv_count;
-      l_header.m_uv_begin = l_it;
-      l_it += (p_uv_count * sizeof(m::vec<fix32, 2>));
-
-      l_header.m_normal_count = p_normal_count;
-      l_header.m_normal_begin = l_it;
-      l_it += (p_normal_count * sizeof(m::vec<fix32, 3>));
-    };
-
-    container::range<m::vec<fix32, 3>> position() const {
-      return container::range<m::vec<fix32, 3>>::make(
-          (m::vec<fix32, 3> *)(m_data + header().m_position_begin),
-          header().m_position_count);
-    };
-
-    container::range<m::vec<ui8, 3>> color() const {
-      assert_debug(header().has_color());
-      return container::range<m::vec<ui8, 3>>::make(
-          (m::vec<ui8, 3> *)(m_data + header().m_color_begin),
-          header().m_position_count);
-    };
-
-    container::range<m::vec<fix32, 2>> uv() const {
-      assert_debug(header().has_uv());
-      return container::range<m::vec<fix32, 2>>::make(
-          (m::vec<fix32, 2> *)(m_data + header().m_uv_begin),
-          header().m_uv_count);
-    };
-
-    container::range<m::vec<fix32, 3>> normal() const {
-      assert_debug(header().has_normal());
-      return container::range<m::vec<fix32, 3>>::make(
-          (m::vec<fix32, 3> *)(m_data + header().m_normal_begin),
-          header().m_normal_count);
-    };
-  };
+  container::span<m::vec<fix32, 3>> &position() { return m_heap.m_positions; };
+  container::span<m::vec<ui8, 3>> &color() { return m_heap.m_colors; };
+  container::span<m::vec<fix32, 2>> &uv() { return m_heap.m_uvs; };
+  container::span<m::vec<fix32, 3>> &normal() { return m_heap.m_normals; };
 };
 
 struct obj_mesh_bytes {
@@ -130,8 +73,8 @@ struct obj_mesh_bytes {
     deserializer{*this}.mesh_header_pass();
   };
 
-  void mesh_fill_pass(const mesh_intermediary_bytes::view &p_mesh_view) {
-    deserializer{*this}.mesh_fill_pass(p_mesh_view);
+  void mesh_fill_pass(mesh_intermediary &p_mesh_intermediary) {
+    deserializer{*this}.mesh_fill_pass(p_mesh_intermediary);
   };
 
 private:
@@ -157,15 +100,11 @@ private:
       }
     };
 
-    void mesh_fill_pass(const mesh_intermediary_bytes::view &p_mesh_view) {
-
-      p_mesh_view.initialize_header(thiz.m_position_count,
-                                    thiz.m_color_count, thiz.m_uv_count,
-                                    thiz.m_normal_count);
+    void mesh_fill_pass(mesh_intermediary &p_mesh_intermediary) {
 
       // vertices
       {
-        auto l_mesh_vertices = p_mesh_view.position();
+        auto l_mesh_vertices = p_mesh_intermediary.position();
         uimax l_line_count = 0;
         m_iterator = thiz.m_position_begin;
         while (l_line_count < thiz.m_position_count) {
@@ -200,8 +139,8 @@ private:
       }
 
       // color
-      if (p_mesh_view.header().has_color()) {
-        auto l_mesh_color = p_mesh_view.color();
+      if (p_mesh_intermediary.color().count() > 0) {
+        auto l_mesh_color = p_mesh_intermediary.color();
         uimax l_line_count = 0;
         m_iterator = thiz.m_color_begin;
         while (l_line_count < thiz.m_color_count) {
@@ -236,8 +175,8 @@ private:
       }
 
       // uv
-      if (p_mesh_view.header().has_uv()) {
-        auto l_mesh_uv = p_mesh_view.uv();
+      if (p_mesh_intermediary.uv().count() > 0) {
+        auto l_mesh_uv = p_mesh_intermediary.uv();
         uimax l_line_count = 0;
         m_iterator = thiz.m_uv_begin;
         while (l_line_count < thiz.m_uv_count) {
@@ -265,8 +204,8 @@ private:
       }
 
       // normals
-      if (p_mesh_view.header().has_normal()) {
-        auto l_mesh_normals = p_mesh_view.normal();
+      if (p_mesh_intermediary.normal().count() > 0) {
+        auto l_mesh_normals = p_mesh_intermediary.normal();
         uimax l_line_count = 0;
         m_iterator = thiz.m_normal_begin;
         while (l_line_count < thiz.m_normal_count) {
@@ -311,7 +250,7 @@ private:
         thiz.m_position_count += 1;
       } else if (m_state == state::ReadColor) {
         thiz.m_color_count += 1;
-      }else if (m_state == state::ReadUv) {
+      } else if (m_state == state::ReadUv) {
         thiz.m_uv_count += 1;
       } else if (m_state == state::ReadNormal) {
         thiz.m_normal_count += 1;
@@ -389,22 +328,22 @@ private:
 };
 
 struct obj_mesh_loader {
-  container::span<ui8> compile(const container::range<ui8> &p_raw_obj) {
+  mesh_intermediary compile(const container::range<ui8> &p_raw_obj) {
     return __compile(p_raw_obj);
   };
 
 private:
-  container::span<ui8> __compile(const container::range<ui8> &p_raw_obj) {
+  mesh_intermediary __compile(const container::range<ui8> &p_raw_obj) {
     obj_mesh_bytes l_mesh_bytes = obj_mesh_bytes{.m_data = p_raw_obj};
     l_mesh_bytes.mesh_header_pass();
 
-    container::span<ui8> l_value;
-    l_value.allocate(mesh_intermediary_bytes::size_of(
-        l_mesh_bytes.m_position_count, l_mesh_bytes.m_color_begin != -1,
-        l_mesh_bytes.m_uv_count, l_mesh_bytes.m_normal_count));
+    mesh_intermediary l_mesh_intermediary;
+    l_mesh_intermediary.allocate(
+        l_mesh_bytes.m_position_count, l_mesh_bytes.m_color_count,
+        l_mesh_bytes.m_uv_count, l_mesh_bytes.m_normal_count);
 
-    l_mesh_bytes.mesh_fill_pass(mesh_intermediary_bytes::view{l_value.data()});
-    return l_value;
+    l_mesh_bytes.mesh_fill_pass(l_mesh_intermediary);
+    return l_mesh_intermediary;
   };
 };
 
