@@ -6,20 +6,37 @@
 
 namespace assets {
 
+enum class mesh_composition : ui8 {
+  None = 0,
+  Position = 1,
+  Color = Position * 2,
+  Uv = Color * 2,
+  Normal = Uv * 2
+};
+
+struct mesh {
+  container::heap m_heap;
+
+  void allocate() { m_heap.allocate(2); };
+  // struct view {};
+};
+
+// Everything below is details
+
 // TODO -> improving this format to be more generic ?
 struct mesh_intermediary_bytes {
 
   struct header {
     uimax m_position_begin;
     uimax m_position_count;
-    ui8 m_color;
     uimax m_color_begin;
+    uimax m_color_count;
     uimax m_uv_begin;
     uimax m_uv_count;
     uimax m_normal_begin;
     uimax m_normal_count;
 
-    ui8 has_color() const { return m_color; };
+    ui8 has_color() const { return m_color_count != 0; };
     ui8 has_uv() const { return m_uv_count != 0; };
     ui8 has_normal() const { return m_normal_count != 0; }
   };
@@ -37,7 +54,7 @@ struct mesh_intermediary_bytes {
 
     header &header() const { return *(struct header *)m_data; };
 
-    void initialize_header(uimax p_position_count, ui8 p_color,
+    void initialize_header(uimax p_position_count, uimax p_color_count,
                            uimax p_uv_count, uimax p_normal_count) const {
 
       uimax l_it = 0;
@@ -46,11 +63,11 @@ struct mesh_intermediary_bytes {
       l_header.m_position_count = p_position_count;
       l_header.m_position_begin = l_it;
       l_it += (l_header.m_position_count * sizeof(m::vec<fix32, 3>));
+      
+      l_header.m_color_count = p_color_count;
       l_header.m_color_begin = l_it;
-      l_header.m_color = p_color;
-      if (p_color) {
-        l_it += (l_header.m_position_count * sizeof(m::vec<fix32, 3>));
-      }
+      l_it += (p_color_count * sizeof(m::vec<fix32, 3>));
+
       l_header.m_uv_count = p_uv_count;
       l_header.m_uv_begin = l_it;
       l_it += (p_uv_count * sizeof(m::vec<fix32, 2>));
@@ -94,6 +111,7 @@ struct obj_mesh_bytes {
 
   uimax m_position_count;
   uimax m_position_begin;
+  uimax m_color_count;
   uimax m_color_begin;
   uimax m_uv_begin;
   uimax m_uv_count;
@@ -103,6 +121,7 @@ struct obj_mesh_bytes {
   void mesh_header_pass() {
     m_position_count = 0;
     m_position_begin = -1;
+    m_color_count = 0;
     m_color_begin = -1;
     m_uv_begin = -1;
     m_uv_count = 0;
@@ -141,7 +160,7 @@ private:
     void mesh_fill_pass(const mesh_intermediary_bytes::view &p_mesh_view) {
 
       p_mesh_view.initialize_header(thiz.m_position_count,
-                                    thiz.m_color_begin != -1, thiz.m_uv_count,
+                                    thiz.m_color_count, thiz.m_uv_count,
                                     thiz.m_normal_count);
 
       // vertices
@@ -185,7 +204,7 @@ private:
         auto l_mesh_color = p_mesh_view.color();
         uimax l_line_count = 0;
         m_iterator = thiz.m_color_begin;
-        while (l_line_count < thiz.m_position_count) {
+        while (l_line_count < thiz.m_color_count) {
           next_line();
           auto l_vertex_coordinates = m_line.slide(3);
           auto l_white_space_it = 0;
@@ -290,7 +309,9 @@ private:
 
       if (m_state == state::ReadPosition) {
         thiz.m_position_count += 1;
-      } else if (m_state == state::ReadUv) {
+      } else if (m_state == state::ReadColor) {
+        thiz.m_color_count += 1;
+      }else if (m_state == state::ReadUv) {
         thiz.m_uv_count += 1;
       } else if (m_state == state::ReadNormal) {
         thiz.m_normal_count += 1;

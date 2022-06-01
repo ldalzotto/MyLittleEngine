@@ -31,7 +31,6 @@ vc 20 20 20
 vc 15 15 15
 vc 30 30 30
 vc 40 40 40
-vc 10 10 10
 vc 50 50 50
   )"""";
 
@@ -53,11 +52,11 @@ vc 50 50 50
 
     REQUIRE(l_expected_vertices.range().is_contained_by(l_view.position()));
 
-    container::arr<m::vec<ui8, 3>, 8> l_expected_colors = {
+    container::arr<m::vec<ui8, 3>, 7> l_expected_colors = {
         m::vec<ui8, 3>{0, 0, 0},    m::vec<ui8, 3>{10, 10, 10},
         m::vec<ui8, 3>{20, 20, 20}, m::vec<ui8, 3>{15, 15, 15},
         m::vec<ui8, 3>{30, 30, 30}, m::vec<ui8, 3>{40, 40, 40},
-        m::vec<ui8, 3>{10, 10, 10}, m::vec<ui8, 3>{50, 50, 50},
+        m::vec<ui8, 3>{50, 50, 50},
     };
 
     REQUIRE(l_view.header().has_color());
