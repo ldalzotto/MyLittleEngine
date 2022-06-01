@@ -7,19 +7,24 @@
 namespace assets {
 
 struct mesh_compiled_bytes {
-  // container::span<ui8> m_data;
 
   struct header {
     uimax m_vertex_begin;
     uimax m_vertex_count;
+    ui8 m_vertex_color;
     uimax m_vertex_color_begin;
+    uimax m_uv_begin;
+    uimax m_uv_count;
 
-    ui8 has_vertex_color() const { return m_vertex_color_begin != -1; };
+    ui8 has_vertex_color() const { return m_vertex_color; };
+    ui8 has_uv() const { return m_uv_count != 0; };
   };
 
-  static uimax size_of(uimax p_vertex_count, ui8 p_vertex_color) {
+  static uimax size_of(uimax p_vertex_count, ui8 p_vertex_color,
+                       uimax p_uv_count) {
     return sizeof(header) + (sizeof(m::vec<fix32, 3>) * p_vertex_count) +
-           (p_vertex_color ? (sizeof(m::vec<ui8, 3>) * p_vertex_count) : 0);
+           (p_vertex_color ? (sizeof(m::vec<ui8, 3>) * p_vertex_count) : 0) +
+           (sizeof(m::vec<fix32, 2>) * p_uv_count);
   };
 
   struct view {
@@ -27,13 +32,27 @@ struct mesh_compiled_bytes {
 
     header &header() const { return *(struct header *)m_data; };
 
-    void initialize_header(uimax p_vertex_count, ui8 p_vertex_color) const {
+    void initialize_header(uimax p_vertex_count, ui8 p_vertex_color,
+                           uimax p_uv_count) const {
+
+      uimax l_it = 0;
       auto &l_header = header();
+      l_it += sizeof(struct header);
       l_header.m_vertex_count = p_vertex_count;
-      l_header.m_vertex_begin = sizeof(struct header);
-      l_header.m_vertex_color_begin =
-          l_header.m_vertex_begin +
-          l_header.m_vertex_count * sizeof(m::vec<fix32, 3>);
+      l_header.m_vertex_begin = l_it;
+      l_it += (l_header.m_vertex_count * sizeof(m::vec<fix32, 3>));
+      l_header.m_vertex_color_begin = l_it;
+      l_header.m_vertex_color = p_vertex_color;
+      if (p_vertex_color) {
+        l_it += (l_header.m_vertex_count * sizeof(m::vec<fix32, 3>));
+        // l_header.m_vertex_color_begin = l_it;
+      }
+      l_header.m_uv_count = p_uv_count;
+      l_header.m_uv_begin = l_header.m_vertex_color_begin;
+      if (p_vertex_color) {
+        l_header.m_uv_begin = l_it;
+        l_it += (p_vertex_count * sizeof(m::vec<fix32, 2>));
+      }
     };
 
     container::range<m::vec<fix32, 3>> vertices() const {
@@ -48,6 +67,13 @@ struct mesh_compiled_bytes {
           (m::vec<ui8, 3> *)(m_data + header().m_vertex_color_begin),
           header().m_vertex_count);
     };
+
+    container::range<m::vec<fix32, 2>> uv() const {
+      assert_debug(header().has_uv());
+      return container::range<m::vec<fix32, 2>>::make(
+          (m::vec<fix32, 2> *)(m_data + header().m_uv_begin),
+          header().m_uv_count);
+    };
   };
 };
 
@@ -57,11 +83,15 @@ struct obj_mesh_bytes {
   uimax m_vertex_count;
   uimax m_vertex_begin;
   uimax m_vertex_color_begin;
+  uimax m_uv_begin;
+  uimax m_uv_count;
 
   void mesh_header_pass() {
     m_vertex_count = 0;
     m_vertex_begin = -1;
     m_vertex_color_begin = -1;
+    m_uv_begin = -1;
+    m_uv_count = 0;
     deserializer{*this}.mesh_header_pass();
   };
 
@@ -79,7 +109,8 @@ private:
     enum class state {
       Undefined = 0,
       ReadVertex = 1,
-      ReadVertexColor = 2
+      ReadVertexColor = 2,
+      ReadUv = 3
     } m_state;
 
     void mesh_header_pass() {
@@ -93,7 +124,8 @@ private:
     void mesh_fill_pass(const mesh_compiled_bytes::view &p_mesh_view) {
 
       p_mesh_view.initialize_header(thiz.m_vertex_count,
-                                    thiz.m_vertex_color_begin != -1);
+                                    thiz.m_vertex_color_begin != -1,
+                                    thiz.m_uv_count);
 
       // vertices
       {
@@ -121,10 +153,11 @@ private:
           }
           auto l_z = l_vertex_coordinates.shrink_to(l_white_space_it);
 
-          l_mesh_vertices.at(l_line_count) = {
+          const m::vec<fix32, 3> l_position = {
               sys::stof(l_x.data(), l_x.count()),
               sys::stof(l_y.data(), l_y.count()),
               sys::stof(l_z.data(), l_z.count())};
+          l_mesh_vertices.at(l_line_count) = l_position;
 
           l_line_count += 1;
         }
@@ -156,10 +189,40 @@ private:
           }
           auto l_b = l_vertex_coordinates.shrink_to(l_white_space_it);
 
-         const m::vec<ui8, 3> l_color = {sys::stoui<ui8>(l_r.data(), l_r.count()),
-                                    sys::stoui<ui8>(l_g.data(), l_g.count()),
-                                    sys::stoui<ui8>(l_b.data(), l_b.count())};
+          const m::vec<ui8, 3> l_color = {
+              sys::stoui<ui8>(l_r.data(), l_r.count()),
+              sys::stoui<ui8>(l_g.data(), l_g.count()),
+              sys::stoui<ui8>(l_b.data(), l_b.count())};
           l_mesh_vertex_color.at(l_line_count) = l_color;
+
+          l_line_count += 1;
+        }
+      }
+
+      // uv
+      if (p_mesh_view.header().has_uv()) {
+        auto l_mesh_uv = p_mesh_view.uv();
+        uimax l_line_count = 0;
+        m_iterator = thiz.m_uv_begin;
+        while (l_line_count < thiz.m_uv_count) {
+          next_line();
+          auto l_vertex_coordinates = m_line.slide(3);
+          auto l_white_space_it = 0;
+          while (l_vertex_coordinates.at(l_white_space_it) != ' ') {
+            l_white_space_it += 1;
+          }
+          auto l_u = l_vertex_coordinates.shrink_to(l_white_space_it);
+          l_vertex_coordinates.slide_self(l_white_space_it + 1);
+          l_white_space_it = 0;
+
+          while (l_white_space_it != l_vertex_coordinates.count()) {
+            l_white_space_it += 1;
+          }
+          auto l_v = l_vertex_coordinates.shrink_to(l_white_space_it);
+
+          const m::vec<fix32, 2> l_uv = {sys::stof(l_u.data(), l_u.count()),
+                                         sys::stof(l_v.data(), l_v.count())};
+          l_mesh_uv.at(l_line_count) = l_uv;
 
           l_line_count += 1;
         }
@@ -174,6 +237,8 @@ private:
 
       if (m_state == state::ReadVertex) {
         thiz.m_vertex_count += 1;
+      } else if (m_state == state::ReadUv) {
+        thiz.m_uv_count += 1;
       }
     };
 
@@ -181,16 +246,14 @@ private:
 
       state l_line_state = state::Undefined;
       if (m_line.count() > 0) {
-        if (m_line.count() >= 2) {
-          if (m_line.at(0) == 'v') {
-            if (m_line.at(1) == 'c') {
-              l_line_state = state::ReadVertexColor;
-            } else {
-              l_line_state = state::ReadVertex;
-            }
-          }
-        } else {
-          if (m_line.at(0) == 'v') {
+        if (m_line.at(0) == 'v') {
+          if (m_line.at(1) == 'c') {
+            l_line_state = state::ReadVertexColor;
+          } else if (m_line.at(1) == 't') {
+            l_line_state = state::ReadUv;
+          } else if (m_line.at(1) == 'n') {
+            // TODO
+          } else {
             l_line_state = state::ReadVertex;
           }
         }
@@ -215,6 +278,8 @@ private:
         thiz.m_vertex_begin = m_iterator - m_line.count() - 1;
       } else if (p_next == state::ReadVertexColor) {
         thiz.m_vertex_color_begin = m_iterator - m_line.count() - 1;
+      } else if (p_next == state::ReadUv) {
+        thiz.m_uv_begin = m_iterator - m_line.count() - 1;
       }
       m_state = p_next;
     };
@@ -257,7 +322,8 @@ private:
 
     container::span<ui8> l_value;
     l_value.allocate(mesh_compiled_bytes::size_of(
-        l_mesh_bytes.m_vertex_count, l_mesh_bytes.m_vertex_color_begin != -1));
+        l_mesh_bytes.m_vertex_count, l_mesh_bytes.m_vertex_color_begin != -1,
+        l_mesh_bytes.m_uv_count));
 
     l_mesh_bytes.mesh_fill_pass(mesh_compiled_bytes::view{l_value.data()});
     return l_value;
