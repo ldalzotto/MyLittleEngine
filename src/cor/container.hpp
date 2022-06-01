@@ -44,6 +44,12 @@ template <typename T> struct range {
     sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
   };
 
+  template<typename TT>
+  void copy_from(const range<TT> &p_from) const {
+    range l_casted_range = p_from.template cast_to<T>();
+    copy_from(l_casted_range);
+  };
+
   template <typename TT> void copy_from(const TT &p_value) {
     assert_debug(sizeof(TT) <= m_count);
     sys::memcpy(m_begin, (void *)&p_value, sizeof(TT));
