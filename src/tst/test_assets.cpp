@@ -51,7 +51,7 @@ vc 50 50 50
         m::vec<fix32, 3>{-1.000000, 1.000000, 1.000000},
         m::vec<fix32, 3>{-1.000000, 1.000000, -1.000000}};
 
-    REQUIRE(l_expected_vertices.range().is_contained_by(l_view.vertices()));
+    REQUIRE(l_expected_vertices.range().is_contained_by(l_view.position()));
 
     container::arr<m::vec<ui8, 3>, 8> l_expected_colors = {
         m::vec<ui8, 3>{0, 0, 0},    m::vec<ui8, 3>{10, 10, 10},
@@ -60,8 +60,8 @@ vc 50 50 50
         m::vec<ui8, 3>{10, 10, 10}, m::vec<ui8, 3>{50, 50, 50},
     };
 
-    REQUIRE(l_view.header().has_vertex_color());
-    REQUIRE(l_expected_colors.range().is_contained_by(l_view.vertex_color()));
+    REQUIRE(l_view.header().has_color());
+    REQUIRE(l_expected_colors.range().is_contained_by(l_view.color()));
 
     l_compiled_mesh.free();
   }
@@ -118,7 +118,7 @@ vn 0.000000 0.000000 -1.000000
         m::vec<fix32, 3>{-1.000000, 1.000000, 1.000000},
         m::vec<fix32, 3>{-1.000000, 1.000000, -1.000000}};
 
-    REQUIRE(l_expected_vertices.range().is_contained_by(l_view.vertices()));
+    REQUIRE(l_expected_vertices.range().is_contained_by(l_view.position()));
 
     container::arr<m::vec<fix32, 2>, 14> l_expected_uvs = {
         m::vec<fix32, 2>{1.000000, 0.333333},
