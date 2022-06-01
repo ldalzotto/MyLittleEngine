@@ -139,6 +139,18 @@ vn 0.000000 0.000000 -1.000000
     REQUIRE(l_view.header().has_uv());
     REQUIRE(l_expected_uvs.range().is_contained_by(l_view.uv()));
 
+    container::arr<m::vec<fix32, 3>, 6> l_expected_normals = {
+        m::vec<fix32, 3>{0.000000, -1.000000, 0.000000},
+        m::vec<fix32, 3>{0.000000, 1.000000, 0.000000},
+        m::vec<fix32, 3>{1.000000, 0.000000, 0.000000},
+        m::vec<fix32, 3>{-0.000000, 0.000000, 1.000000},
+        m::vec<fix32, 3>{-1.000000, -0.000000, -0.000000},
+        m::vec<fix32, 3>{0.000000, 0.000000, -1.000000},
+    };
+
+    REQUIRE(l_view.header().has_normal());
+    REQUIRE(l_expected_normals.range().is_contained_by(l_view.normal()));
+
     l_compiled_mesh.free();
   }
 };
