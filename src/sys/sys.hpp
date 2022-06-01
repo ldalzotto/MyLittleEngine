@@ -32,9 +32,9 @@ struct sys {
   static void sassert(bool p_condition);
   static void abort();
 
-  inline static f32 stof(const ui8 *p_value, uimax p_count) {
+  inline static f32 stof(const ui8 *p_value, ui8 p_count) {
     f32 l_return = 0;
-    uimax l_separation_index = p_count - 1;
+    ui8 l_separation_index = p_count - 1;
     for (auto i = 0; i < p_count; ++i) {
       if (p_value[i] == '.') {
         l_separation_index = i;
@@ -47,24 +47,24 @@ struct sys {
       l_negate = 1;
     }
 
-    uimax l_right_begin = l_negate;
-    uimax l_right_end = l_separation_index;
-    uimax l_right_count = l_right_end - l_right_begin;
+    auto l_right_begin = l_negate;
+    auto l_right_end = l_separation_index;
+    auto l_right_count = l_right_end - l_right_begin;
 
-    uimax l_left_begin = l_separation_index + 1;
-    uimax l_left_end = p_count;
-    uimax l_left_count = l_left_end - l_left_begin;
+    auto l_left_begin = l_separation_index + 1;
+    auto l_left_end = p_count;
+    auto l_left_count = l_left_end - l_left_begin;
 
     f32 l_pow = 1.0f;
     for (auto i = l_right_end; i > l_right_begin; --i) {
-      const f32 l_value = f32(p_value[i - 1] - 48) ;
+      const f32 l_value = f32(p_value[i - 1] - 48);
       l_return += l_value * l_pow;
       l_pow *= 10;
     }
 
     l_pow = 0.1f;
     for (auto i = l_left_begin; i < l_left_end; ++i) {
-      const f32 l_value = f32(p_value[i] - 48) ;
+      const f32 l_value = f32(p_value[i] - 48);
       l_return += l_value * l_pow;
       l_pow /= 10;
     }
@@ -73,6 +73,17 @@ struct sys {
       l_return *= -1;
     }
 
+    return l_return;
+  };
+
+  template <typename T> inline static T stoui(const ui8 *p_value, ui8 p_count) {
+    T l_return = 0;
+    T l_pow = 1;
+    for (auto i = p_count - 1; i >= 0; --i) {
+      const T l_value = T(p_value[i]) - 48;
+      l_return += (l_value * l_pow);
+      l_pow *= 10;
+    }
     return l_return;
   };
 };

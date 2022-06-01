@@ -24,7 +24,7 @@ struct mesh_compiled_bytes {
 
   struct view {
     ui8 *m_data;
-    
+
     header &header() const { return *(struct header *)m_data; };
 
     void initialize_header(uimax p_vertex_count, ui8 p_vertex_color) const {
@@ -134,10 +134,10 @@ private:
       if (p_mesh_view.header().has_vertex_color()) {
         auto l_mesh_vertex_color = p_mesh_view.vertex_color();
         uimax l_line_count = 0;
-        m_iterator = thiz.m_vertex_begin;
+        m_iterator = thiz.m_vertex_color_begin;
         while (l_line_count < thiz.m_vertex_count) {
           next_line();
-          auto l_vertex_coordinates = m_line.slide(2);
+          auto l_vertex_coordinates = m_line.slide(3);
           auto l_white_space_it = 0;
           while (l_vertex_coordinates.at(l_white_space_it) != ' ') {
             l_white_space_it += 1;
@@ -156,8 +156,10 @@ private:
           }
           auto l_b = l_vertex_coordinates.shrink_to(l_white_space_it);
 
-          // TODO
-          l_mesh_vertex_color.at(l_line_count) = {0, 0, 0};
+         const m::vec<ui8, 3> l_color = {sys::stoui<ui8>(l_r.data(), l_r.count()),
+                                    sys::stoui<ui8>(l_g.data(), l_g.count()),
+                                    sys::stoui<ui8>(l_b.data(), l_b.count())};
+          l_mesh_vertex_color.at(l_line_count) = l_color;
 
           l_line_count += 1;
         }
