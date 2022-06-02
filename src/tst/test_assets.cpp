@@ -25,146 +25,6 @@ v 1.000000 1.000000 -0.999999
 v 0.999999 1.000000 1.000001
 v -1.000000 1.000000 1.000000
 v -1.000000 1.000000 -1.000000
-vc 0 0 0
-vc 10 10 10
-vc 20 20 20
-vc 15 15 15
-vc 30 30 30
-vc 40 40 40
-vc 50 50 50
-  )"""";
-
-    auto l_compiled_mesh = assets::obj_mesh_loader().compile(
-        container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
-
-    container::arr<m::vec<fix32, 3>, 8> l_expected_vertices = {
-        m::vec<fix32, 3>{1.000000f, -1.000000f, -1.000000f},
-        m::vec<fix32, 3>{1.000000f, -1.000000f, 1.000000f},
-        m::vec<fix32, 3>{-1.000000, -1.000000, 1.000000},
-        m::vec<fix32, 3>{-1.000000, -1.000000, -1.000000},
-        m::vec<fix32, 3>{1.000000, 1.000000, -0.999999},
-        m::vec<fix32, 3>{0.999999, 1.000000, 1.000001},
-        m::vec<fix32, 3>{-1.000000, 1.000000, 1.000000},
-        m::vec<fix32, 3>{-1.000000, 1.000000, -1.000000}};
-
-    REQUIRE(l_expected_vertices.range().is_contained_by(
-        l_compiled_mesh.position().range()));
-
-    container::arr<m::vec<ui8, 3>, 7> l_expected_colors = {
-        m::vec<ui8, 3>{0, 0, 0},    m::vec<ui8, 3>{10, 10, 10},
-        m::vec<ui8, 3>{20, 20, 20}, m::vec<ui8, 3>{15, 15, 15},
-        m::vec<ui8, 3>{30, 30, 30}, m::vec<ui8, 3>{40, 40, 40},
-        m::vec<ui8, 3>{50, 50, 50},
-    };
-
-    REQUIRE(l_expected_colors.range().is_contained_by(
-        l_compiled_mesh.color().range()));
-
-    l_compiled_mesh.free();
-  }
-
-  // pos, uv, normal
-  {
-    auto l_obj_str = R""""(
-# Blender v2.76 (sub 0) OBJ File: ''
-# www.blender.org
-mtllib cube.mtl
-o Cube
-v 1.000000 -1.000000 -1.000000
-v 1.000000 -1.000000 1.000000
-v -1.000000 -1.000000 1.000000
-v -1.000000 -1.000000 -1.000000
-v 1.000000 1.000000 -0.999999
-v 0.999999 1.000000 1.000001
-v -1.000000 1.000000 1.000000
-v -1.000000 1.000000 -1.000000
-vt 1.000000 0.333333
-vt 1.000000 0.666667
-vt 0.666667 0.666667
-vt 0.666667 0.333333
-vt 0.666667 0.000000
-vt 0.000000 0.333333
-vt 0.000000 0.000000
-vt 0.333333 0.000000
-vt 0.333333 1.000000
-vt 0.000000 1.000000
-vt 0.000000 0.666667
-vt 0.333333 0.333333
-vt 0.333333 0.666667
-vt 1.000000 0.000000
-vn 0.000000 -1.000000 0.000000
-vn 0.000000 1.000000 0.000000
-vn 1.000000 0.000000 0.000000
-vn -0.000000 0.000000 1.000000
-vn -1.000000 -0.000000 -0.000000
-vn 0.000000 0.000000 -1.000000
-  )"""";
-
-    auto l_compiled_mesh = assets::obj_mesh_loader().compile(
-        container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
-
-    container::arr<m::vec<fix32, 3>, 8> l_expected_vertices = {
-        m::vec<fix32, 3>{1.000000f, -1.000000f, -1.000000f},
-        m::vec<fix32, 3>{1.000000f, -1.000000f, 1.000000f},
-        m::vec<fix32, 3>{-1.000000, -1.000000, 1.000000},
-        m::vec<fix32, 3>{-1.000000, -1.000000, -1.000000},
-        m::vec<fix32, 3>{1.000000, 1.000000, -0.999999},
-        m::vec<fix32, 3>{0.999999, 1.000000, 1.000001},
-        m::vec<fix32, 3>{-1.000000, 1.000000, 1.000000},
-        m::vec<fix32, 3>{-1.000000, 1.000000, -1.000000}};
-
-    REQUIRE(l_expected_vertices.range().is_contained_by(
-        l_compiled_mesh.position().range()));
-
-    container::arr<m::vec<fix32, 2>, 14> l_expected_uvs = {
-        m::vec<fix32, 2>{1.000000, 0.333333},
-        m::vec<fix32, 2>{1.000000, 0.666667},
-        m::vec<fix32, 2>{0.666667, 0.666667},
-        m::vec<fix32, 2>{0.666667, 0.333333},
-        m::vec<fix32, 2>{0.666667, 0.000000},
-        m::vec<fix32, 2>{0.000000, 0.333333},
-        m::vec<fix32, 2>{0.000000, 0.000000},
-        m::vec<fix32, 2>{0.333333, 0.000000},
-        m::vec<fix32, 2>{0.333333, 1.000000},
-        m::vec<fix32, 2>{0.000000, 1.000000},
-        m::vec<fix32, 2>{0.000000, 0.666667},
-        m::vec<fix32, 2>{0.333333, 0.333333},
-        m::vec<fix32, 2>{0.333333, 0.666667},
-        m::vec<fix32, 2>{1.000000, 0.000000}};
-
-    REQUIRE(
-        l_expected_uvs.range().is_contained_by(l_compiled_mesh.uv().range()));
-
-    container::arr<m::vec<fix32, 3>, 6> l_expected_normals = {
-        m::vec<fix32, 3>{0.000000, -1.000000, 0.000000},
-        m::vec<fix32, 3>{0.000000, 1.000000, 0.000000},
-        m::vec<fix32, 3>{1.000000, 0.000000, 0.000000},
-        m::vec<fix32, 3>{-0.000000, 0.000000, 1.000000},
-        m::vec<fix32, 3>{-1.000000, -0.000000, -0.000000},
-        m::vec<fix32, 3>{0.000000, 0.000000, -1.000000},
-    };
-
-    REQUIRE(l_expected_normals.range().is_contained_by(
-        l_compiled_mesh.normal().range()));
-
-    l_compiled_mesh.free();
-  }
-
-  // faces
-  {
-    auto l_obj_str = R""""(
-# Blender v2.76 (sub 0) OBJ File: ''
-# www.blender.org
-mtllib cube.mtl
-o Cube
-v 1.000000 -1.000000 -1.000000
-v 1.000000 -1.000000 1.000000
-v -1.000000 -1.000000 1.000000
-v -1.000000 -1.000000 -1.000000
-v 1.000000 1.000000 -0.999999
-v 0.999999 1.000000 1.000001
-v -1.000000 1.000000 1.000000
-v -1.000000 1.000000 -1.000000
 vt 1.000000 0.333333
 vt 1.000000 0.666667
 vt 0.666667 0.666667
@@ -201,63 +61,154 @@ f 4/13/5 3/9/5 8/11/5
 f 5/6/6 1/12/6 8/11/6
   )"""";
 
-    auto l_compiled_mesh = assets::obj_mesh_loader().compile(
+    assets::mesh l_mesh = assets::obj_mesh_loader().compile(
         container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-    container::arr<container::arr<container::arr<ui32, 4>, 3>, 12>
-        l_expected_faces = {container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{2, 1, 1, 0},
-                                container::arr<ui32, 4>{3, 2, 1, 0},
-                                container::arr<ui32, 4>{4, 3, 1, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{8, 1, 2, 0},
-                                container::arr<ui32, 4>{7, 4, 2, 0},
-                                container::arr<ui32, 4>{6, 5, 2, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{5, 6, 3, 0},
-                                container::arr<ui32, 4>{6, 7, 3, 0},
-                                container::arr<ui32, 4>{2, 8, 3, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{6, 8, 4, 0},
-                                container::arr<ui32, 4>{7, 5, 4, 0},
-                                container::arr<ui32, 4>{3, 4, 4, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{3, 9, 5, 0},
-                                container::arr<ui32, 4>{7, 10, 5, 0},
-                                container::arr<ui32, 4>{8, 11, 5, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{1, 12, 6, 0},
-                                container::arr<ui32, 4>{4, 13, 6, 0},
-                                container::arr<ui32, 4>{8, 11, 6, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{1, 4, 1, 0},
-                                container::arr<ui32, 4>{2, 1, 1, 0},
-                                container::arr<ui32, 4>{4, 3, 1, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{5, 14, 2, 0},
-                                container::arr<ui32, 4>{8, 1, 2, 0},
-                                container::arr<ui32, 4>{6, 5, 2, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{1, 12, 3, 0},
-                                container::arr<ui32, 4>{5, 6, 3, 0},
-                                container::arr<ui32, 4>{2, 8, 3, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{2, 12, 4, 0},
-                                container::arr<ui32, 4>{6, 8, 4, 0},
-                                container::arr<ui32, 4>{3, 4, 4, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{4, 13, 5, 0},
-                                container::arr<ui32, 4>{3, 9, 5, 0},
-                                container::arr<ui32, 4>{8, 11, 5, 0}},
-                            container::arr<container::arr<ui32, 4>, 3>{
-                                container::arr<ui32, 4>{5, 6, 6, 0},
-                                container::arr<ui32, 4>{1, 12, 6, 0},
-                                container::arr<ui32, 4>{8, 11, 6, 0}}};
+    /*
+    24 is the number of indices combinaison
 
-    REQUIRE(l_expected_faces.range() == l_compiled_mesh.face().range());
+    2/1/1
+    3/2/1
+    4/3/1
+    8/1/2
+    7/4/2
+    6/5/2
+    5/6/3
+    6/7/3
+    2/8/3
+    6/8/4
+    7/5/4
+    3/4/4
+    3/9/5
+    7/10/5
+    8/11/5
+    1/12/6
+    4/13/6
+    8/11/6
+    1/4/1
+    5/14/2
+    1/12/3
+    2/12/4
+    4/13/5
+    5/6/6
+    */
 
-    l_compiled_mesh.face().range();
-    l_compiled_mesh.free();
+    container::arr<m::vec<fix32, 3>, 8> l_raw_vertices = {
+        m::vec<fix32, 3>{1.000000f, -1.000000f, -1.000000f},
+        m::vec<fix32, 3>{1.000000f, -1.000000f, 1.000000f},
+        m::vec<fix32, 3>{-1.000000, -1.000000, 1.000000},
+        m::vec<fix32, 3>{-1.000000, -1.000000, -1.000000},
+        m::vec<fix32, 3>{1.000000, 1.000000, -0.999999},
+        m::vec<fix32, 3>{0.999999, 1.000000, 1.000001},
+        m::vec<fix32, 3>{-1.000000, 1.000000, 1.000000},
+        m::vec<fix32, 3>{-1.000000, 1.000000, -1.000000}};
+
+    container::arr<m::vec<fix32, 2>, 14> l_raw_uvs = {
+        m::vec<fix32, 2>{1.000000, 0.333333},
+        m::vec<fix32, 2>{1.000000, 0.666667},
+        m::vec<fix32, 2>{0.666667, 0.666667},
+        m::vec<fix32, 2>{0.666667, 0.333333},
+        m::vec<fix32, 2>{0.666667, 0.000000},
+        m::vec<fix32, 2>{0.000000, 0.333333},
+        m::vec<fix32, 2>{0.000000, 0.000000},
+        m::vec<fix32, 2>{0.333333, 0.000000},
+        m::vec<fix32, 2>{0.333333, 1.000000},
+        m::vec<fix32, 2>{0.000000, 1.000000},
+        m::vec<fix32, 2>{0.000000, 0.666667},
+        m::vec<fix32, 2>{0.333333, 0.333333},
+        m::vec<fix32, 2>{0.333333, 0.666667},
+        m::vec<fix32, 2>{1.000000, 0.000000}};
+
+    container::arr<m::vec<fix32, 3>, 6> l_raw_normals = {
+        m::vec<fix32, 3>{0.000000, -1.000000, 0.000000},
+        m::vec<fix32, 3>{0.000000, 1.000000, 0.000000},
+        m::vec<fix32, 3>{1.000000, 0.000000, 0.000000},
+        m::vec<fix32, 3>{-0.000000, 0.000000, 1.000000},
+        m::vec<fix32, 3>{-1.000000, -0.000000, -0.000000},
+        m::vec<fix32, 3>{0.000000, 0.000000, -1.000000},
+    };
+
+    REQUIRE(l_mesh.m_positions.count() == 24);
+    REQUIRE(l_mesh.m_uvs.count() == 24);
+    REQUIRE(l_mesh.m_normals.count() == 24);
+    REQUIRE(l_mesh.m_indices.count() == 12 * 3);
+
+    REQUIRE(l_mesh.m_positions.at(0) == l_raw_vertices.at(2 - 1));
+    REQUIRE(l_mesh.m_positions.at(1) == l_raw_vertices.at(3 - 1));
+    REQUIRE(l_mesh.m_positions.at(2) == l_raw_vertices.at(4 - 1));
+    REQUIRE(l_mesh.m_positions.at(3) == l_raw_vertices.at(8 - 1));
+    REQUIRE(l_mesh.m_positions.at(4) == l_raw_vertices.at(7 - 1));
+    REQUIRE(l_mesh.m_positions.at(5) == l_raw_vertices.at(6 - 1));
+    REQUIRE(l_mesh.m_positions.at(6) == l_raw_vertices.at(5 - 1));
+    REQUIRE(l_mesh.m_positions.at(7) == l_raw_vertices.at(6 - 1));
+    REQUIRE(l_mesh.m_positions.at(8) == l_raw_vertices.at(2 - 1));
+    REQUIRE(l_mesh.m_positions.at(9) == l_raw_vertices.at(6 - 1));
+    REQUIRE(l_mesh.m_positions.at(10) == l_raw_vertices.at(7 - 1));
+    REQUIRE(l_mesh.m_positions.at(11) == l_raw_vertices.at(3 - 1));
+    REQUIRE(l_mesh.m_positions.at(12) == l_raw_vertices.at(3 - 1));
+    REQUIRE(l_mesh.m_positions.at(13) == l_raw_vertices.at(7 - 1));
+    REQUIRE(l_mesh.m_positions.at(14) == l_raw_vertices.at(8 - 1));
+    REQUIRE(l_mesh.m_positions.at(15) == l_raw_vertices.at(1 - 1));
+    REQUIRE(l_mesh.m_positions.at(16) == l_raw_vertices.at(4 - 1));
+    REQUIRE(l_mesh.m_positions.at(17) == l_raw_vertices.at(8 - 1));
+    REQUIRE(l_mesh.m_positions.at(18) == l_raw_vertices.at(1 - 1));
+    REQUIRE(l_mesh.m_positions.at(19) == l_raw_vertices.at(5 - 1));
+    REQUIRE(l_mesh.m_positions.at(20) == l_raw_vertices.at(1 - 1));
+    REQUIRE(l_mesh.m_positions.at(21) == l_raw_vertices.at(2 - 1));
+    REQUIRE(l_mesh.m_positions.at(22) == l_raw_vertices.at(4 - 1));
+    REQUIRE(l_mesh.m_positions.at(23) == l_raw_vertices.at(5 - 1));
+
+    REQUIRE(l_mesh.m_uvs.at(0) == l_raw_uvs.at(1 - 1));
+    REQUIRE(l_mesh.m_uvs.at(1) == l_raw_uvs.at(2 - 1));
+    REQUIRE(l_mesh.m_uvs.at(2) == l_raw_uvs.at(3 - 1));
+    REQUIRE(l_mesh.m_uvs.at(3) == l_raw_uvs.at(1 - 1));
+    REQUIRE(l_mesh.m_uvs.at(4) == l_raw_uvs.at(4 - 1));
+    REQUIRE(l_mesh.m_uvs.at(5) == l_raw_uvs.at(5 - 1));
+    REQUIRE(l_mesh.m_uvs.at(6) == l_raw_uvs.at(6 - 1));
+    REQUIRE(l_mesh.m_uvs.at(7) == l_raw_uvs.at(7 - 1));
+    REQUIRE(l_mesh.m_uvs.at(8) == l_raw_uvs.at(8 - 1));
+    REQUIRE(l_mesh.m_uvs.at(9) == l_raw_uvs.at(8 - 1));
+    REQUIRE(l_mesh.m_uvs.at(10) == l_raw_uvs.at(5 - 1));
+    REQUIRE(l_mesh.m_uvs.at(11) == l_raw_uvs.at(4 - 1));
+    REQUIRE(l_mesh.m_uvs.at(12) == l_raw_uvs.at(9 - 1));
+    REQUIRE(l_mesh.m_uvs.at(13) == l_raw_uvs.at(10 - 1));
+    REQUIRE(l_mesh.m_uvs.at(14) == l_raw_uvs.at(11 - 1));
+    REQUIRE(l_mesh.m_uvs.at(15) == l_raw_uvs.at(12 - 1));
+    REQUIRE(l_mesh.m_uvs.at(16) == l_raw_uvs.at(13 - 1));
+    REQUIRE(l_mesh.m_uvs.at(17) == l_raw_uvs.at(11 - 1));
+    REQUIRE(l_mesh.m_uvs.at(18) == l_raw_uvs.at(4 - 1));
+    REQUIRE(l_mesh.m_uvs.at(19) == l_raw_uvs.at(14 - 1));
+    REQUIRE(l_mesh.m_uvs.at(20) == l_raw_uvs.at(12 - 1));
+    REQUIRE(l_mesh.m_uvs.at(21) == l_raw_uvs.at(12 - 1));
+    REQUIRE(l_mesh.m_uvs.at(22) == l_raw_uvs.at(13 - 1));
+    REQUIRE(l_mesh.m_uvs.at(23) == l_raw_uvs.at(6 - 1));
+
+    REQUIRE(l_mesh.m_normals.at(0) == l_raw_normals.at(1 - 1));
+    REQUIRE(l_mesh.m_normals.at(1) == l_raw_normals.at(1 - 1));
+    REQUIRE(l_mesh.m_normals.at(2) == l_raw_normals.at(1 - 1));
+    REQUIRE(l_mesh.m_normals.at(3) == l_raw_normals.at(2 - 1));
+    REQUIRE(l_mesh.m_normals.at(4) == l_raw_normals.at(2 - 1));
+    REQUIRE(l_mesh.m_normals.at(5) == l_raw_normals.at(2 - 1));
+    REQUIRE(l_mesh.m_normals.at(6) == l_raw_normals.at(3 - 1));
+    REQUIRE(l_mesh.m_normals.at(7) == l_raw_normals.at(3 - 1));
+    REQUIRE(l_mesh.m_normals.at(8) == l_raw_normals.at(3 - 1));
+    REQUIRE(l_mesh.m_normals.at(9) == l_raw_normals.at(4 - 1));
+    REQUIRE(l_mesh.m_normals.at(10) == l_raw_normals.at(4 - 1));
+    REQUIRE(l_mesh.m_normals.at(11) == l_raw_normals.at(4 - 1));
+    REQUIRE(l_mesh.m_normals.at(12) == l_raw_normals.at(5 - 1));
+    REQUIRE(l_mesh.m_normals.at(13) == l_raw_normals.at(5 - 1));
+    REQUIRE(l_mesh.m_normals.at(14) == l_raw_normals.at(5 - 1));
+    REQUIRE(l_mesh.m_normals.at(15) == l_raw_normals.at(6 - 1));
+    REQUIRE(l_mesh.m_normals.at(16) == l_raw_normals.at(6 - 1));
+    REQUIRE(l_mesh.m_normals.at(17) == l_raw_normals.at(6 - 1));
+    REQUIRE(l_mesh.m_normals.at(18) == l_raw_normals.at(1 - 1));
+    REQUIRE(l_mesh.m_normals.at(19) == l_raw_normals.at(2 - 1));
+    REQUIRE(l_mesh.m_normals.at(20) == l_raw_normals.at(3 - 1));
+    REQUIRE(l_mesh.m_normals.at(21) == l_raw_normals.at(4 - 1));
+    REQUIRE(l_mesh.m_normals.at(22) == l_raw_normals.at(5 - 1));
+    REQUIRE(l_mesh.m_normals.at(23) == l_raw_normals.at(6 - 1));
+
+    l_mesh.free();
   }
 };
 
