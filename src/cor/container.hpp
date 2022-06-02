@@ -44,6 +44,11 @@ template <typename T> struct range {
     sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
   };
 
+  template <typename TT> void copy_from(const range<TT> &p_from) const {
+    range l_casted_range = p_from.template cast_to<T>();
+    copy_from(l_casted_range);
+  };
+
   template <typename TT> void copy_from(const TT &p_value) {
     assert_debug(sizeof(TT) <= m_count);
     sys::memcpy(m_begin, (void *)&p_value, sizeof(TT));
@@ -54,12 +59,12 @@ template <typename T> struct range {
     sys::memset(m_begin, p_value, m_count * sizeof(T));
   };
 
-  range<T> slide(uimax p_count) {
+  range<T> slide(uimax p_count) const {
     assert_debug(m_count >= p_count);
     return range<T>::make(m_begin + p_count, m_count - p_count);
   };
 
-  range<T> shrink_to(uimax p_count) {
+  range<T> shrink_to(uimax p_count) const {
     assert_debug(m_count >= p_count);
     return range<T>::make(m_begin, p_count);
   };
@@ -91,6 +96,14 @@ template <typename T> struct range {
     assert_debug(p_other.size_of() >= size_of());
     return sys::memcmp(m_begin, p_other.m_begin, size_of()) == 0;
   };
+  ui8 operator==(const range &p_other) const {
+    for (auto i = 0; i < count(); ++i) {
+      if (!(at(i) == p_other.at(i))) {
+        return 0;
+      }
+    }
+    return 1;
+  };
 };
 
 template <typename T, int N> struct arr {
@@ -110,6 +123,15 @@ template <typename T, int N> struct arr {
   T &at(uimax p_index) {
     assert_debug(p_index < N);
     return m_data[p_index];
+  };
+
+  ui8 operator==(const arr &p_other) const {
+    for (auto i = 0; i < N; ++i) {
+      if (!(at(i) == p_other.at(i))) {
+        return 0;
+      }
+    }
+    return 1;
   };
 };
 
@@ -449,21 +471,21 @@ static inline void defragment(vector<heap_chunk> &p_chunks) {
 }; // namespace heap_chunks
 
 struct heap_intrusive {
-  uimax m_single_page_capacity;
   uimax m_element_count;
   vector<heap_chunk> m_free_chunks;
   pool<heap_chunk> m_allocated_chunk;
 
   enum class state { Undefined = 0, NewChunkPushed = 1 } m_state;
+  uimax m_last_pushed_chunk_size;
 
   uimax &count() { return m_element_count; };
 
-  void allocate(uimax p_chunk_size) {
-    m_single_page_capacity = p_chunk_size;
+  void allocate() {
     m_free_chunks.allocate(0);
     m_allocated_chunk.allocate(0);
     m_element_count = 0;
     m_state = state::Undefined;
+    m_last_pushed_chunk_size = 0;
   };
 
   void free() {
@@ -471,7 +493,10 @@ struct heap_intrusive {
     m_allocated_chunk.free();
   };
 
-  void clear_state() { m_state = state::Undefined; };
+  void clear_state() {
+    m_state = state::Undefined;
+    m_last_pushed_chunk_size = 0;
+  };
 
   uimax find_next_chunk(uimax p_size) {
     uimax l_chunk_index = -1;
@@ -480,8 +505,9 @@ struct heap_intrusive {
       heap_chunks::defragment(m_free_chunks);
       if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                         &l_chunk_index)) {
-        __push_new_chunk();
+        __push_new_chunk(p_size);
         m_state = state::NewChunkPushed;
+        m_last_pushed_chunk_size = p_size;
         heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                      &l_chunk_index);
       }
@@ -523,10 +549,10 @@ struct heap_intrusive {
   };
 
 private:
-  void __push_new_chunk() {
+  void __push_new_chunk(uimax p_desired_size) {
     heap_chunk l_chunk;
     l_chunk.m_begin = m_element_count;
-    l_chunk.m_size = m_single_page_capacity;
+    l_chunk.m_size = p_desired_size;
     m_free_chunks.push_back(l_chunk);
     m_element_count += l_chunk.m_size;
   };
@@ -656,8 +682,8 @@ struct heap {
   heap_intrusive m_intrusive;
   span<ui8> m_buffer;
 
-  void allocate(uimax p_chunk_size) {
-    m_intrusive.allocate(p_chunk_size);
+  void allocate() {
+    m_intrusive.allocate();
     m_buffer.allocate(0);
   };
 
@@ -684,7 +710,7 @@ struct heap {
 
 private:
   void __push_new_chunk() {
-    m_buffer.realloc(m_buffer.count() + m_intrusive.m_single_page_capacity);
+    m_buffer.realloc(m_buffer.count() + m_intrusive.m_last_pushed_chunk_size);
   };
 };
 

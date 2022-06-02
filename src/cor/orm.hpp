@@ -14,6 +14,10 @@ struct row {
 
 namespace details {
 
+template <typename TableType> uimax __count_span(TableType &p_table) {
+  return p_table.m_meta;
+};
+
 template <typename TableType>
 void __allocate_span_1(TableType &p_table, uimax p_capacity) {
   p_table.m_meta = p_capacity;
@@ -947,6 +951,7 @@ private:
   void at(uimax p_index, type_0 **out_0) {                                     \
     orm::details::__at_span_1(*this, p_index, out_0);                          \
   };                                                                           \
+  uimax count() { return orm::details::__count_span(*this); };                        \
   void resize(uimax p_new_capacity) {                                          \
     orm::details::__resize_span_1(*this, p_new_capacity);                      \
   };                                                                           \
@@ -968,6 +973,7 @@ private:
   void at(uimax p_index, type_0 **out_0, orm::none out_1) {                    \
     orm::details::__at_span_2(*this, p_index, out_0, out_1);                   \
   };                                                                           \
+  uimax count() { return orm::details::__count_span(*this); };                 \
   void resize(uimax p_new_capacity) {                                          \
     orm::details::__resize_span_2(*this, p_new_capacity);                      \
   };                                                                           \
@@ -989,6 +995,7 @@ private:
   void at(uimax p_index, type_0 **out_0, orm::none out_1, orm::none out_2) {   \
     orm::details::__at_span_3(*this, p_index, out_0, out_1, out_2);            \
   };                                                                           \
+  uimax count() { return orm::details::__count_span(*this); };                        \
   void resize(uimax p_new_capacity) {                                          \
     orm::details::__resize_span_3(*this, p_new_capacity);                      \
   };                                                                           \
@@ -1018,6 +1025,7 @@ private:
           orm::none out_3) {                                                   \
     orm::details::__at_span_4(*this, p_index, out_0, out_1, out_2, out_3);     \
   };                                                                           \
+  uimax count() {return orm::details::__count_span(*this); };                        \
   void resize(uimax p_new_capacity) {                                          \
     orm::details::__resize_span_4(*this, p_new_capacity);                      \
   };                                                                           \

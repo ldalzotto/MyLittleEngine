@@ -2,8 +2,8 @@
 
 #include <cmath>
 #include <cor/types.hpp>
-#include <sys/sys.hpp>
 #include <m/trig.hpp>
+#include <sys/sys.hpp>
 
 namespace m {
 
@@ -119,6 +119,10 @@ template <typename T> struct vec<T, 2> {
     return *this;
   };
 
+  template <typename TT> ui8 operator==(const vec<TT, 2> &p_other) const {
+    return x() == p_other.x() && y() == p_other.y();
+  };
+
   static vec getZero() { return {0}; };
 };
 
@@ -226,6 +230,10 @@ template <typename T> struct vec<T, 3> {
     m_data[1] = m_data[1] / p_other.m_data[1];
     m_data[2] = m_data[2] / p_other.m_data[2];
     return *this;
+  };
+
+  template <typename TT> ui8 operator==(const vec<TT, 3> &p_other) const {
+    return x() == p_other.x() && y() == p_other.y() && z() == p_other.z();
   };
 
   static vec getZero() { return {0}; };
