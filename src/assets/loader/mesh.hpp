@@ -16,7 +16,6 @@ enum class mesh_composition : ui8 {
 
 // Everything below is details
 
-// TODO -> improving this format to be more generic ?
 struct mesh_intermediary {
 
   mesh_composition m_order[4]; // TODO
@@ -26,14 +25,16 @@ struct mesh_intermediary {
     container::span<m::vec<ui8, 3>> m_colors;
     container::span<m::vec<fix32, 2>> m_uvs;
     container::span<m::vec<fix32, 3>> m_normals;
+    container::span<container::arr<container::arr<ui32, 4>, 3>> m_faces;
   } m_heap;
 
   void allocate(uimax p_position_count, uimax p_color_count, uimax p_uv_count,
-                uimax p_normal_count) {
+                uimax p_normal_count, uimax p_face_count) {
     m_heap.m_positions.allocate(p_position_count);
     m_heap.m_colors.allocate(p_color_count);
     m_heap.m_uvs.allocate(p_uv_count);
     m_heap.m_normals.allocate(p_normal_count);
+    m_heap.m_faces.allocate(p_face_count);
   };
 
   void free() {
@@ -41,12 +42,16 @@ struct mesh_intermediary {
     m_heap.m_colors.free();
     m_heap.m_uvs.free();
     m_heap.m_normals.free();
+    m_heap.m_faces.free();
   };
 
   container::span<m::vec<fix32, 3>> &position() { return m_heap.m_positions; };
   container::span<m::vec<ui8, 3>> &color() { return m_heap.m_colors; };
   container::span<m::vec<fix32, 2>> &uv() { return m_heap.m_uvs; };
   container::span<m::vec<fix32, 3>> &normal() { return m_heap.m_normals; };
+  container::span<container::arr<container::arr<ui32, 4>, 3>> &face() {
+    return m_heap.m_faces;
+  };
 };
 
 struct obj_mesh_bytes {
@@ -60,6 +65,8 @@ struct obj_mesh_bytes {
   uimax m_uv_count;
   uimax m_normal_begin;
   uimax m_normal_count;
+  uimax m_face_begin;
+  uimax m_face_count;
 
   void mesh_header_pass() {
     m_position_count = 0;
@@ -70,6 +77,8 @@ struct obj_mesh_bytes {
     m_uv_count = 0;
     m_normal_begin = -1;
     m_normal_count = 0;
+    m_face_begin = -1;
+    m_face_count = 0;
     deserializer{*this}.mesh_header_pass();
   };
 
@@ -89,7 +98,8 @@ private:
       ReadPosition = 1,
       ReadColor = 2,
       ReadUv = 3,
-      ReadNormal = 4
+      ReadNormal = 4,
+      ReadFace = 5
     } m_state;
 
     void mesh_header_pass() {
@@ -238,6 +248,70 @@ private:
           l_line_count += 1;
         }
       }
+
+      // faces
+      if (p_mesh_intermediary.face().count() > 0) {
+        auto l_faces = p_mesh_intermediary.face();
+        uimax l_line_count;
+        m_iterator = thiz.m_face_begin;
+        while (l_line_count < thiz.m_face_count) {
+          next_line();
+          auto l_face_line = m_line.slide(2);
+          auto l_white_space_it = 0;
+          while (l_face_line.at(l_white_space_it) != ' ') {
+            l_white_space_it += 1;
+          }
+          auto l_f1 = l_face_line.shrink_to(l_white_space_it);
+          l_face_line.slide_self(l_white_space_it + 1);
+          l_white_space_it = 0;
+          while (l_face_line.at(l_white_space_it) != ' ') {
+            l_white_space_it += 1;
+          }
+          auto l_f2 = l_face_line.shrink_to(l_white_space_it);
+          l_face_line.slide_self(l_white_space_it + 1);
+          l_white_space_it = 0;
+          while (l_white_space_it != l_face_line.count()) {
+            l_white_space_it += 1;
+          }
+          auto l_f3 = l_face_line.shrink_to(l_white_space_it);
+
+          const auto l_face = container::arr<container::arr<ui32, 4>, 3>{
+              extract_face_indices(l_f1), extract_face_indices(l_f2),
+              extract_face_indices(l_f3)};
+          l_faces.at(l_line_count) = l_face;
+          l_line_count += 1;
+        }
+      }
+    };
+
+    static container::arr<ui32, 4>
+    extract_face_indices(const container::range<const ui8> &p_str) {
+      container::arr<ui32, 4> l_out;
+      l_out.range().zero();
+      ui8 l_out_index = 0;
+
+      uimax l_it = 0;
+      uimax l_begin = l_it;
+      uimax l_end = l_begin;
+      while (true) {
+        if (l_it == p_str.count() || p_str.at(l_it) == '/') {
+          l_end = l_it;
+          auto l_range = p_str.slide(l_begin).shrink_to(l_end - l_begin);
+          l_out.at(l_out_index) =
+              sys::stoui<ui32>(l_range.data(), l_range.count());
+          l_out_index += 1;
+          l_begin = l_it + 1;
+          l_end = l_begin;
+        }
+
+        if (l_it == p_str.count()) {
+          break;
+        }
+
+        l_it += 1;
+      }
+
+      return l_out;
     };
 
     void process_line() {
@@ -254,6 +328,8 @@ private:
         thiz.m_uv_count += 1;
       } else if (m_state == state::ReadNormal) {
         thiz.m_normal_count += 1;
+      } else if (m_state == state::ReadFace) {
+        thiz.m_face_count += 1;
       }
     };
 
@@ -271,6 +347,8 @@ private:
           } else {
             l_line_state = state::ReadPosition;
           }
+        } else if (m_line.at(0) == 'f') {
+          l_line_state = state::ReadFace;
         }
       }
 
@@ -297,6 +375,8 @@ private:
         thiz.m_uv_begin = m_iterator - m_line.count() - 1;
       } else if (p_next == state::ReadNormal) {
         thiz.m_normal_begin = m_iterator - m_line.count() - 1;
+      } else if (p_next == state::ReadFace) {
+        thiz.m_face_begin = m_iterator - m_line.count() - 1;
       }
       m_state = p_next;
     };
@@ -340,7 +420,8 @@ private:
     mesh_intermediary l_mesh_intermediary;
     l_mesh_intermediary.allocate(
         l_mesh_bytes.m_position_count, l_mesh_bytes.m_color_count,
-        l_mesh_bytes.m_uv_count, l_mesh_bytes.m_normal_count);
+        l_mesh_bytes.m_uv_count, l_mesh_bytes.m_normal_count,
+        l_mesh_bytes.m_face_count);
 
     l_mesh_bytes.mesh_fill_pass(l_mesh_intermediary);
     return l_mesh_intermediary;

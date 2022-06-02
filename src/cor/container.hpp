@@ -59,12 +59,12 @@ template <typename T> struct range {
     sys::memset(m_begin, p_value, m_count * sizeof(T));
   };
 
-  range<T> slide(uimax p_count) {
+  range<T> slide(uimax p_count) const {
     assert_debug(m_count >= p_count);
     return range<T>::make(m_begin + p_count, m_count - p_count);
   };
 
-  range<T> shrink_to(uimax p_count) {
+  range<T> shrink_to(uimax p_count) const {
     assert_debug(m_count >= p_count);
     return range<T>::make(m_begin, p_count);
   };
@@ -96,6 +96,14 @@ template <typename T> struct range {
     assert_debug(p_other.size_of() >= size_of());
     return sys::memcmp(m_begin, p_other.m_begin, size_of()) == 0;
   };
+  ui8 operator==(const range &p_other) const {
+    for (auto i = 0; i < count(); ++i) {
+      if (!(at(i) == p_other.at(i))) {
+        return 0;
+      }
+    }
+    return 1;
+  };
 };
 
 template <typename T, int N> struct arr {
@@ -115,6 +123,15 @@ template <typename T, int N> struct arr {
   T &at(uimax p_index) {
     assert_debug(p_index < N);
     return m_data[p_index];
+  };
+
+  ui8 operator==(const arr &p_other) const {
+    for (auto i = 0; i < N; ++i) {
+      if (!(at(i) == p_other.at(i))) {
+        return 0;
+      }
+    }
+    return 1;
   };
 };
 
