@@ -60,6 +60,15 @@ struct mesh {
   };
 };
 
+struct obj_mesh_loader {
+  mesh compile(const container::range<ui8> &p_raw_obj) {
+    return __compile(p_raw_obj);
+  };
+
+private:
+  mesh __compile(const container::range<ui8> &p_raw_obj);
+};
+
 namespace details {
 
 struct mesh_intermediary {
@@ -182,7 +191,6 @@ struct mesh_intermediary {
       }
     }
 
-    // TODO -> create mesh and fill values
     mesh l_mesh;
     l_mesh.allocate(m_composition, l_unique_indices.count(),
                     l_per_face_indices.count());
@@ -208,10 +216,6 @@ struct mesh_intermediary {
         }
       }
     }
-
-    // fill face indices
-
-    // for(auto l_index)
 
     l_per_face_indices.free();
     l_unique_indices.free();
@@ -574,28 +578,21 @@ private:
 
 }; // namespace details
 
-struct obj_mesh_loader {
-  mesh compile(const container::range<ui8> &p_raw_obj) {
-    return __compile(p_raw_obj);
-  };
+inline mesh obj_mesh_loader::__compile(const container::range<ui8> &p_raw_obj) {
+  details::obj_mesh_bytes l_mesh_bytes =
+      details::obj_mesh_bytes{.m_data = p_raw_obj};
+  l_mesh_bytes.mesh_header_pass();
 
-private:
-  mesh __compile(const container::range<ui8> &p_raw_obj) {
-    details::obj_mesh_bytes l_mesh_bytes =
-        details::obj_mesh_bytes{.m_data = p_raw_obj};
-    l_mesh_bytes.mesh_header_pass();
+  details::mesh_intermediary l_mesh_intermediary;
+  l_mesh_intermediary.allocate(
+      l_mesh_bytes.m_position_count, l_mesh_bytes.m_color_count,
+      l_mesh_bytes.m_uv_count, l_mesh_bytes.m_normal_count,
+      l_mesh_bytes.m_face_count);
 
-    details::mesh_intermediary l_mesh_intermediary;
-    l_mesh_intermediary.allocate(
-        l_mesh_bytes.m_position_count, l_mesh_bytes.m_color_count,
-        l_mesh_bytes.m_uv_count, l_mesh_bytes.m_normal_count,
-        l_mesh_bytes.m_face_count);
-
-    l_mesh_bytes.mesh_fill_pass(l_mesh_intermediary);
-    mesh l_mesh = l_mesh_intermediary.allocate_mesh();
-    l_mesh_intermediary.free();
-    return l_mesh;
-  };
-};
+  l_mesh_bytes.mesh_fill_pass(l_mesh_intermediary);
+  mesh l_mesh = l_mesh_intermediary.allocate_mesh();
+  l_mesh_intermediary.free();
+  return l_mesh;
+}
 
 }; // namespace assets
