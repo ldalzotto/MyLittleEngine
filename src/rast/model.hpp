@@ -111,7 +111,7 @@ using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         ui8 **out_vertex);
 
 using shader_fragment_function = void (*)(ui8 **p_vertex_output_interpolated,
-                                          m::vec<fix32, 3> &out_color);
+                                          fl_rgb_t &out_color);
 
 struct shader_vertex {
   const shader_vertex_runtime_ctx &m_ctx;

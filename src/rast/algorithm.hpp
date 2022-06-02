@@ -441,8 +441,7 @@ private:
       }
 #endif
 
-      uv_t l_pixel_coordinates_fix32 =
-          uv_t::make(l_vertex_shader_out);
+      uv_t l_pixel_coordinates_fix32 = uv_t::make(l_vertex_shader_out);
 
       l_pixel_coordinates_fix32 = (l_pixel_coordinates_fix32 + 1) * 0.5;
       l_pixel_coordinates_fix32.y() = fix32(1) - l_pixel_coordinates_fix32.y();
@@ -485,7 +484,8 @@ private:
       m_heap.m_per_polygons.at(i, &l_polygon, &l_polygon_indices,
                                &l_bounding_rect, &l_area);
 
-      l_polygon_indices->p0() = m_input.m_index_buffer.at<vindex_t>(l_index_idx);
+      l_polygon_indices->p0() =
+          m_input.m_index_buffer.at<vindex_t>(l_index_idx);
       l_polygon_indices->p1() =
           m_input.m_index_buffer.at<vindex_t>(l_index_idx + 1);
       l_polygon_indices->p2() =
@@ -754,7 +754,7 @@ private:
         shader_fragment_bytes::view{(ui8 *)m_input.m_program.m_fragment}
             .fonction();
 
-    m::vec<fix32, 3> l_color_buffer;
+    fl_rgb_t l_color_buffer;
 
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       ui8 *l_visibility_boolean;

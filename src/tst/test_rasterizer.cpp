@@ -106,7 +106,7 @@ struct WhiteShader {
   };
 
   static void fragment(ui8 **p_vertex_output_interpolated,
-                       m::vec<fix32, 3> &out_color) {
+                       fl_rgb_t &out_color) {
     out_color = {1, 1, 1};
   };
 
@@ -132,14 +132,13 @@ struct ColorInterpolationShader {
     out_screen_position =
         p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
 
-    m::vec<fix32, 3> *l_vertex_color = (m::vec<fix32, 3> *)out_vertex[0];
+    fl_rgb_t *l_vertex_color = (fl_rgb_t *)out_vertex[0];
     (*l_vertex_color) = l_color.cast<fix32>() / 255;
   };
 
   static void fragment(ui8 **p_vertex_output_interpolated,
-                       m::vec<fix32, 3> &out_color) {
-    m::vec<fix32, 3> *l_vertex_color =
-        (m::vec<fix32, 3> *)p_vertex_output_interpolated[0];
+                       fl_rgb_t &out_color) {
+    fl_rgb_t *l_vertex_color = (position_t *)p_vertex_output_interpolated[0];
     out_color = *l_vertex_color;
   };
 
