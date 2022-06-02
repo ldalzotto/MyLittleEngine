@@ -8,6 +8,7 @@
 #include <m/rect.hpp>
 #include <m/vec.hpp>
 #include <rast/model.hpp>
+#include <shared/types.hpp>
 
 #define TODO_NEAR_FAR_CLIPPING 0
 
@@ -18,7 +19,7 @@ namespace algorithm {
 using screen_coord_t = i16;
 using polygon_vertex_indices = m::polygon<uimax, 3>;
 using pixel_coordinates = m::vec<screen_coord_t, 2>;
-using homogeneous_coordinates = m::vec<fix32, 3>;
+using homogeneous_coordinates = position_t;
 using rasterization_weight = m::vec<fix32, 3>;
 using screen_polygon = m::polygon<m::vec<screen_coord_t, 2>, 3>;
 using screen_polygon_bounding_box = m::rect_min_max<screen_coord_t>;
@@ -72,7 +73,7 @@ struct index_buffer_const_view {
 
   index_buffer_const_view(const container::range<ui8> &p_buffer)
       : m_buffer(p_buffer) {
-    m_index_byte_size = sizeof(ui16);
+    m_index_byte_size = sizeof(vindex_t);
     m_index_count = m_buffer.count() / m_index_byte_size;
   };
 
@@ -440,8 +441,8 @@ private:
       }
 #endif
 
-      m::vec<fix32, 2> l_pixel_coordinates_fix32 =
-          m::vec<fix32, 2>::make(l_vertex_shader_out);
+      uv_t l_pixel_coordinates_fix32 =
+          uv_t::make(l_vertex_shader_out);
 
       l_pixel_coordinates_fix32 = (l_pixel_coordinates_fix32 + 1) * 0.5;
       l_pixel_coordinates_fix32.y() = fix32(1) - l_pixel_coordinates_fix32.y();
@@ -484,11 +485,11 @@ private:
       m_heap.m_per_polygons.at(i, &l_polygon, &l_polygon_indices,
                                &l_bounding_rect, &l_area);
 
-      l_polygon_indices->p0() = m_input.m_index_buffer.at<ui16>(l_index_idx);
+      l_polygon_indices->p0() = m_input.m_index_buffer.at<vindex_t>(l_index_idx);
       l_polygon_indices->p1() =
-          m_input.m_index_buffer.at<ui16>(l_index_idx + 1);
+          m_input.m_index_buffer.at<vindex_t>(l_index_idx + 1);
       l_polygon_indices->p2() =
-          m_input.m_index_buffer.at<ui16>(l_index_idx + 2);
+          m_input.m_index_buffer.at<vindex_t>(l_index_idx + 2);
 
       l_polygon->p0() = m_heap.get_pixel_coordinates(l_polygon_indices->p0());
       l_polygon->p1() = m_heap.get_pixel_coordinates(l_polygon_indices->p1());
@@ -594,7 +595,8 @@ private:
 
       utils::rasterize_polygon_weighted(
           *l_polygon, *l_area, *l_bounding_rect,
-          [&](screen_coord_t x, screen_coord_t y, fix32 w0, fix32 w1, fix32 w2) {
+          [&](screen_coord_t x, screen_coord_t y, fix32 w0, fix32 w1,
+              fix32 w2) {
             ui8 *l_visibility_boolean;
             rasterization_weight *l_visibility_weight;
             uimax *l_polygon_index;
@@ -770,7 +772,7 @@ private:
             m_heap.m_vertex_output_interpolated_send_to_fragment_shader.m_data,
             l_color_buffer);
 
-        m::vec<ui8, 3> l_color = (l_color_buffer * 255).cast<ui8>();
+        rgb_t l_color = (l_color_buffer * 255).cast<ui8>();
         m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
       }
     });
@@ -843,8 +845,8 @@ private:
 
       } else if (l_output_parameter_meta.m_attrib_element_count == 1) {
         fix32 *l_interpolated_vertex_output =
-            (fix32 *)m_heap.m_vertex_output_interpolated.at(p_vertex_output_index,
-                                                          p_pixel_index);
+            (fix32 *)m_heap.m_vertex_output_interpolated.at(
+                p_vertex_output_index, p_pixel_index);
 
         *l_interpolated_vertex_output = __interpolate(
             p_polygon_weight, *(fix32 *)l_0, *(fix32 *)l_1, *(fix32 *)l_2);
@@ -865,17 +867,19 @@ private:
   };
 };
 
-static inline void
-rasterize(rasterize_heap &p_heap, const program &p_program,
-          m::rect_point_extend<ui16> &p_rect, const m::mat<fix32, 4, 4> &p_proj,
-          const m::mat<fix32, 4, 4> &p_view, const m::mat<fix32, 4, 4> &p_transform,
-          const container::range<ui8> &p_index_buffer,
-          bgfx::VertexLayout p_vertex_layout,
-          const container::range<ui8> &p_vertex_buffer, ui64 p_state,
-          ui32 p_rgba, const bgfx::TextureInfo &p_target_info,
-          container::range<ui8> &p_target_buffer,
-          const bgfx::TextureInfo &p_depth_info,
-          container::range<ui8> &p_depth_buffer) {
+static inline void rasterize(rasterize_heap &p_heap, const program &p_program,
+                             m::rect_point_extend<ui16> &p_rect,
+                             const m::mat<fix32, 4, 4> &p_proj,
+                             const m::mat<fix32, 4, 4> &p_view,
+                             const m::mat<fix32, 4, 4> &p_transform,
+                             const container::range<ui8> &p_index_buffer,
+                             bgfx::VertexLayout p_vertex_layout,
+                             const container::range<ui8> &p_vertex_buffer,
+                             ui64 p_state, ui32 p_rgba,
+                             const bgfx::TextureInfo &p_target_info,
+                             container::range<ui8> &p_target_buffer,
+                             const bgfx::TextureInfo &p_depth_info,
+                             container::range<ui8> &p_depth_buffer) {
   rasterize_unit(p_heap, p_program, p_rect, p_proj, p_view, p_transform,
                  p_index_buffer, p_vertex_layout, p_vertex_buffer, p_state,
                  p_rgba, p_target_info, p_target_buffer, p_depth_info,

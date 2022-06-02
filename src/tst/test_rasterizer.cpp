@@ -11,14 +11,14 @@
 
 namespace RasterizerTestToolbox {
 
-inline static container::range<m::vec<ui8, 3>>
+inline static container::range<rgb_t>
 getFrameBuffer(bgfx::FrameBufferHandle p_frame_buffer) {
   return s_bgfx_impl.proxy()
       .FrameBuffer(p_frame_buffer)
       .RGBTexture()
       .value()
       ->range()
-      .cast_to<m::vec<ui8, 3>>();
+      .cast_to<rgb_t>();
 };
 
 template <typename ExpectedFrameType>
@@ -99,8 +99,8 @@ struct WhiteShader {
                      const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
                      ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
-    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<fix32, 3>>(
-        bgfx::Attrib::Enum::Position, p_vertex);
+    const auto &l_vertex_pos =
+        l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
     out_screen_position =
         p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
   };
@@ -125,10 +125,10 @@ struct ColorInterpolationShader {
                      const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
                      ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
-    const auto &l_vertex_pos = l_shader.get_vertex<m::vec<fix32, 3>>(
-        bgfx::Attrib::Enum::Position, p_vertex);
-    const m::vec<ui8, 3> &l_color = l_shader.get_vertex<m::vec<ui8, 3>>(
-        bgfx::Attrib::Enum::Color0, p_vertex);
+    const auto &l_vertex_pos =
+        l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
+    const rgb_t &l_color =
+        l_shader.get_vertex<rgb_t>(bgfx::Attrib::Enum::Color0, p_vertex);
     out_screen_position =
         p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
 
@@ -157,9 +157,9 @@ TEST_CASE("rast.single_triangle.visibility") {
   l_vertex_layout.begin();
   l_vertex_layout.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
 
-  container::arr<m::vec<fix32, 3>, 3> l_triangle_vertices = {
+  container::arr<position_t, 3> l_triangle_vertices = {
       .m_data = {{0.0, 0.0, 0.0}, {1.0, 0.0, 0.0}, {0.0, 1.0, 0.0}}};
-  container::arr<ui16, 3> l_triangle_indices = {0, 1, 2};
+  container::arr<vindex_t, 3> l_triangle_indices = {0, 1, 2};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
@@ -222,19 +222,19 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{0, 0, 0});
+        .stream(position_t{0.0, 0.0, 0.0})
+        .stream(rgb_t{0, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{1.0, 0.0, 0.0})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 255, 0});
+        .stream(position_t{0.0, 1.0, 0.0})
+        .stream(rgb_t{255, 255, 0});
   }
 
-  container::arr<ui16, 3> l_triangle_indices = {0, 1, 2};
+  container::arr<vindex_t, 3> l_triangle_indices = {0, 1, 2};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
@@ -292,7 +292,7 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
   l_vertex_layout.begin();
   l_vertex_layout.add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float);
 
-  container::arr<m::vec<fix32, 3>, 6> l_triangle_vertices = {
+  container::arr<position_t, 6> l_triangle_vertices = {
       .m_data = {
           {0.0, 0.0, 0.0},
           {1.0, 0.0, 0.0},
@@ -301,7 +301,7 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
           {0.0, -1.0, 0.0},
           {-1.0, 0.0, 0.0} // cc
       }};
-  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+  container::arr<vindex_t, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
@@ -383,32 +383,32 @@ TEST_CASE("rast.depth.comparison") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{0.0, 0.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{1.0, 0.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{0.0, 1.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<fix32, 3>{-0.5, 0.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{-0.5, 0.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{1.0, 0.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{0.0, 1.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
   }
 
-  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+  container::arr<vindex_t, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
@@ -473,32 +473,32 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{0.0, 0.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{1.0, 0.0, 0.0})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
-        .stream(m::vec<ui8, 3>{0, 0, 255});
+        .stream(position_t{0.0, 1.0, 0.0})
+        .stream(rgb_t{0, 0, 255});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<fix32, 3>{-0.5, 0.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{-0.5, 0.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{1.0, 0.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{0.0, 1.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
   }
 
-  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+  container::arr<vindex_t, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
@@ -564,32 +564,32 @@ TEST_CASE("rast.depth.comparison.readonly") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{0.0, 0.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{1.0, 0.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{0.0, 1.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<fix32, 3>{-0.5, 0.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{-0.5, 0.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{1.0, 0.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{0.0, 1.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
   }
 
-  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+  container::arr<vindex_t, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
@@ -655,32 +655,32 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<fix32, 3>{0.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{0.0, 0.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<fix32, 3>{2.0, 0.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{2.0, 0.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<fix32, 3>{0.0, 2.0, 0.0})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{0.0, 2.0, 0.0})
+        .stream(rgb_t{255, 0, 0});
 
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<fix32, 3>{-2, -2, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{-2, -2, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<fix32, 3>{1.0, 0.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{1.0, 0.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<fix32, 3>{0.0, 1.0, 0.1})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{0.0, 1.0, 0.1})
+        .stream(rgb_t{0, 255, 0});
   }
 
-  container::arr<ui16, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
+  container::arr<vindex_t, 6> l_triangle_indices = {0, 1, 2, 3, 4, 5};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
@@ -744,45 +744,45 @@ TEST_CASE("rast.3Dcube") {
 
   {
     l_triangle_vertices.range()
-        .stream(m::vec<fix32, 3>{-1.0f, 1.0f, 1.0f})
-        .stream(m::vec<ui8, 3>{0, 0, 0});
+        .stream(position_t{-1.0f, 1.0f, 1.0f})
+        .stream(rgb_t{0, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(1))
-        .stream(m::vec<fix32, 3>{1.0f, 1.0f, 1.0f})
-        .stream(m::vec<ui8, 3>{0, 0, 255});
+        .stream(position_t{1.0f, 1.0f, 1.0f})
+        .stream(rgb_t{0, 0, 255});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(2))
-        .stream(m::vec<fix32, 3>{-1.0f, -1.0f, 1.0f})
-        .stream(m::vec<ui8, 3>{0, 255, 0});
+        .stream(position_t{-1.0f, -1.0f, 1.0f})
+        .stream(rgb_t{0, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(3))
-        .stream(m::vec<fix32, 3>{1.0f, -1.0f, 1.0f})
-        .stream(m::vec<ui8, 3>{0, 255, 255});
+        .stream(position_t{1.0f, -1.0f, 1.0f})
+        .stream(rgb_t{0, 255, 255});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(4))
-        .stream(m::vec<fix32, 3>{-1.0f, 1.0f, -1.0f})
-        .stream(m::vec<ui8, 3>{255, 0, 0});
+        .stream(position_t{-1.0f, 1.0f, -1.0f})
+        .stream(rgb_t{255, 0, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(5))
-        .stream(m::vec<fix32, 3>{1.0f, 1.0f, -1.0f})
-        .stream(m::vec<ui8, 3>{255, 0, 255});
+        .stream(position_t{1.0f, 1.0f, -1.0f})
+        .stream(rgb_t{255, 0, 255});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(6))
-        .stream(m::vec<fix32, 3>{-1.0f, -1.0f, -1.0f})
-        .stream(m::vec<ui8, 3>{255, 255, 0});
+        .stream(position_t{-1.0f, -1.0f, -1.0f})
+        .stream(rgb_t{255, 255, 0});
     l_triangle_vertices.range()
         .slide(l_vertex_layout.getSize(7))
-        .stream(m::vec<fix32, 3>{1.0f, -1.0f, -1.0f})
-        .stream(m::vec<ui8, 3>{255, 255, 255});
+        .stream(position_t{1.0f, -1.0f, -1.0f})
+        .stream(rgb_t{255, 255, 255});
   }
 
-  container::arr<ui16, 36> l_triangle_indices = {0, 1, 2,          // 0
-                                                 1, 3, 2, 4, 6, 5, // 2
-                                                 5, 6, 7, 0, 2, 4, // 4
-                                                 4, 2, 6, 1, 5, 3, // 6
-                                                 5, 7, 3, 0, 4, 1, // 8
-                                                 4, 5, 1, 2, 3, 6, // 10
-                                                 6, 3, 7};
+  container::arr<vindex_t, 36> l_triangle_indices = {0, 1, 2,          // 0
+                                                     1, 3, 2, 4, 6, 5, // 2
+                                                     5, 6, 7, 0, 2, 4, // 4
+                                                     4, 2, 6, 1, 5, 3, // 6
+                                                     5, 7, 3, 0, 4, 1, // 8
+                                                     4, 5, 1, 2, 3, 6, // 10
+                                                     6, 3, 7};
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
