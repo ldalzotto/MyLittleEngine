@@ -56,6 +56,7 @@ struct mesh {
     if (m_composition.m_normal) {
       m_normals.free();
     }
+    m_indices.free();
   };
 };
 
