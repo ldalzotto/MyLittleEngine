@@ -157,7 +157,7 @@ if (l_type == "BUILD_TESTS_DEBUG") {
 else if (l_type == "BUILD_TESTS_RELEASE") {
     fs.emptyDirSync(tmp_path);
     fs.emptyDirSync(build_path);
-    await build_cmake_project("TESTS", new BuildConfig({ ENABLE_ADDRESS: false, ENABLE_SAFETY_CHECKS: false, ENABLE_UNDEFINED: false, WIN_HEADLESS: true }));
+    await build_cmake_project("TESTS", new BuildConfig({ BUILD_TYPE: "Release", ENABLE_ADDRESS: false, ENABLE_SAFETY_CHECKS: false, ENABLE_UNDEFINED: false, WIN_HEADLESS: true }));
     await run_cmake_project("TESTS", build_path);
 }
 else if (l_type == "BUILD_EMSCRIPTEN") {
