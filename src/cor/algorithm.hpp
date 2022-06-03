@@ -1,12 +1,13 @@
 #pragma once
 
+#include <cor/concepts.hpp>
 #include <cor/traits.hpp>
 #include <cor/types.hpp>
 
 namespace algorithm {
 
 template <typename RangeType, typename SortFunc>
-void sort(RangeType &p_range, const SortFunc &p_sort_func) {
+void sort(container::range_c<RangeType> p_range, const SortFunc &p_sort_func) {
   using element_type = typename RangeType::element_type;
   for (auto i = 0; i < p_range.count(); ++i) {
     element_type &l_left = p_range.at(i);
@@ -21,9 +22,19 @@ void sort(RangeType &p_range, const SortFunc &p_sort_func) {
   }
 };
 
+#if CONCEPTS_ENABLED
+
+template <typename RangeType, typename SortFunc>
+void sort(RangeType &p_range, const SortFunc &p_sort_func) {
+  sort(container::range_c<RangeType>(p_range), p_sort_func);
+};
+
+#endif
+
 static constexpr uimax hash_begin = 5381;
 
-template <typename RangeType> uimax hash(RangeType p_range) {
+template <typename RangeType>
+uimax hash(container::range_const_c<RangeType> p_range) {
   uimax hash = hash_begin;
   for (auto i = 0; i < p_range.count(); i++) {
     hash = ((hash << 5) + hash) + p_range.at(i);
@@ -31,13 +42,32 @@ template <typename RangeType> uimax hash(RangeType p_range) {
   return hash;
 };
 
+#if CONCEPTS_ENABLED
+
 template <typename RangeType>
-inline uimax hash_combine(uimax p_seed, const RangeType &p_range) {
+FORCE_INLINE uimax hash(const RangeType &p_range) {
+  return hash(container::range_const_c<RangeType>(p_range));
+};
+
+#endif
+
+template <typename RangeType>
+inline uimax hash_combine(uimax p_seed,
+                          container::range_const_c<RangeType> p_range) {
   return p_seed ^= hash(p_range) + 0x9e3779b9 + (p_seed << 6) + (p_seed >> 2);
 };
 
+#if CONCEPTS_ENABLED
+
+template <typename RangeType>
+FORCE_INLINE uimax hash_combine(uimax p_seed, const RangeType &p_range) {
+  return hash_combine(p_seed, container::range_const_c<RangeType>(p_range));
+};
+
+#endif
+
 template <typename StrRangeType> struct str_iterator {
-  StrRangeType &m_str;
+  container::range_const_c<StrRangeType, ui8> m_str;
   uimax m_char_iterator;
 
   str_iterator(StrRangeType &p_str) : m_str(p_str) { m_char_iterator = 0; };
@@ -91,17 +121,16 @@ template <typename StrRangeType> struct str_iterator {
 
 template <typename StrRangeType> struct str_line_iterator {
   using line_t = typename traits::remove_const<StrRangeType>::type;
-  using element_type_t = typename line_t::element_type;
 
-  StrRangeType &m_str;
-  line_t m_line;
+  container::range_const_c<StrRangeType, ui8> m_str;
+  container::range_v_c<line_t, ui8> m_line;
   uimax m_absolute_iterator;
 
   uimax &index() { return m_absolute_iterator; };
   line_t &line() { return m_line; };
 
   str_line_iterator(StrRangeType &p_str) : m_str(p_str) {
-    m_line = StrRangeType::make(0, 0);
+    m_line = m_line.make(nullptr, 0);
     m_absolute_iterator = 0;
   };
 
@@ -127,7 +156,7 @@ template <typename StrRangeType> struct str_line_iterator {
 
 private:
   ui8 __next_line() {
-    m_line = line_t::make((element_type_t *)&m_str.at(m_absolute_iterator), 0);
+    m_line = m_line.make((ui8 *)&m_str.at(m_absolute_iterator), 0);
     while (true) {
 
       if (m_absolute_iterator == m_str.count() - 1) {

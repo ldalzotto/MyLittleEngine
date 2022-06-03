@@ -281,12 +281,11 @@ inline static BaseType pow_polynomial(BaseType p_base, PowerType p_power) {
 namespace m {
 
 template <typename T>
-FORCE_INLINE T
-sqrt(T p_value,
+inline T sqrt(T p_value,
      traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
          0) {
   return std::sqrt(p_value);
-};
+} ;
 
 template <typename T>
 FORCE_INLINE T

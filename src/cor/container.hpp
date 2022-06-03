@@ -137,6 +137,9 @@ template <typename T, int N> struct arr {
 
 template <typename T, typename AllocFunctions = malloc_free_functions>
 struct span {
+
+  using element_type = T;
+
   T *m_data;
   uimax m_count;
 
