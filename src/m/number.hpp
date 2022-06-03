@@ -40,21 +40,21 @@ template <typename T> struct is_fixed { static constexpr ui8 value = 0; };
 
 template <typename T>
 constexpr NumberType get_number_type(
-    enable_if_t<is_builtin<T>::value && is_builtin_floating<T>::value, void *> =
-        0) {
+    traits::enable_if_t<is_builtin<T>::value && is_builtin_floating<T>::value,
+                        void *> = 0) {
   return NumberType::Floating;
 };
 
 template <typename T>
 constexpr NumberType get_number_type(
-    enable_if_t<is_builtin<T>::value && !is_builtin_floating<T>::value,
-                void *> = 0) {
+    traits::enable_if_t<is_builtin<T>::value && !is_builtin_floating<T>::value,
+                        void *> = 0) {
   return NumberType::Integer;
 };
 
 template <typename T>
 constexpr NumberType
-get_number_type(enable_if_t<is_fixed<T>::value, void *> = 0) {
+get_number_type(traits::enable_if_t<is_fixed<T>::value, void *> = 0) {
   return NumberType::Fixed;
 };
 
@@ -166,23 +166,26 @@ template <typename T, ui8 ScaleFactor> struct fixed {
 
 private:
   template <typename TT>
-  FORCE_INLINE constexpr void __make(
-      TT p_value,
-      enable_if_t<get_number_type<TT>() == NumberType::Floating, void *> = 0) {
+  FORCE_INLINE constexpr void
+  __make(TT p_value,
+         traits::enable_if_t<get_number_type<TT>() == NumberType::Floating,
+                             void *> = 0) {
     m_value = m::nearest(p_value * scale);
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr void __make(
-      TT p_value, enable_if_t<!is_signed<TT>::value, void *> = 0,
-      enable_if_t<get_number_type<TT>() == NumberType::Integer, void *> = 0) {
+  FORCE_INLINE constexpr void
+  __make(TT p_value, traits::enable_if_t<!is_signed<TT>::value, void *> = 0,
+         traits::enable_if_t<get_number_type<TT>() == NumberType::Integer,
+                             void *> = 0) {
     m_value = i32(p_value) << ScaleFactor;
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr void __make(
-      TT p_value, enable_if_t<is_signed<TT>::value, void *> = 0,
-      enable_if_t<get_number_type<TT>() == NumberType::Integer, void *> = 0) {
+  FORCE_INLINE constexpr void
+  __make(TT p_value, traits::enable_if_t<is_signed<TT>::value, void *> = 0,
+         traits::enable_if_t<get_number_type<TT>() == NumberType::Integer,
+                             void *> = 0) {
     if (p_value < 0) {
       m_value = -(i32(-p_value) << ScaleFactor);
 
@@ -192,53 +195,54 @@ private:
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr void
-  __make(TT p_value,
-         enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> = 0) {
+  FORCE_INLINE constexpr void __make(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
+          0) {
     *this = p_value;
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __add(TT p_value,
-        enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __add(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
+          0) const {
     fixed l_value = 0;
     l_value.m_value = m_value + p_value.m_value;
     return l_value;
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __add(TT p_value,
-        enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __add(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
+          0) const {
     return __add(fixed(p_value));
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __sub(TT p_value,
-        enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __sub(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
+          0) const {
     fixed l_value = 0;
     l_value.m_value = m_value - p_value.m_value;
     return l_value;
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __sub(TT p_value,
-        enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __sub(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
+          0) const {
     return __sub(fixed(p_value));
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __mul(TT p_value,
-        enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __mul(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
+          0) const {
     fixed l_fixed = 0;
     l_fixed.m_value =
         (((long long)m_value * p_value.m_value) + (scale >> 1)) >> ScaleFactor;
@@ -246,18 +250,18 @@ private:
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __mul(TT p_value,
-        enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __mul(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
+          0) const {
     return __mul(fixed(p_value));
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __div(TT p_value,
-        enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __div(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
+          0) const {
     fixed l_fixed = 0;
     l_fixed.m_value =
         (((((long long)m_value) * scale) + (scale >> 1))) / p_value.m_value;
@@ -265,10 +269,10 @@ private:
   };
 
   template <typename TT>
-  FORCE_INLINE constexpr fixed
-  __div(TT p_value,
-        enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
-            0) const {
+  FORCE_INLINE constexpr fixed __div(
+      TT p_value,
+      traits::enable_if_t<get_number_type<TT>() != NumberType::Fixed, void *> =
+          0) const {
     return __div(fixed(p_value));
   };
 };
