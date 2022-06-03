@@ -9,7 +9,7 @@ struct tmp_renderer {
   bgfx::ProgramHandle m_frame_program;
   bgfx::VertexLayout m_vertex_layout;
   container::span<ui8> m_triangle_vertices;
-  container::arr<ui16, 36> m_triangle_indices;
+  container::arr<vindex_t, 36> m_triangle_indices;
   bgfx::VertexBufferHandle m_vertex_buffer;
   bgfx::IndexBufferHandle m_index_buffer;
 
@@ -31,33 +31,32 @@ public:
     m_triangle_vertices.allocate(m_vertex_layout.getSize(8));
 
     {
-      const uimax l_slide_offset = m_vertex_layout.getStride() -
-                                   sizeof(m::vec<fix32, 3>) -
-                                   sizeof(m::vec<ui8, 3>);
+      const uimax l_slide_offset =
+          m_vertex_layout.getStride() - sizeof(position_t) - sizeof(rgb_t);
       m_triangle_vertices.range()
-          .stream(m::vec<fix32, 3>{-1.0f, 1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 0, 0})
+          .stream(position_t{-1.0f, 1.0f, 1.0f})
+          .stream(rgb_t{0, 0, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<fix32, 3>{1.0f, 1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 0, 255})
+          .stream(position_t{1.0f, 1.0f, 1.0f})
+          .stream(rgb_t{0, 0, 255})
           .slide(l_slide_offset)
-          .stream(m::vec<fix32, 3>{-1.0f, -1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 255, 0})
+          .stream(position_t{-1.0f, -1.0f, 1.0f})
+          .stream(rgb_t{0, 255, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<fix32, 3>{1.0f, -1.0f, 1.0f})
-          .stream(m::vec<ui8, 3>{0, 255, 255})
+          .stream(position_t{1.0f, -1.0f, 1.0f})
+          .stream(rgb_t{0, 255, 255})
           .slide(l_slide_offset)
-          .stream(m::vec<fix32, 3>{-1.0f, 1.0f, -1.0f})
-          .stream(m::vec<ui8, 3>{255, 0, 0})
+          .stream(position_t{-1.0f, 1.0f, -1.0f})
+          .stream(rgb_t{255, 0, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<fix32, 3>{1.0f, 1.0f, -1.0f})
-          .stream(m::vec<ui8, 3>{255, 0, 255})
+          .stream(position_t{1.0f, 1.0f, -1.0f})
+          .stream(rgb_t{255, 0, 255})
           .slide(l_slide_offset)
-          .stream(m::vec<fix32, 3>{-1.0f, -1.0f, -1.0f})
-          .stream(m::vec<ui8, 3>{255, 255, 0})
+          .stream(position_t{-1.0f, -1.0f, -1.0f})
+          .stream(rgb_t{255, 255, 0})
           .slide(l_slide_offset)
-          .stream(m::vec<fix32, 3>{1.0f, -1.0f, -1.0f})
-          .stream(m::vec<ui8, 3>{255, 255, 255});
+          .stream(position_t{1.0f, -1.0f, -1.0f})
+          .stream(rgb_t{255, 255, 255});
     }
 
     m_triangle_indices = {0, 1, 2,          // 0
@@ -113,7 +112,8 @@ public:
 
     // Submit 11x11 cubes.
     m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
-    l_transform = m::rotate_around(l_transform, fix32(m_counter) * m_delta, {0, 1, 0});
+    l_transform =
+        m::rotate_around(l_transform, fix32(m_counter) * m_delta, {0, 1, 0});
     // l_transform.at(3, 0) = m_delta * m_counter;
     // Set model matrix for rendering.
     bgfx::setTransform(l_transform.m_data);
@@ -146,25 +146,23 @@ private:
             rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
     static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                       const ui8 *p_vertex,
-                       m::vec<fix32, 4> &out_screen_position,
+                       const ui8 *p_vertex, rgbaf_t &out_screen_position,
                        ui8 **out_vertex) {
       rast::shader_vertex l_shader = {p_ctx};
-      const auto &l_vertex_pos = l_shader.get_vertex<m::vec<fix32, 3>>(
+      const auto &l_vertex_pos = l_shader.get_vertex<position_t>(
           bgfx::Attrib::Enum::Position, p_vertex);
-      const m::vec<ui8, 3> &l_color = l_shader.get_vertex<m::vec<ui8, 3>>(
-          bgfx::Attrib::Enum::Color0, p_vertex);
+      const rgb_t &l_color =
+          l_shader.get_vertex<rgb_t>(bgfx::Attrib::Enum::Color0, p_vertex);
       out_screen_position =
           p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
 
-      m::vec<fix32, 3> *l_vertex_color = (m::vec<fix32, 3> *)out_vertex[0];
+      position_t *l_vertex_color = (position_t *)out_vertex[0];
       (*l_vertex_color) = l_color.cast<fix32>() / 255;
     };
 
     static void fragment(ui8 **p_vertex_output_interpolated,
-                         m::vec<fix32, 3> &out_color) {
-      m::vec<fix32, 3> *l_vertex_color =
-          (m::vec<fix32, 3> *)p_vertex_output_interpolated[0];
+                         rgbf_t &out_color) {
+      rgbf_t *l_vertex_color = (rgbf_t *)p_vertex_output_interpolated[0];
       out_color = *l_vertex_color;
     };
 

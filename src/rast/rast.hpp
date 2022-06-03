@@ -729,7 +729,7 @@ struct bgfx_impl {
           rast::image_view l_target_view(
               l_texture->info.width, l_texture->info.height,
               l_texture->info.bitsPerPixel, l_frame_rgb_texture_range);
-          l_target_view.for_each<m::vec<ui8, 3>>([&](m::vec<ui8, 3> &p_pixel) {
+          l_target_view.for_each<rgb_t>([&](rgb_t &p_pixel) {
             p_pixel.x() = l_clear_state.m_rgba.r;
             p_pixel.y() = l_clear_state.m_rgba.g;
             p_pixel.z() = l_clear_state.m_rgba.b;

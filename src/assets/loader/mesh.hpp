@@ -4,6 +4,7 @@
 #include <cor/orm.hpp>
 #include <m/math.hpp>
 #include <m/vec.hpp>
+#include <shared/types.hpp>
 
 namespace assets {
 
@@ -19,11 +20,11 @@ enum class mesh_attribute_type : ui8 { undefined, position, color, uv, normal };
 struct mesh {
   mesh_composition m_composition;
 
-  container::span<m::vec<fix32, 3>> m_positions;
-  container::span<m::vec<ui8, 3>> m_colors;
-  container::span<m::vec<fix32, 2>> m_uvs;
-  container::span<m::vec<fix32, 3>> m_normals;
-  container::span<ui32> m_indices;
+  container::span<position_t> m_positions;
+  container::span<rgb_t> m_colors;
+  container::span<uv_t> m_uvs;
+  container::span<normal_t> m_normals;
+  container::span<vindex_t> m_indices;
 
   void allocate(mesh_composition p_composition, uimax p_unique_indices_count,
                 uimax p_face_indices_count) {
@@ -76,11 +77,11 @@ struct mesh_intermediary {
   mesh_composition m_composition;
 
   struct heap {
-    container::span<m::vec<fix32, 3>> m_positions;
-    container::span<m::vec<ui8, 3>> m_colors;
-    container::span<m::vec<fix32, 2>> m_uvs;
-    container::span<m::vec<fix32, 3>> m_normals;
-    container::span<container::arr<container::arr<ui32, 4>, 3>> m_faces;
+    container::span<position_t> m_positions;
+    container::span<rgb_t> m_colors;
+    container::span<uv_t> m_uvs;
+    container::span<normal_t> m_normals;
+    container::span<container::arr<container::arr<vindex_t, 4>, 3>> m_faces;
   } m_heap;
 
   void allocate(uimax p_position_count, uimax p_color_count, uimax p_uv_count,
@@ -104,29 +105,27 @@ struct mesh_intermediary {
     m_heap.m_faces.free();
   };
 
-  container::span<m::vec<fix32, 3>> &position() { return m_heap.m_positions; };
-  container::span<m::vec<ui8, 3>> &color() { return m_heap.m_colors; };
-  container::span<m::vec<fix32, 2>> &uv() { return m_heap.m_uvs; };
-  container::span<m::vec<fix32, 3>> &normal() { return m_heap.m_normals; };
-  container::span<container::arr<container::arr<ui32, 4>, 3>> &face() {
+  container::span<position_t> &position() { return m_heap.m_positions; };
+  container::span<rgb_t> &color() { return m_heap.m_colors; };
+  container::span<uv_t> &uv() { return m_heap.m_uvs; };
+  container::span<normal_t> &normal() { return m_heap.m_normals; };
+  container::span<container::arr<container::arr<vindex_t, 4>, 3>> &face() {
     return m_heap.m_faces;
   };
 
   mesh allocate_mesh() {
-    using index_value = ui32;
     using face_hash = uimax;
-    //     using vertex_face_index = uimax;
 
     struct index {
       face_hash m_hash;
-      container::arr<ui32, 4> m_attributes;
+      container::arr<vindex_t, 4> m_attributes;
     };
 
     container::vector<index> l_unique_indices;
 
     struct per_face {
       table_span_meta;
-      table_cols_2(index_value, face_hash);
+      table_cols_2(vindex_t, face_hash);
       table_define_span_2;
     } l_per_face_indices;
 
@@ -163,11 +162,11 @@ struct mesh_intermediary {
              ++l_attribute_it) {
           l_hash = algorithm::hash_combine(
               l_hash,
-              container::range<ui32>::make(&l_face.at(l_attribute_it), 1)
+              container::range<vindex_t>::make(&l_face.at(l_attribute_it), 1)
                   .cast_to<ui8>());
         }
 
-        ui32 l_index_found = -1;
+        vindex_t l_index_found = -1;
         for (auto l_index_it = 0; l_index_it < l_unique_indices.count();
              ++l_index_it) {
           if (l_unique_indices.at(l_index_it).m_hash == l_hash) {
@@ -177,13 +176,13 @@ struct mesh_intermediary {
         }
 
         uimax l_face_index = (l_face_it * 3) + i;
-        if (l_index_found == -1) {
+        if (l_index_found == vindex_t(-1)) {
           l_unique_indices.push_back(
               index{.m_hash = l_hash, .m_attributes = l_face});
           l_index_found = l_unique_indices.count() - 1;
         }
 
-        index_value *l_face_index_value;
+        vindex_t *l_face_index_value;
         face_hash *l_face_hash;
         l_per_face_indices.at(l_face_index, &l_face_index_value, &l_face_hash);
         *l_face_index_value = l_index_found;
@@ -307,7 +306,7 @@ private:
           }
           auto l_z = l_position_coordinates.shrink_to(l_white_space_it);
 
-          const m::vec<fix32, 3> l_position = {
+          const position_t l_position = {
               sys::stof(l_x.data(), l_x.count()),
               sys::stof(l_y.data(), l_y.count()),
               sys::stof(l_z.data(), l_z.count())};
@@ -343,7 +342,7 @@ private:
           }
           auto l_b = l_vertex_coordinates.shrink_to(l_white_space_it);
 
-          const m::vec<ui8, 3> l_color = {
+          const rgb_t l_color = {
               sys::stoui<ui8>(l_r.data(), l_r.count()),
               sys::stoui<ui8>(l_g.data(), l_g.count()),
               sys::stoui<ui8>(l_b.data(), l_b.count())};
@@ -374,7 +373,7 @@ private:
           }
           auto l_v = l_vertex_coordinates.shrink_to(l_white_space_it);
 
-          const m::vec<fix32, 2> l_uv = {sys::stof(l_u.data(), l_u.count()),
+          const uv_t l_uv = {sys::stof(l_u.data(), l_u.count()),
                                          sys::stof(l_v.data(), l_v.count())};
           l_mesh_uv.at(l_line_count) = l_uv;
 
@@ -408,11 +407,11 @@ private:
           }
           auto l_z = l_normal_coordinates.shrink_to(l_white_space_it);
 
-          const m::vec<fix32, 3> l_position = {
+          const normal_t l_normal = {
               sys::stof(l_x.data(), l_x.count()),
               sys::stof(l_y.data(), l_y.count()),
               sys::stof(l_z.data(), l_z.count())};
-          l_mesh_normals.at(l_line_count) = l_position;
+          l_mesh_normals.at(l_line_count) = l_normal;
 
           l_line_count += 1;
         }
@@ -444,7 +443,7 @@ private:
           }
           auto l_f3 = l_face_line.shrink_to(l_white_space_it);
 
-          const auto l_face = container::arr<container::arr<ui32, 4>, 3>{
+          const auto l_face = container::arr<container::arr<vindex_t, 4>, 3>{
               extract_face_indices(l_f1), extract_face_indices(l_f2),
               extract_face_indices(l_f3)};
           l_faces.at(l_line_count) = l_face;
@@ -453,9 +452,9 @@ private:
       }
     };
 
-    static container::arr<ui32, 4>
+    static container::arr<vindex_t, 4>
     extract_face_indices(const container::range<const ui8> &p_str) {
-      container::arr<ui32, 4> l_out;
+      container::arr<vindex_t, 4> l_out;
       l_out.range().zero();
       ui8 l_out_index = 0;
 
@@ -467,7 +466,7 @@ private:
           l_end = l_it;
           auto l_range = p_str.slide(l_begin).shrink_to(l_end - l_begin);
           l_out.at(l_out_index) =
-              sys::stoui<ui32>(l_range.data(), l_range.count()) - 1;
+              sys::stoui<vindex_t>(l_range.data(), l_range.count()) - 1;
           l_out_index += 1;
           l_begin = l_it + 1;
           l_end = l_begin;
