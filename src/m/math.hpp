@@ -24,14 +24,16 @@ template <> struct epsilon<f32> {
 template <typename T>
 static FORCE_INLINE constexpr T
 abs(T v,
-    enable_if_t<m::get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<m::get_number_type<T>() != NumberType::Fixed, void *> =
+        0) {
   return v >= 0 ? v : (v * -1);
 };
 
 template <typename T>
 static FORCE_INLINE constexpr T
 abs(T v,
-    enable_if_t<m::get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<m::get_number_type<T>() == NumberType::Fixed, void *> =
+        0) {
   T l_value;
   l_value.m_value = m::abs(v.m_value);
   return l_value;
@@ -53,7 +55,6 @@ template <typename T> FORCE_INLINE static constexpr T pi() {
 template <typename T> FORCE_INLINE static constexpr T e() {
   return 2.7182818284590;
 };
-
 
 template <typename T> static FORCE_INLINE constexpr i32 nearest(T v) {
   i32 lx = i32(v);

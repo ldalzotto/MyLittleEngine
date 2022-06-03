@@ -283,14 +283,16 @@ namespace m {
 template <typename T>
 FORCE_INLINE T
 sqrt(T p_value,
-     enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+     traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+         0) {
   return std::sqrt(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 sqrt(T p_value,
-     enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+     traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+         0) {
   return m::details::sqrt_polynomial(p_value);
 };
 
@@ -300,139 +302,153 @@ namespace m {
 template <typename T>
 FORCE_INLINE T
 sin(T p_value,
-    enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+        0) {
   return std::sin(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 sin(T p_value,
-    enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+        0) {
   return m::details::sin_polynomial(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 cos(T p_value,
-    enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+        0) {
   return std::cos(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 cos(T p_value,
-    enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+        0) {
   return m::details::cos_polynomial(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 tan(T p_value,
-    enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+        0) {
   return std::tan(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 tan(T p_value,
-    enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+        0) {
   return m::details::tan_polynomial(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 arcsin(T p_value,
-       enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+       traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+           0) {
   return std::asin(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 arcsin(T p_value,
-       enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+       traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+           0) {
   return m::details::arcsin_polynomial(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 arccos(T p_value,
-       enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+       traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+           0) {
   return std::acos(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 arccos(T p_value,
-       enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+       traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+           0) {
   return m::details::arccos_polynomial(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 arctan(T p_value,
-       enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+       traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+           0) {
   return std::atan(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 arctan(T p_value,
-       enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+       traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+           0) {
   return m::details::arctan_polynomial(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 exp(T p_value,
-    enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> =
+        0) {
   return std::exp(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 exp(T p_value,
-    enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+    traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> =
+        0) {
   return m::details::exp_polynomial(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 ln(T p_value,
-   enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
+   traits::enable_if_t<get_number_type<T>() != NumberType::Fixed, void *> = 0) {
   return std::log(p_value);
 };
 
 template <typename T>
 FORCE_INLINE T
 ln(T p_value,
-   enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
+   traits::enable_if_t<get_number_type<T>() == NumberType::Fixed, void *> = 0) {
   return m::details::ln_polynomial(p_value);
 };
 
 template <typename Base, typename Power>
 FORCE_INLINE Base
 pow(Base p_base, Power p_power,
-    enable_if_t<get_number_type<Base>() != NumberType::Fixed &&
-                    get_number_type<Power>() != NumberType::Fixed,
-                void *> = 0) {
+    traits::enable_if_t<get_number_type<Base>() != NumberType::Fixed &&
+                            get_number_type<Power>() != NumberType::Fixed,
+                        void *> = 0) {
   return std::pow(p_base, p_power);
 };
 
 template <typename Base, typename Power>
 FORCE_INLINE Base
 pow(Base p_base, Power p_power,
-    enable_if_t<get_number_type<Base>() == NumberType::Fixed &&
-                    get_number_type<Power>() != NumberType::Fixed,
-                void *> = 0) {
+    traits::enable_if_t<get_number_type<Base>() == NumberType::Fixed &&
+                            get_number_type<Power>() != NumberType::Fixed,
+                        void *> = 0) {
   return m::details::pow_polynomial(p_base, Base(p_power));
 };
 
 template <typename Base, typename Power>
 FORCE_INLINE Base
 pow(Base p_base, Power p_power,
-    enable_if_t<get_number_type<Base>() == NumberType::Fixed &&
-                    get_number_type<Power>() == NumberType::Fixed,
-                void *> = 0) {
+    traits::enable_if_t<get_number_type<Base>() == NumberType::Fixed &&
+                            get_number_type<Power>() == NumberType::Fixed,
+                        void *> = 0) {
   return m::details::pow_polynomial(p_base, p_power);
 };
 
