@@ -146,7 +146,7 @@ private:
             rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
     static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                       const ui8 *p_vertex, fl_rgba_t &out_screen_position,
+                       const ui8 *p_vertex, rgbaf_t &out_screen_position,
                        ui8 **out_vertex) {
       rast::shader_vertex l_shader = {p_ctx};
       const auto &l_vertex_pos = l_shader.get_vertex<position_t>(
@@ -161,8 +161,8 @@ private:
     };
 
     static void fragment(ui8 **p_vertex_output_interpolated,
-                         fl_rgb_t &out_color) {
-      fl_rgb_t *l_vertex_color = (fl_rgb_t *)p_vertex_output_interpolated[0];
+                         rgbf_t &out_color) {
+      rgbf_t *l_vertex_color = (rgbf_t *)p_vertex_output_interpolated[0];
       out_color = *l_vertex_color;
     };
 

@@ -754,7 +754,7 @@ private:
         shader_fragment_bytes::view{(ui8 *)m_input.m_program.m_fragment}
             .fonction();
 
-    fl_rgb_t l_color_buffer;
+    rgbf_t l_color_buffer;
 
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       ui8 *l_visibility_boolean;
