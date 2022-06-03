@@ -148,10 +148,16 @@ let build_emscripten = async function (p_project_name: string, p_subdirectories:
 
 
 let l_type = Deno.args[0];
-if (l_type == "BUILD_TESTS") {
+if (l_type == "BUILD_TESTS_DEBUG") {
     fs.emptyDirSync(tmp_path);
     fs.emptyDirSync(build_path);
     await build_cmake_project("TESTS", new BuildConfig({ ENABLE_ADDRESS: true, ENABLE_SAFETY_CHECKS: true, ENABLE_UNDEFINED: true, WIN_HEADLESS: true }));
+    await run_cmake_project("TESTS", build_path);
+}
+else if (l_type == "BUILD_TESTS_RELEASE") {
+    fs.emptyDirSync(tmp_path);
+    fs.emptyDirSync(build_path);
+    await build_cmake_project("TESTS", new BuildConfig({ ENABLE_ADDRESS: false, ENABLE_SAFETY_CHECKS: false, ENABLE_UNDEFINED: false, WIN_HEADLESS: true }));
     await run_cmake_project("TESTS", build_path);
 }
 else if (l_type == "BUILD_EMSCRIPTEN") {
