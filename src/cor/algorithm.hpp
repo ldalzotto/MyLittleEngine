@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cor/traits.hpp>
 #include <cor/types.hpp>
 
 namespace algorithm {
@@ -28,11 +29,71 @@ template <typename RangeType> uimax hash(RangeType p_range) {
     hash = ((hash << 5) + hash) + p_range.at(i);
   }
   return hash;
-}
+};
 
 template <typename RangeType>
 inline uimax hash_combine(uimax p_seed, const RangeType &p_range) {
   return p_seed ^= hash(p_range) + 0x9e3779b9 + (p_seed << 6) + (p_seed >> 2);
-}
+};
+
+template <typename StrRangeType> struct str_line_iterator {
+  using line_t = typename traits::remove_const<StrRangeType>::type;
+  using element_type_t = typename line_t::element_type;
+
+  StrRangeType &m_str;
+  line_t m_line;
+  uimax m_absolute_iterator;
+
+  uimax &index() { return m_absolute_iterator; };
+  line_t &line() { return m_line; };
+
+  str_line_iterator(StrRangeType &p_str) : m_str(p_str) {
+    m_line = StrRangeType::make(0, 0);
+    m_absolute_iterator = 0;
+  };
+
+  template <typename CallbackFunc>
+  void for_each_line(const CallbackFunc &p_cb) {
+    m_absolute_iterator = 0;
+    while (__next_line()) {
+      p_cb(m_line);
+    }
+  };
+
+  void set_iterator_index(uimax p_iterator) {
+    m_absolute_iterator = p_iterator;
+  };
+  line_t &next_line() {
+    __next_line();
+    return m_line;
+  };
+
+  uimax line_begin_absolute() const {
+    return m_absolute_iterator - m_line.count() - 1;
+  };
+
+private:
+  ui8 __next_line() {
+    m_line = line_t::make((element_type_t *)&m_str.at(m_absolute_iterator), 0);
+    while (true) {
+
+      if (m_absolute_iterator == m_str.count() - 1) {
+        return 0;
+      }
+
+      if (m_str.at(m_absolute_iterator) == '\n') {
+        if ((m_absolute_iterator + 1) == m_str.count() - 1) {
+          return 0;
+        } else {
+          m_absolute_iterator += 1;
+          return 1;
+        }
+      }
+
+      m_absolute_iterator += 1;
+      m_line.count() += 1;
+    }
+  };
+};
 
 }; // namespace algorithm
