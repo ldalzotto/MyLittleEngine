@@ -1,6 +1,6 @@
 #include <doctest.h>
 
-#include <assets/loader/mesh.hpp>
+#include <assets/loader/mesh_obj.hpp>
 #include <cor/container.hpp>
 #include <cstring>
 
