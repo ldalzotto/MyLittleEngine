@@ -36,6 +36,59 @@ inline uimax hash_combine(uimax p_seed, const RangeType &p_range) {
   return p_seed ^= hash(p_range) + 0x9e3779b9 + (p_seed << 6) + (p_seed >> 2);
 };
 
+template <typename StrRangeType> struct str_iterator {
+  StrRangeType &m_str;
+  uimax m_char_iterator;
+
+  str_iterator(StrRangeType &p_str) : m_str(p_str) { m_char_iterator = 0; };
+
+  void advance(uimax p_offset) { m_char_iterator += p_offset; };
+
+  StrRangeType range_next_char(i8 p_char) {
+    uimax l_start_it = m_char_iterator;
+    while (m_str.at(m_char_iterator) != p_char) {
+      m_char_iterator += 1;
+    }
+    return m_str.slide(l_start_it).shrink_to(m_char_iterator - l_start_it);
+  };
+
+  StrRangeType range_next_char_advance(i8 p_char) {
+    StrRangeType l_return = range_next_char(p_char);
+    m_char_iterator += 1;
+    return l_return;
+  };
+
+  StrRangeType range_until_end() {
+    uimax l_start_it = m_char_iterator;
+    while (m_char_iterator != m_str.count()) {
+      m_char_iterator += 1;
+    }
+    return m_str.slide(l_start_it).shrink_to(m_char_iterator - l_start_it);
+  };
+
+  template <typename CallbackFunc>
+  void split(i8 p_char, const CallbackFunc &p_cb) {
+    uimax l_it = 0;
+    uimax l_begin = l_it;
+    uimax l_end = l_begin;
+    while (true) {
+      if (l_it == m_str.count() || m_str.at(l_it) == p_char) {
+        l_end = l_it;
+        auto l_range = m_str.slide(l_begin).shrink_to(l_end - l_begin);
+        p_cb(l_range);
+        l_begin = l_it + 1;
+        l_end = l_begin;
+      }
+
+      if (l_it == m_str.count()) {
+        break;
+      }
+
+      l_it += 1;
+    }
+  };
+};
+
 template <typename StrRangeType> struct str_line_iterator {
   using line_t = typename traits::remove_const<StrRangeType>::type;
   using element_type_t = typename line_t::element_type;

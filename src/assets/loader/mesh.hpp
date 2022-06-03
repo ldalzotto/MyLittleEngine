@@ -285,23 +285,15 @@ private:
         m_line_iterator.set_iterator_index(thiz.m_position_begin);
         while (l_line_count < thiz.m_position_count) {
           auto l_position_coordinates = m_line_iterator.next_line().slide(2);
-          auto l_white_space_it = 0;
-          while (l_position_coordinates.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_x = l_position_coordinates.shrink_to(l_white_space_it);
-          l_position_coordinates.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_position_coordinates.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_y = l_position_coordinates.shrink_to(l_white_space_it);
-          l_position_coordinates.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_white_space_it != l_position_coordinates.count()) {
-            l_white_space_it += 1;
-          }
-          auto l_z = l_position_coordinates.shrink_to(l_white_space_it);
+
+          algorithm::str_iterator<const container::range<ui8>> l_str_iterator(
+              l_position_coordinates);
+
+          container::range<ui8> l_x =
+              l_str_iterator.range_next_char_advance(' ');
+          container::range<ui8> l_y =
+              l_str_iterator.range_next_char_advance(' ');
+          container::range<ui8> l_z = l_str_iterator.range_until_end();
 
           const position_t l_position = {sys::stof(l_x.data(), l_x.count()),
                                          sys::stof(l_y.data(), l_y.count()),
@@ -319,23 +311,15 @@ private:
         m_line_iterator.set_iterator_index(thiz.m_color_begin);
         while (l_line_count < thiz.m_color_count) {
           auto l_vertex_coordinates = m_line_iterator.next_line().slide(3);
-          auto l_white_space_it = 0;
-          while (l_vertex_coordinates.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_r = l_vertex_coordinates.shrink_to(l_white_space_it);
-          l_vertex_coordinates.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_vertex_coordinates.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_g = l_vertex_coordinates.shrink_to(l_white_space_it);
-          l_vertex_coordinates.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_white_space_it != l_vertex_coordinates.count()) {
-            l_white_space_it += 1;
-          }
-          auto l_b = l_vertex_coordinates.shrink_to(l_white_space_it);
+
+          algorithm::str_iterator<const container::range<ui8>> l_str_iterator(
+              l_vertex_coordinates);
+
+          container::range<ui8> l_r =
+              l_str_iterator.range_next_char_advance(' ');
+          container::range<ui8> l_g =
+              l_str_iterator.range_next_char_advance(' ');
+          container::range<ui8> l_b = l_str_iterator.range_until_end();
 
           const rgb_t l_color = {sys::stoui<ui8>(l_r.data(), l_r.count()),
                                  sys::stoui<ui8>(l_g.data(), l_g.count()),
@@ -353,18 +337,11 @@ private:
         m_line_iterator.set_iterator_index(thiz.m_uv_begin);
         while (l_line_count < thiz.m_uv_count) {
           auto l_vertex_coordinates = m_line_iterator.next_line().slide(3);
-          auto l_white_space_it = 0;
-          while (l_vertex_coordinates.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_u = l_vertex_coordinates.shrink_to(l_white_space_it);
-          l_vertex_coordinates.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
+          algorithm::str_iterator<const container::range<ui8>> l_str_iterator(
+              l_vertex_coordinates);
 
-          while (l_white_space_it != l_vertex_coordinates.count()) {
-            l_white_space_it += 1;
-          }
-          auto l_v = l_vertex_coordinates.shrink_to(l_white_space_it);
+          auto l_u = l_str_iterator.range_next_char_advance(' ');
+          auto l_v = l_str_iterator.range_until_end();
 
           const uv_t l_uv = {sys::stof(l_u.data(), l_u.count()),
                              sys::stof(l_v.data(), l_v.count())};
@@ -381,23 +358,12 @@ private:
         m_line_iterator.set_iterator_index(thiz.m_normal_begin);
         while (l_line_count < thiz.m_normal_count) {
           auto l_normal_coordinates = m_line_iterator.next_line().slide(3);
-          auto l_white_space_it = 0;
-          while (l_normal_coordinates.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_x = l_normal_coordinates.shrink_to(l_white_space_it);
-          l_normal_coordinates.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_normal_coordinates.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_y = l_normal_coordinates.shrink_to(l_white_space_it);
-          l_normal_coordinates.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_white_space_it != l_normal_coordinates.count()) {
-            l_white_space_it += 1;
-          }
-          auto l_z = l_normal_coordinates.shrink_to(l_white_space_it);
+          algorithm::str_iterator<const container::range<ui8>> l_str_iterator(
+              l_normal_coordinates);
+
+          auto l_x = l_str_iterator.range_next_char_advance(' ');
+          auto l_y = l_str_iterator.range_next_char_advance(' ');
+          auto l_z = l_str_iterator.range_until_end();
 
           const normal_t l_normal = {sys::stof(l_x.data(), l_x.count()),
                                      sys::stof(l_y.data(), l_y.count()),
@@ -409,30 +375,18 @@ private:
       }
 
       // faces
-      // TODO -> move to algorithm ?
       if (p_mesh_intermediary.face().count() > 0) {
         auto l_faces = p_mesh_intermediary.face();
         uimax l_line_count = 0;
         m_line_iterator.set_iterator_index(thiz.m_face_begin);
         while (l_line_count < thiz.m_face_count) {
           auto l_face_line = m_line_iterator.next_line().slide(2);
-          auto l_white_space_it = 0;
-          while (l_face_line.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_f1 = l_face_line.shrink_to(l_white_space_it);
-          l_face_line.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_face_line.at(l_white_space_it) != ' ') {
-            l_white_space_it += 1;
-          }
-          auto l_f2 = l_face_line.shrink_to(l_white_space_it);
-          l_face_line.slide_self(l_white_space_it + 1);
-          l_white_space_it = 0;
-          while (l_white_space_it != l_face_line.count()) {
-            l_white_space_it += 1;
-          }
-          auto l_f3 = l_face_line.shrink_to(l_white_space_it);
+          algorithm::str_iterator<const container::range<ui8>> l_str_iterator(
+              l_face_line);
+
+          auto l_f1 = l_str_iterator.range_next_char_advance(' ');
+          auto l_f2 = l_str_iterator.range_next_char_advance(' ');
+          auto l_f3 = l_str_iterator.range_until_end();
 
           const auto l_face = container::arr<container::arr<vindex_t, 4>, 3>{
               extract_face_indices(l_f1), extract_face_indices(l_f2),
@@ -449,27 +403,13 @@ private:
       l_out.range().zero();
       ui8 l_out_index = 0;
 
-      uimax l_it = 0;
-      uimax l_begin = l_it;
-      uimax l_end = l_begin;
-      // TODO -> move to algorithm ?
-      while (true) {
-        if (l_it == p_str.count() || p_str.at(l_it) == '/') {
-          l_end = l_it;
-          auto l_range = p_str.slide(l_begin).shrink_to(l_end - l_begin);
-          l_out.at(l_out_index) =
-              sys::stoui<vindex_t>(l_range.data(), l_range.count()) - 1;
-          l_out_index += 1;
-          l_begin = l_it + 1;
-          l_end = l_begin;
-        }
-
-        if (l_it == p_str.count()) {
-          break;
-        }
-
-        l_it += 1;
-      }
+      algorithm::str_iterator<const container::range<ui8>> l_str_iterator(
+          p_str);
+      l_str_iterator.split('/', [&](const container::range<ui8> &p_range) {
+        l_out.at(l_out_index) =
+            sys::stoui<vindex_t>(p_range.data(), p_range.count()) - 1;
+        l_out_index += 1;
+      });
 
       return l_out;
     };
