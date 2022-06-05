@@ -1,15 +1,16 @@
 #pragma once
 
+#include <assets/loader/mesh_obj.hpp>
+#include <assets/mesh.hpp>
+#include <cstring>
 #include <m/const.hpp>
 #include <rast/rast.hpp>
+#include <ren/algorithm.hpp>
 
 struct tmp_renderer {
 
   bgfx::FrameBufferHandle m_frame_buffer;
   bgfx::ProgramHandle m_frame_program;
-  bgfx::VertexLayout m_vertex_layout;
-  container::span<ui8> m_triangle_vertices;
-  container::arr<vindex_t, 36> m_triangle_indices;
   bgfx::VertexBufferHandle m_vertex_buffer;
   bgfx::IndexBufferHandle m_index_buffer;
 
@@ -23,53 +24,47 @@ public:
         bgfx::createFrameBuffer(0, m_width, m_height, bgfx::TextureFormat::RGB8,
                                 bgfx::TextureFormat::D32F);
 
-    m_vertex_layout.begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Color0, 3, bgfx::AttribType::Uint8)
-        .end();
+    auto l_obj_str = R""""(
+# Blender v2.76 (sub 0) OBJ File: ''
+# www.blender.org
+mtllib cube.mtl
+o Cube
+v -1.000000 1.000000 1.000000
+v 1.000000 1.000000 1.000000
+v -1.000000 -1.000000 1.000000
+v 1.000000 -1.000000 1.000000
+v -1.000000 1.000000 -1.000
+v 1.0000 1.000000 -1.00000
+v -1.000000 -1.000000 -1.000000
+v 1.000000 -1.000000 -1.000000
+vc 0 0 0
+vc 0 0 255
+vc 0 255 0
+vc 0 255 255
+vc 255 0 0
+vc 255 0 255
+vc 255 255 0
+vc 255 255 255
+o mat
+f 1/1 2/2 3/3
+f 2/2 4/4 3/3
+f 5/5 7/7 6/6
+f 6/6 7/7 8/8
+f 1/1 3/3 5/5
+f 5/5 3/3 7/7
+f 2/2 6/6 4/4
+f 6/6 8/8 4/4
+f 1/1 5/5 2/2
+f 5/5 6/6 2/2
+f 3/3 4/4 7/7
+f 7/7 4/4 8/8
+  )"""";
 
-    m_triangle_vertices.allocate(m_vertex_layout.getSize(8));
+    assets::mesh l_mesh = assets::obj_mesh_loader().compile(
+        container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-    {
-      const uimax l_slide_offset =
-          m_vertex_layout.getStride() - sizeof(position_t) - sizeof(rgb_t);
-      m_triangle_vertices.range()
-          .stream(position_t{-1.0f, 1.0f, 1.0f})
-          .stream(rgb_t{0, 0, 0})
-          .slide(l_slide_offset)
-          .stream(position_t{1.0f, 1.0f, 1.0f})
-          .stream(rgb_t{0, 0, 255})
-          .slide(l_slide_offset)
-          .stream(position_t{-1.0f, -1.0f, 1.0f})
-          .stream(rgb_t{0, 255, 0})
-          .slide(l_slide_offset)
-          .stream(position_t{1.0f, -1.0f, 1.0f})
-          .stream(rgb_t{0, 255, 255})
-          .slide(l_slide_offset)
-          .stream(position_t{-1.0f, 1.0f, -1.0f})
-          .stream(rgb_t{255, 0, 0})
-          .slide(l_slide_offset)
-          .stream(position_t{1.0f, 1.0f, -1.0f})
-          .stream(rgb_t{255, 0, 255})
-          .slide(l_slide_offset)
-          .stream(position_t{-1.0f, -1.0f, -1.0f})
-          .stream(rgb_t{255, 255, 0})
-          .slide(l_slide_offset)
-          .stream(position_t{1.0f, -1.0f, -1.0f})
-          .stream(rgb_t{255, 255, 255});
-    }
-
-    m_triangle_indices = {0, 1, 2,          // 0
-                          1, 3, 2, 4, 6, 5, // 2
-                          5, 6, 7, 0, 2, 4, // 4
-                          4, 2, 6, 1, 5, 3, // 6
-                          5, 7, 3, 0, 4, 1, // 8
-                          4, 5, 1, 2, 3, 6, // 10
-                          6, 3, 7};
-
-    loadVertexIndex(m_vertex_layout, m_triangle_vertices.range().cast_to<ui8>(),
-                    m_triangle_indices.range().cast_to<ui8>(), &m_vertex_buffer,
-                    &m_index_buffer);
+    ren::algorithm::upload_mesh_to_gpu(l_mesh, &m_vertex_buffer, &m_index_buffer);
+    l_mesh.free();
 
     m_frame_program = ColorInterpolationShader::load_program();
   };
@@ -78,8 +73,6 @@ public:
     bgfx::destroy(m_index_buffer);
     bgfx::destroy(m_vertex_buffer);
     bgfx::destroy(m_frame_program);
-
-    m_triangle_vertices.free();
   };
 
   // fix32 m_offset = 0;
@@ -193,19 +186,5 @@ private:
     bgfx::ShaderHandle l_fragment =
         bgfx::createShader(l_fragment_shader_memory);
     return bgfx::createProgram(l_vertex, l_fragment);
-  };
-
-  inline static void loadVertexIndex(const bgfx::VertexLayout &p_vertex_layout,
-                                     const container::range<ui8> &p_vertices,
-                                     const container::range<ui8> &p_indicex,
-                                     bgfx::VertexBufferHandle *out_vertex,
-                                     bgfx::IndexBufferHandle *out_index) {
-    const bgfx::Memory *l_vertex_memory =
-        bgfx::makeRef(p_vertices.data(), p_vertices.count());
-    const bgfx::Memory *l_index_memory =
-        bgfx::makeRef(p_indicex.data(), p_indicex.count());
-
-    *out_vertex = bgfx::createVertexBuffer(l_vertex_memory, p_vertex_layout);
-    *out_index = bgfx::createIndexBuffer(l_index_memory);
   };
 };

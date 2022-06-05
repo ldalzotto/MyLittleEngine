@@ -198,6 +198,43 @@ f 5/6/6 1/12/6 8/11/6
     REQUIRE(l_mesh.m_normals.at(22) == l_raw_normals.at(5 - 1));
     REQUIRE(l_mesh.m_normals.at(23) == l_raw_normals.at(6 - 1));
 
+    REQUIRE(l_mesh.m_indices.at(0) == 0);
+    REQUIRE(l_mesh.m_indices.at(1) == 1);
+    REQUIRE(l_mesh.m_indices.at(2) == 2);
+    REQUIRE(l_mesh.m_indices.at(3) == 3);
+    REQUIRE(l_mesh.m_indices.at(4) == 4);
+    REQUIRE(l_mesh.m_indices.at(5) == 5);
+    REQUIRE(l_mesh.m_indices.at(6) == 6);
+    REQUIRE(l_mesh.m_indices.at(7) == 7);
+    REQUIRE(l_mesh.m_indices.at(8) == 8);
+    REQUIRE(l_mesh.m_indices.at(9) == 9);
+    REQUIRE(l_mesh.m_indices.at(10) == 10);
+    REQUIRE(l_mesh.m_indices.at(11) == 11);
+    REQUIRE(l_mesh.m_indices.at(12) == 12);
+    REQUIRE(l_mesh.m_indices.at(13) == 13);
+    REQUIRE(l_mesh.m_indices.at(14) == 14);
+    REQUIRE(l_mesh.m_indices.at(15) == 15);
+    REQUIRE(l_mesh.m_indices.at(16) == 16);
+    REQUIRE(l_mesh.m_indices.at(17) == 17);
+    REQUIRE(l_mesh.m_indices.at(18) == 18);
+    REQUIRE(l_mesh.m_indices.at(19) == 0);
+    REQUIRE(l_mesh.m_indices.at(20) == 2);
+    REQUIRE(l_mesh.m_indices.at(21) == 19);
+    REQUIRE(l_mesh.m_indices.at(22) == 3);
+    REQUIRE(l_mesh.m_indices.at(23) == 5);
+    REQUIRE(l_mesh.m_indices.at(24) == 20);
+    REQUIRE(l_mesh.m_indices.at(25) == 6);
+    REQUIRE(l_mesh.m_indices.at(26) == 8);
+    REQUIRE(l_mesh.m_indices.at(27) == 21);
+    REQUIRE(l_mesh.m_indices.at(28) == 9);
+    REQUIRE(l_mesh.m_indices.at(29) == 11);
+    REQUIRE(l_mesh.m_indices.at(30) == 22);
+    REQUIRE(l_mesh.m_indices.at(31) == 12);
+    REQUIRE(l_mesh.m_indices.at(32) == 14);
+    REQUIRE(l_mesh.m_indices.at(33) == 23);
+    REQUIRE(l_mesh.m_indices.at(34) == 15);
+    REQUIRE(l_mesh.m_indices.at(35) == 17);
+
     l_mesh.free();
   }
 };

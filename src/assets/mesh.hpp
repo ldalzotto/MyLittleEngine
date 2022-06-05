@@ -17,10 +17,13 @@ enum class mesh_attribute_type : ui8 { undefined, position, color, uv, normal };
 struct mesh {
   mesh_composition m_composition;
 
+  // TODO -> all those vertex attributes can be set as an orm as they are
+  // supposed to have the same count
   container::span<position_t> m_positions;
   container::span<rgb_t> m_colors;
   container::span<uv_t> m_uvs;
   container::span<normal_t> m_normals;
+
   container::span<vindex_t> m_indices;
 
   void allocate(mesh_composition p_composition, uimax p_unique_indices_count,
@@ -181,6 +184,16 @@ struct mesh_intermediary {
     mesh l_mesh;
     l_mesh.allocate(m_composition, l_unique_indices.count(),
                     l_per_face_indices.count());
+
+    // l_mesh.m_indices.range().copy_from(l_unique_indices.range());
+
+    // TODO -> fill indices
+    for (auto l_face_index_it = 0; l_face_index_it < l_per_face_indices.count();
+         ++l_face_index_it) {
+      vindex_t *l_index;
+      l_per_face_indices.at(l_face_index_it, &l_index, orm::none());
+      l_mesh.m_indices.at(l_face_index_it) = *l_index;
+    }
 
     // fill unique indices
     for (auto l_unique_index_it = 0;
