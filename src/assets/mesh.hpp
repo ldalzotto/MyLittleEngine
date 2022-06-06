@@ -185,9 +185,6 @@ struct mesh_intermediary {
     l_mesh.allocate(m_composition, l_unique_indices.count(),
                     l_per_face_indices.count());
 
-    // l_mesh.m_indices.range().copy_from(l_unique_indices.range());
-
-    // TODO -> fill indices
     for (auto l_face_index_it = 0; l_face_index_it < l_per_face_indices.count();
          ++l_face_index_it) {
       vindex_t *l_index;
