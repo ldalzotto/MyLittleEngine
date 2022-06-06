@@ -41,20 +41,14 @@ template <typename T> struct range {
 
   void copy_from(const range &p_from) const {
     assert_debug(p_from.m_count <= m_count);
-    sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
+    sys::memcpy(m_begin, p_from.m_begin, p_from.size_of());
   };
 
   template <typename TT> void copy_from(const range<TT> &p_from) const {
     range l_casted_range = p_from.template cast_to<T>();
     copy_from(l_casted_range);
   };
-/*
-  template <typename TT> void copy_from(const TT &p_value) {
-    assert_debug(sizeof(TT) <= m_count);
-    sys::memcpy(m_begin, (void *)&p_value, sizeof(TT));
-    static_assert(false, "message");
-  };
-*/
+
   void zero() { sys::memset(m_begin, 0, m_count * sizeof(T)); };
   void memset(const T &p_value) {
     sys::memset(m_begin, p_value, m_count * sizeof(T));
@@ -202,9 +196,7 @@ struct span {
     return l_range;
   };
 
-  const container::range<T> range() const {
-    return ((span*)this)->range();
-  };
+  const container::range<T> range() const { return ((span *)this)->range(); };
 
 private:
   void __assert_memove(T *p_dst, T *p_src, uimax p_chunk_count) {
