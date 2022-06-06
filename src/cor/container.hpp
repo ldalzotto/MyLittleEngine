@@ -479,12 +479,19 @@ struct heap_intrusive {
   enum class state { Undefined = 0, NewChunkPushed = 1 } m_state;
   uimax m_last_pushed_chunk_size;
 
-  uimax &count() { return m_element_count; };
-
   void allocate() {
     m_free_chunks.allocate(0);
     m_allocated_chunk.allocate(0);
     m_element_count = 0;
+    m_state = state::Undefined;
+    m_last_pushed_chunk_size = 0;
+  };
+
+  void allocate(heap_chunk p_free_chunk) {
+    m_free_chunks.allocate(1);
+    m_free_chunks.push_back(p_free_chunk);
+    m_allocated_chunk.allocate(0);
+    m_element_count = p_free_chunk.m_size;
     m_state = state::Undefined;
     m_last_pushed_chunk_size = 0;
   };
@@ -688,6 +695,14 @@ struct heap {
     m_buffer.allocate(0);
   };
 
+  void allocate(uimax p_buffer_size) {
+    m_buffer.allocate(p_buffer_size);
+    heap_chunk l_free_chunk;
+    l_free_chunk.m_begin = 0;
+    l_free_chunk.m_size = p_buffer_size;
+    m_intrusive.allocate(l_free_chunk);
+  };
+
   void free() {
     m_buffer.free();
     m_intrusive.free();
@@ -699,12 +714,17 @@ struct heap {
       __push_new_chunk();
       m_intrusive.clear_state();
     }
-    m_intrusive.push_found_chunk(p_size, l_chunk_index);
-    return l_chunk_index;
+    return m_intrusive.push_found_chunk(p_size, l_chunk_index);
   };
 
   ui8 *at(uimax p_index) {
     return m_buffer.m_data + m_intrusive.m_allocated_chunk.at(p_index).m_begin;
+  };
+
+  container::range<ui8> range(uimax p_index) {
+    heap_chunk &l_chunk = m_intrusive.m_allocated_chunk.at(p_index);
+    return container::range<ui8>::make(m_buffer.data() + l_chunk.m_begin,
+                                       l_chunk.m_size);
   };
 
   void free(uimax p_index) { m_intrusive.free(p_index); };

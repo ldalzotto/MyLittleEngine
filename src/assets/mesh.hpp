@@ -12,53 +12,117 @@ struct mesh_composition {
   ui8 m_normal : 1;
 };
 
-enum class mesh_attribute_type : ui8 { undefined, position, color, uv, normal };
+enum class mesh_attribute_type : ui8 { position, color, uv, normal, count };
+static constexpr ui8 mesh_attribute_type_count =
+    ui8(mesh_attribute_type::count);
 
 struct mesh {
   mesh_composition m_composition;
 
-  // TODO -> all those vertex attributes can be set as an orm as they are
-  // supposed to have the same count
-  container::span<position_t> m_positions;
-  container::span<rgb_t> m_colors;
-  container::span<uv_t> m_uvs;
-  container::span<normal_t> m_normals;
+  container::heap m_vertex_attributes;
+  container::arr<uimax, mesh_attribute_type_count>
+      m_vertex_attribute_heap_indices;
 
   container::span<vindex_t> m_indices;
 
   void allocate(mesh_composition p_composition, uimax p_unique_indices_count,
                 uimax p_face_indices_count) {
+
     m_composition = p_composition;
+
+    const uimax l_position_buffer_size =
+        m_composition.m_position * sizeof(position_t) * p_unique_indices_count;
+    const uimax l_color_buffer_size =
+        m_composition.m_position * sizeof(rgb_t) * p_unique_indices_count;
+    const uimax l_uv_buffer_size =
+        m_composition.m_position * sizeof(uv_t) * p_unique_indices_count;
+    const uimax l_normal_buffer_size =
+        m_composition.m_position * sizeof(normal_t) * p_unique_indices_count;
+    uimax l_buffer_size = l_position_buffer_size + l_color_buffer_size +
+                          l_uv_buffer_size + l_normal_buffer_size;
+
+    m_vertex_attributes.allocate(l_buffer_size);
+
     if (m_composition.m_position) {
-      m_positions.allocate(p_unique_indices_count);
+      m_vertex_attribute_heap_indices.at(0) =
+          m_vertex_attributes.malloc(l_position_buffer_size);
     }
     if (m_composition.m_color) {
-      m_colors.allocate(p_unique_indices_count);
+      m_vertex_attribute_heap_indices.at(1) =
+          m_vertex_attributes.malloc(l_color_buffer_size);
     }
     if (m_composition.m_uv) {
-      m_uvs.allocate(p_unique_indices_count);
+      m_vertex_attribute_heap_indices.at(2) =
+          m_vertex_attributes.malloc(l_uv_buffer_size);
     }
     if (m_composition.m_normal) {
-      m_normals.allocate(p_unique_indices_count);
+      m_vertex_attribute_heap_indices.at(3) =
+          m_vertex_attributes.malloc(l_normal_buffer_size);
     }
     m_indices.allocate(p_face_indices_count);
   };
 
   void free() {
-    if (m_composition.m_position) {
-      m_positions.free();
-    }
-    if (m_composition.m_color) {
-      m_colors.free();
-    }
-    if (m_composition.m_uv) {
-      m_uvs.free();
-    }
-    if (m_composition.m_normal) {
-      m_normals.free();
-    }
+    m_vertex_attributes.free();
     m_indices.free();
   };
+
+  container::range<position_t> position() {
+    return m_vertex_attributes.range(m_vertex_attribute_heap_indices.at(0))
+        .cast_to<position_t>();
+  };
+  container::range<rgb_t> color() {
+    return m_vertex_attributes.range(m_vertex_attribute_heap_indices.at(1))
+        .cast_to<rgb_t>();
+  };
+  container::range<uv_t> uv() {
+    return m_vertex_attributes.range(m_vertex_attribute_heap_indices.at(2))
+        .cast_to<uv_t>();
+  };
+  container::range<normal_t> normal() {
+    return m_vertex_attributes.range(m_vertex_attribute_heap_indices.at(3))
+        .cast_to<normal_t>();
+  };
+
+  struct view {
+    container::range<position_t> m_positions;
+    container::range<rgb_t> m_colors;
+    container::range<uv_t> m_uvs;
+    container::range<normal_t> m_normals;
+    container::span<vindex_t> &m_indices;
+
+    view(mesh &thiz) : m_indices(thiz.m_indices) {
+      if (thiz.m_composition.m_position) {
+        m_positions = thiz.position();
+      } else {
+        m_positions = {0, 0};
+      }
+
+      if (thiz.m_composition.m_color) {
+        m_colors = thiz.color();
+      } else {
+        m_colors = {0, 0};
+      }
+
+      if (thiz.m_composition.m_uv) {
+        m_uvs = thiz.uv();
+      } else {
+        m_uvs = {0, 0};
+      }
+
+      if (thiz.m_composition.m_normal) {
+        m_normals = thiz.normal();
+      } else {
+        m_normals = {0, 0};
+      }
+    };
+  };
+
+  struct view view() {
+    return (struct view)(*this);
+  };
+
+  const struct view view() const { return (const struct view)(*(mesh *)this); };
 };
 
 namespace details {
@@ -72,7 +136,9 @@ struct mesh_intermediary {
     container::span<rgb_t> m_colors;
     container::span<uv_t> m_uvs;
     container::span<normal_t> m_normals;
-    container::span<container::arr<container::arr<vindex_t, 4>, 3>> m_faces;
+    container::span<
+        container::arr<container::arr<vindex_t, mesh_attribute_type_count>, 3>>
+        m_faces;
   } m_heap;
 
   void allocate(uimax p_position_count, uimax p_color_count, uimax p_uv_count,
@@ -100,7 +166,9 @@ struct mesh_intermediary {
   container::span<rgb_t> &color() { return m_heap.m_colors; };
   container::span<uv_t> &uv() { return m_heap.m_uvs; };
   container::span<normal_t> &normal() { return m_heap.m_normals; };
-  container::span<container::arr<container::arr<vindex_t, 4>, 3>> &face() {
+  container::span<
+      container::arr<container::arr<vindex_t, mesh_attribute_type_count>, 3>> &
+  face() {
     return m_heap.m_faces;
   };
 
@@ -109,7 +177,7 @@ struct mesh_intermediary {
 
     struct index {
       face_hash_t m_hash;
-      container::arr<vindex_t, 4> m_attributes;
+      container::arr<vindex_t, mesh_attribute_type_count> m_attributes;
     };
 
     container::vector<index> l_unique_indices;
@@ -123,9 +191,9 @@ struct mesh_intermediary {
     l_unique_indices.allocate(0);
     l_per_face_indices.allocate(face().count() * 3);
 
-    container::arr<mesh_attribute_type, 4> m_attributes = {
-        mesh_attribute_type::undefined, mesh_attribute_type::undefined,
-        mesh_attribute_type::undefined, mesh_attribute_type::undefined};
+    container::arr<mesh_attribute_type, mesh_attribute_type_count>
+        m_attributes = {mesh_attribute_type::count, mesh_attribute_type::count,
+                        mesh_attribute_type::count, mesh_attribute_type::count};
 
     ui8 l_attribute_count = 0;
     if (m_composition.m_position) {
@@ -193,6 +261,7 @@ struct mesh_intermediary {
     }
 
     // fill unique indices
+    auto l_mesh_view = l_mesh.view();
     for (auto l_unique_index_it = 0;
          l_unique_index_it < l_unique_indices.count(); ++l_unique_index_it) {
       index &l_index = l_unique_indices.at(l_unique_index_it);
@@ -201,14 +270,15 @@ struct mesh_intermediary {
         auto l_attrubute_index = l_index.m_attributes.at(l_attribute_it);
         mesh_attribute_type l_attribute_type = m_attributes.at(l_attribute_it);
         if (l_attribute_type == mesh_attribute_type::position) {
-          l_mesh.m_positions.at(l_unique_index_it) =
+          l_mesh_view.m_positions.at(l_unique_index_it) =
               position().at(l_attrubute_index);
         } else if (l_attribute_type == mesh_attribute_type::color) {
-          l_mesh.m_colors.at(l_unique_index_it) = color().at(l_attrubute_index);
+          l_mesh_view.m_colors.at(l_unique_index_it) =
+              color().at(l_attrubute_index);
         } else if (l_attribute_type == mesh_attribute_type::uv) {
-          l_mesh.m_uvs.at(l_unique_index_it) = uv().at(l_attrubute_index);
+          l_mesh_view.m_uvs.at(l_unique_index_it) = uv().at(l_attrubute_index);
         } else if (l_attribute_type == mesh_attribute_type::normal) {
-          l_mesh.m_normals.at(l_unique_index_it) =
+          l_mesh_view.m_normals.at(l_unique_index_it) =
               normal().at(l_attrubute_index);
         }
       }
