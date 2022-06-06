@@ -41,17 +41,12 @@ template <typename T> struct range {
 
   void copy_from(const range &p_from) const {
     assert_debug(p_from.m_count <= m_count);
-    sys::memcpy(m_begin, p_from.m_begin, m_count * sizeof(T));
+    sys::memcpy(m_begin, p_from.m_begin, p_from.size_of());
   };
 
   template <typename TT> void copy_from(const range<TT> &p_from) const {
     range l_casted_range = p_from.template cast_to<T>();
     copy_from(l_casted_range);
-  };
-
-  template <typename TT> void copy_from(const TT &p_value) {
-    assert_debug(sizeof(TT) <= m_count);
-    sys::memcpy(m_begin, (void *)&p_value, sizeof(TT));
   };
 
   void zero() { sys::memset(m_begin, 0, m_count * sizeof(T)); };
@@ -76,7 +71,7 @@ template <typename T> struct range {
   };
 
   template <typename TT> range &stream(const TT &p_value) {
-    copy_from(p_value);
+    copy_from(container::range<const TT>::make(&p_value, 1));
     slide_self(sizeof(p_value));
     return *this;
   };
@@ -148,7 +143,9 @@ struct span {
   void free() { AllocFunctions::free(m_data); };
 
   uimax &count() { return m_count; };
+  const uimax &count() const { return m_count; };
   T *&data() { return m_data; };
+  const T *&data() const { return m_data; };
 
   uimax size_of() const { return m_count * sizeof(T); };
 
@@ -190,12 +187,16 @@ struct span {
     return m_data[p_index];
   }
 
+  const T &at(uimax p_index) const { return ((span *)this)->at(p_index); };
+
   range<T> range() {
     container::range<T> l_range;
     l_range.m_begin = m_data;
     l_range.m_count = m_count;
     return l_range;
   };
+
+  const container::range<T> range() const { return ((span *)this)->range(); };
 
 private:
   void __assert_memove(T *p_dst, T *p_src, uimax p_chunk_count) {
