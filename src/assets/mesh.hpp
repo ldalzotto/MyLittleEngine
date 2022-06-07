@@ -182,11 +182,7 @@ struct mesh_intermediary {
 
     container::vector<index> l_unique_indices;
 
-    struct per_face {
-      table_span_meta;
-      table_cols_2(vindex_t, face_hash_t);
-      table_define_span_2;
-    } l_per_face_indices;
+    orm::table_span_v2<vindex_t, face_hash_t> l_per_face_indices;
 
     l_unique_indices.allocate(0);
     l_per_face_indices.allocate(face().count() * 3);

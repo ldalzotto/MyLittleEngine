@@ -130,17 +130,20 @@ template <typename T, int N> struct arr {
   };
 };
 
-template <typename T, typename AllocFunctions = malloc_free_functions>
-struct span {
+template <typename T> struct span {
+
+  using element_type = T;
+
   T *m_data;
   uimax m_count;
 
   void allocate(uimax p_count) {
-    m_data = (T *)AllocFunctions::malloc(p_count * sizeof(T));
-    m_count = p_count;
+    algorithm::span_allocate(*this, p_count, [&]() {
+      this->m_data = (T *)malloc_free_functions::malloc(p_count * sizeof(T));
+    });
   };
 
-  void free() { AllocFunctions::free(m_data); };
+  void free() { malloc_free_functions::free(m_data); };
 
   uimax &count() { return m_count; };
   const uimax &count() const { return m_count; };
@@ -150,16 +153,22 @@ struct span {
   uimax size_of() const { return m_count * sizeof(T); };
 
   void realloc(uimax p_new_count) {
-    m_count = p_new_count;
-    m_data = (T *)AllocFunctions::realloc(m_data, m_count * sizeof(T));
+    algorithm::span_realloc(*this, p_new_count,
+                            [&]() { __realloc(p_new_count); });
   };
 
   void resize(uimax p_new_count) {
-    if (p_new_count > m_count) {
-      realloc(p_new_count);
-    }
+    algorithm::span_resize(*this, p_new_count,
+                           [&]() { __realloc(p_new_count); });
   };
 
+private:
+  void __realloc(uimax p_new_count) {
+    m_data =
+        (T *)malloc_free_functions::realloc(m_data, p_new_count * sizeof(T));
+  };
+
+public:
   void memmove_down(uimax p_break_index, uimax p_move_delta,
                     uimax p_chunk_count) {
     T *l_src = m_data + p_break_index;
@@ -452,7 +461,7 @@ static inline ui8 find_next_block(const range<heap_chunk> &p_chunks,
 static inline void defragment(vector<heap_chunk> &p_chunks) {
   if (p_chunks.count() > 0) {
     auto l_range = p_chunks.range();
-    algorithm::sort(l_range, [&](heap_chunk &p_left, heap_chunk &p_right) {
+    ::algorithm::sort(l_range, [&](heap_chunk &p_left, heap_chunk &p_right) {
       return p_left.m_begin < p_right.m_begin;
     });
 

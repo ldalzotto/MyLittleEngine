@@ -167,28 +167,21 @@ private:
 
 struct rasterize_heap {
 
-  struct per_vertices {
-    table_span_meta;
-    table_cols_2(pixel_coordinates, homogeneous_coordinates);
-    table_define_span_2;
-  } m_per_vertices;
+  using per_vertices =
+      orm::table_span_v2<pixel_coordinates, homogeneous_coordinates>;
+  using per_polygons =
+      orm::table_span_v2<screen_polygon, polygon_vertex_indices,
+                         screen_polygon_bounding_box, screen_polygon_area>;
 
-  struct per_polygons {
-    table_span_meta;
-    table_cols_4(screen_polygon, polygon_vertex_indices,
-                 screen_polygon_bounding_box, screen_polygon_area);
-    table_define_span_4;
-  } m_per_polygons;
+  per_vertices m_per_vertices;
+  per_polygons m_per_polygons;
 
   container::multi_byte_buffer m_vertex_output;
   container::span<ui8 *> m_vertex_output_send_to_vertex_shader;
 
-  struct visiblity {
-    table_span_meta;
-    table_cols_3(ui8, rasterization_weight, uimax);
-    table_define_span_3;
-  } m_visibility_buffer;
+  using visiblity = orm::table_span_v2<ui8, rasterization_weight, uimax>;
 
+  visiblity m_visibility_buffer;
   visiblity m_rasterizationrect_visibility_buffer;
 
   struct vertex_output_layout {
@@ -545,7 +538,7 @@ private:
     } else {
       container::range<screen_polygon_bounding_box> l_polygon_rects =
           container::range<screen_polygon_bounding_box>::make(
-              m_heap.m_per_polygons.m_col_2, m_polygon_count);
+              m_heap.m_per_polygons.cols().m_col_2, m_polygon_count);
       m::rect_min_max<screen_coord_t> l_rendered_rect =
           m::bounding_rect(l_polygon_rects);
 

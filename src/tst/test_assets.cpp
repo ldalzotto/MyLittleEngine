@@ -61,7 +61,7 @@ f 5/6/6 1/12/6 8/11/6
     assets::mesh l_mesh = assets::obj_mesh_loader().compile(
         container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
     auto l_mesh_view = l_mesh.view();
-    
+
     /*
     24 is the number of indices combinaison
 

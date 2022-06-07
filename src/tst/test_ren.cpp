@@ -1,4 +1,3 @@
-#pragma once
 
 #include <assets/loader/mesh_obj.hpp>
 #include <cor/container.hpp>
