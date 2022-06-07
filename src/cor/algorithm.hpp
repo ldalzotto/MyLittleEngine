@@ -150,32 +150,3 @@ private:
 };
 
 }; // namespace algorithm
-
-namespace container {
-namespace algorithm {
-
-template <typename SpanType, typename AllocationFunc>
-void span_allocate(SpanType &thiz, uimax p_count,
-                   const AllocationFunc &p_allocation_func) {
-  p_allocation_func();
-  thiz.count() = p_count;
-};
-
-
-template <typename SpanType, typename ReallocFunc>
-void span_realloc(SpanType &thiz, uimax p_new_count,
-                  const ReallocFunc &p_realloc_func) {
-  thiz.count() = p_new_count;
-  p_realloc_func();
-};
-
-template <typename SpanType, typename ReallocFunc>
-void span_resize(SpanType &thiz, uimax p_new_count,
-                 const ReallocFunc &p_realloc_func) {
-  if (p_new_count > thiz.count()) {
-    span_realloc(thiz, p_new_count, p_realloc_func);
-  }
-};
-
-}; // namespace algorithm
-}; // namespace container

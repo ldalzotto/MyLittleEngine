@@ -952,8 +952,8 @@ struct cols<Type0, Type1, Type2, Type3> {
 
 template <typename TableType> struct table_span_allocate {
   void operator()(TableType &thiz, uimax p_count) {
-    container::algorithm::span_allocate(
-        thiz, p_count, [&]() { allocate_col<0>{}(thiz, p_count); });
+    allocate_col<0>{}(thiz, p_count);
+    thiz.count() = p_count;
   };
 
 private:
@@ -986,8 +986,8 @@ private:
 
 template <typename TableType> struct table_span_realloc {
   void operator()(TableType &thiz, uimax p_new_count) {
-    container::algorithm::span_realloc(
-        thiz, p_new_count, [&]() { realloc_col<0>{}(thiz, p_new_count); });
+    realloc_col<0>{}(thiz, p_new_count);
+    thiz.count() = p_new_count;
   };
 
 private:
@@ -1024,8 +1024,9 @@ template <typename... Types> struct table_span_v2 {
   };
 
   void resize(uimax p_new_count) {
-    container::algorithm::span_resize(*this, p_new_count,
-                                      [&]() { realloc(p_new_count); });
+    if (p_new_count > count()) {
+      realloc(p_new_count);
+    }
   };
 
   uimax &count() { return m_meta; };

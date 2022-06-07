@@ -138,9 +138,8 @@ template <typename T> struct span {
   uimax m_count;
 
   void allocate(uimax p_count) {
-    algorithm::span_allocate(*this, p_count, [&]() {
-      this->m_data = (T *)malloc_free_functions::malloc(p_count * sizeof(T));
-    });
+    m_data = (T *)malloc_free_functions::malloc(p_count * sizeof(T));
+    m_count = p_count;
   };
 
   void free() { malloc_free_functions::free(m_data); };
@@ -153,19 +152,20 @@ template <typename T> struct span {
   uimax size_of() const { return m_count * sizeof(T); };
 
   void realloc(uimax p_new_count) {
-    algorithm::span_realloc(*this, p_new_count,
-                            [&]() { __realloc(p_new_count); });
+    m_data =
+        (T *)malloc_free_functions::realloc(m_data, p_new_count * sizeof(T));
+    m_count = p_new_count;
   };
 
   void resize(uimax p_new_count) {
-    algorithm::span_resize(*this, p_new_count,
-                           [&]() { __realloc(p_new_count); });
+    if (p_new_count > count()) {
+      realloc(p_new_count);
+    }
   };
 
 private:
-  void __realloc(uimax p_new_count) {
-    m_data =
-        (T *)malloc_free_functions::realloc(m_data, p_new_count * sizeof(T));
+  void __realloc(uimax p_new_count){
+
   };
 
 public:
