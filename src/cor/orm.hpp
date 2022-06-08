@@ -950,60 +950,6 @@ struct cols<Type0, Type1, Type2, Type3> {
   template <> auto &col<3>() { return m_col_3; };
 };
 
-template <typename TableType> struct table_span_allocate {
-  void operator()(TableType &thiz, uimax p_count) {
-    allocate_col<0>{}(thiz, p_count);
-    thiz.count() = p_count;
-  };
-
-private:
-  template <ui8 Col> struct allocate_col {
-    void operator()(TableType &thiz, uimax p_count) {
-      if constexpr (Col < TableType::COL_COUNT) {
-        auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col = (T *)malloc_free_functions::malloc(p_count * sizeof(T));
-        allocate_col<Col + 1>{}(thiz, p_count);
-      };
-    };
-  };
-};
-
-template <typename TableType> struct table_span_free {
-  void operator()(TableType &thiz) { free_col<0>{}(thiz); };
-
-private:
-  template <ui8 Col> struct free_col {
-    void operator()(TableType &thiz) {
-      if constexpr (Col < TableType::COL_COUNT) {
-        auto &l_col = thiz.cols().template col<Col>();
-        malloc_free_functions::free(l_col);
-        free_col<Col + 1>{}(thiz);
-      }
-    };
-  };
-};
-
-template <typename TableType> struct table_span_realloc {
-  void operator()(TableType &thiz, uimax p_new_count) {
-    realloc_col<0>{}(thiz, p_new_count);
-    thiz.count() = p_new_count;
-  };
-
-private:
-  template <ui8 Col> struct realloc_col {
-    void operator()(TableType &thiz, uimax p_new_count) {
-      if constexpr (Col < TableType::COL_COUNT) {
-        auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col =
-            (T *)malloc_free_functions::realloc(l_col, sizeof(T) * p_new_count);
-        realloc_col<Col + 1>{}(thiz, p_new_count);
-      }
-    };
-  };
-};
-
 }; // namespace details
 
 template <typename... Types> struct table_span_v2 {
@@ -1013,15 +959,11 @@ template <typename... Types> struct table_span_v2 {
 
   inline static constexpr ui8 COL_COUNT = details::cols<Types...>::COL_COUNT;
 
-  void allocate(uimax p_count) {
-    details::table_span_allocate<table_span_v2>{}(*this, p_count);
-  };
+  void allocate(uimax p_count) { table_span_allocate{}(*this, p_count); };
 
-  void free() { details::table_span_free<table_span_v2>{}(*this); };
+  void free() { table_span_free{}(*this); };
 
-  void realloc(uimax p_new_count) {
-    details::table_span_realloc<table_span_v2>{}(*this, p_new_count);
-  };
+  void realloc(uimax p_new_count) { table_span_realloc{}(*this, p_new_count); };
 
   void resize(uimax p_new_count) {
     if (p_new_count > count()) {
@@ -1037,7 +979,45 @@ template <typename... Types> struct table_span_v2 {
     __at<0, Input...>{}(*this, p_index, p_input...);
   };
 
+  template <typename... Input> void range(Input... p_ranges) {
+    __range<0, Input...>{}(*this, p_ranges...);
+  };
+
 private:
+  struct table_span_allocate {
+    void operator()(table_span_v2 &thiz, uimax p_count) {
+      allocate_col<0>{}(thiz, p_count);
+      thiz.count() = p_count;
+    };
+
+  private:
+    template <ui8 Col> struct allocate_col {
+      void operator()(table_span_v2 &thiz, uimax p_count) {
+        if constexpr (Col < COL_COUNT) {
+          auto &l_col = thiz.cols().template col<Col>();
+          using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+          l_col = (T *)malloc_free_functions::malloc(p_count * sizeof(T));
+          allocate_col<Col + 1>{}(thiz, p_count);
+        };
+      };
+    };
+  };
+
+  struct table_span_free {
+    void operator()(table_span_v2 &thiz) { free_col<0>{}(thiz); };
+
+  private:
+    template <ui8 Col> struct free_col {
+      void operator()(table_span_v2 &thiz) {
+        if constexpr (Col < COL_COUNT) {
+          auto &l_col = thiz.cols().template col<Col>();
+          malloc_free_functions::free(l_col);
+          free_col<Col + 1>{}(thiz);
+        }
+      };
+    };
+  };
+
   template <ui8 Col, typename InputFirst, typename... Input> struct __at {
     void operator()(table_span_v2 &thiz, uimax p_index, InputFirst p_first,
                     Input... p_input) {
@@ -1050,12 +1030,6 @@ private:
     };
   };
 
-public:
-  template <typename... Input> void range(Input... p_ranges) {
-    __range<0, Input...>{}(*this, p_ranges...);
-  };
-
-private:
   template <ui8 Col, typename InputFirst, typename... Input> struct __range {
     void operator()(table_span_v2 &thiz, InputFirst p_first, Input... p_input) {
       if constexpr (!traits::is_none<InputFirst>::value) {
@@ -1066,6 +1040,26 @@ private:
       if constexpr (sizeof...(Input) > 0) {
         __range<Col + 1, Input...>{}(thiz, p_input...);
       }
+    };
+  };
+
+  struct table_span_realloc {
+    void operator()(table_span_v2 &thiz, uimax p_new_count) {
+      realloc_col<0>{}(thiz, p_new_count);
+      thiz.count() = p_new_count;
+    };
+
+  private:
+    template <ui8 Col> struct realloc_col {
+      void operator()(table_span_v2 &thiz, uimax p_new_count) {
+        if constexpr (Col < COL_COUNT) {
+          auto &l_col = thiz.cols().template col<Col>();
+          using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+          l_col = (T *)malloc_free_functions::realloc(l_col,
+                                                      sizeof(T) * p_new_count);
+          realloc_col<Col + 1>{}(thiz, p_new_count);
+        }
+      };
     };
   };
 };

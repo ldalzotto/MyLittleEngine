@@ -522,6 +522,7 @@ struct heap_intrusive {
       heap_chunks::defragment(m_free_chunks);
       if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                         &l_chunk_index)) {
+        // TODO -> pushing a chunk by multiplying capacity by 2 like vector ?
         __push_new_chunk(p_size);
         m_state = state::NewChunkPushed;
         m_last_pushed_chunk_size = p_size;
