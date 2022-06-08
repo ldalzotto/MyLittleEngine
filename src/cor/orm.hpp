@@ -17,191 +17,6 @@ template <> struct is_none<orm::none> { static constexpr ui8 value = 1; };
 namespace details {
 
 template <typename TableType>
-bool __has_allocated_elements_vector(TableType &p_table) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  return l_intrusive.m_count > 0;
-};
-
-template <typename TableType>
-void __allocate_vector_1(TableType &p_table, uimax p_capacity) {
-  p_table.m_meta.allocate(p_capacity);
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::malloc(
-      p_table.m_meta.m_capacity * sizeof(*p_table.m_col_0));
-};
-
-template <typename TableType> void __free_vector_1(TableType &p_table) {
-  sys::free(p_table.m_col_0);
-};
-
-template <typename TableType> void __realloc_vector_1(TableType &p_table) {
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
-      p_table.m_col_0, p_table.m_meta.m_capacity * sizeof(*p_table.m_col_0));
-};
-
-template <typename TableType>
-void __push_back_vector_1(TableType &p_table,
-                          const typename TableType::type_0 &p_0) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  if (l_intrusive.add_realloc(1)) {
-    __realloc_vector_1(p_table);
-  }
-  p_table.m_col_0[l_intrusive.m_count - 1] = p_0;
-};
-
-template <typename TableType>
-void __remove_at_vector_1(TableType &p_table, uimax p_index) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  assert_debug(p_index < l_intrusive.m_count && l_intrusive.m_count > 0);
-  if (p_index < l_intrusive.m_count - 1) {
-    sys::memmove_up_t(p_table.m_col_0, p_index + 1, 1, 1);
-  }
-
-  l_intrusive.m_count -= 1;
-};
-
-template <typename TableType> uimax __element_count_vector(TableType &p_table) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  return l_intrusive.m_count;
-};
-
-template <typename TableType>
-void __at_vector_1(TableType &p_table, uimax p_index,
-                   typename TableType::type_0 **out_0) {
-  assert_debug(p_index < p_table.m_meta.m_count);
-  *out_0 = &p_table.m_col_0[p_index];
-};
-
-template <typename TableType>
-void __allocate_vector_2(TableType &p_table, uimax p_capacity) {
-  p_table.m_meta.allocate(p_capacity);
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::malloc(
-      p_table.m_meta.m_capacity * sizeof(*p_table.m_col_0));
-  p_table.m_col_1 = (decltype(p_table.m_col_1))sys::malloc(
-      p_table.m_meta.m_capacity * sizeof(*p_table.m_col_1));
-};
-
-template <typename TableType> void __free_vector_2(TableType &p_table) {
-  sys::free(p_table.m_col_0);
-  sys::free(p_table.m_col_1);
-};
-
-template <typename TableType> void __realloc_vector_2(TableType &p_table) {
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
-      p_table.m_col_0, p_table.m_meta.m_capacity * sizeof(*p_table.m_col_0));
-  p_table.m_col_1 = (decltype(p_table.m_col_1))sys::realloc(
-      p_table.m_col_1, p_table.m_meta.m_capacity * sizeof(*p_table.m_col_1));
-};
-
-template <typename TableType>
-void __push_back_vector_2(TableType &p_table,
-                          const typename TableType::type_0 &p_0,
-                          const typename TableType::type_1 &p_1) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  if (l_intrusive.add_realloc(1)) {
-    __realloc_vector_2(p_table);
-  }
-  p_table.m_col_0[l_intrusive.m_count - 1] = p_0;
-  p_table.m_col_1[l_intrusive.m_count - 1] = p_1;
-};
-
-template <typename TableType>
-void __remove_at_vector_2(TableType &p_table, uimax p_index) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  assert_debug(p_index < l_intrusive.m_count && l_intrusive.m_count > 0);
-  if (p_index < l_intrusive.m_count - 1) {
-    sys::memmove_up_t(p_table.m_col_0, p_index + 1, 1, 1);
-    sys::memmove_up_t(p_table.m_col_1, p_index + 1, 1, 1);
-  }
-
-  l_intrusive.m_count -= 1;
-};
-
-template <typename TableType>
-void __at_vector_2(TableType &p_table, uimax p_index,
-                   typename TableType::type_0 **out_0,
-                   typename TableType::type_1 **out_1) {
-  assert_debug(p_index < p_table.m_meta.m_count);
-  *out_0 = &p_table.m_col_0[p_index];
-  *out_1 = &p_table.m_col_1[p_index];
-};
-
-template <typename TableType>
-void __at_vector_2(TableType &p_table, uimax p_index,
-                   typename TableType::type_0 **out_0, orm::none) {
-  *out_0 = &p_table.m_col_0[p_index];
-};
-
-template <typename TableType>
-void __at_vector_2(TableType &p_table, uimax p_index, orm::none,
-                   typename TableType::type_1 **out_1) {
-  *out_1 = &p_table.m_col_1[p_index];
-};
-
-template <typename TableType>
-void __allocate_vector_3(TableType &p_table, uimax p_capacity) {
-  p_table.m_meta.allocate(p_capacity);
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::malloc(
-      p_table.m_meta.m_capacity * sizeof(*p_table.m_col_0));
-  p_table.m_col_1 = (decltype(p_table.m_col_1))sys::malloc(
-      p_table.m_meta.m_capacity * sizeof(*p_table.m_col_1));
-  p_table.m_col_2 = (decltype(p_table.m_col_2))sys::malloc(
-      p_table.m_meta.m_capacity * sizeof(*p_table.m_col_2));
-};
-
-template <typename TableType> void __free_vector_3(TableType &p_table) {
-  sys::free(p_table.m_col_0);
-  sys::free(p_table.m_col_1);
-  sys::free(p_table.m_col_2);
-};
-
-template <typename TableType> void __realloc_vector_3(TableType &p_table) {
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
-      p_table.m_col_0, p_table.m_meta.m_capacity * sizeof(*p_table.m_col_0));
-  p_table.m_col_1 = (decltype(p_table.m_col_1))sys::realloc(
-      p_table.m_col_1, p_table.m_meta.m_capacity * sizeof(*p_table.m_col_1));
-  p_table.m_col_2 = (decltype(p_table.m_col_2))sys::realloc(
-      p_table.m_col_2, p_table.m_meta.m_capacity * sizeof(*p_table.m_col_2));
-};
-
-template <typename TableType>
-void __push_back_vector_3(TableType &p_table,
-                          const typename TableType::type_0 &p_0,
-                          const typename TableType::type_1 &p_1,
-                          const typename TableType::type_2 &p_2) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  if (l_intrusive.add_realloc(1)) {
-    __realloc_vector_3(p_table);
-  }
-  p_table.m_col_0[l_intrusive.m_count - 1] = p_0;
-  p_table.m_col_1[l_intrusive.m_count - 1] = p_1;
-  p_table.m_col_2[l_intrusive.m_count - 1] = p_2;
-};
-
-template <typename TableType>
-void __remove_at_vector_3(TableType &p_table, uimax p_index) {
-  container::vector_intrusive &l_intrusive = p_table.m_meta;
-  assert_debug(p_index < l_intrusive.m_count && l_intrusive.m_count > 0);
-  if (p_index < l_intrusive.m_count - 1) {
-    sys::memmove_up_t(p_table.m_col_0, p_index + 1, 1, 1);
-    sys::memmove_up_t(p_table.m_col_1, p_index + 1, 1, 1);
-    sys::memmove_up_t(p_table.m_col_2, p_index + 1, 1, 1);
-  }
-
-  l_intrusive.m_count -= 1;
-};
-
-template <typename TableType>
-void __at_vector_3(TableType &p_table, uimax p_index,
-                   typename TableType::type_0 **out_0,
-                   typename TableType::type_1 **out_1,
-                   typename TableType::type_2 **out_2) {
-  assert_debug(p_index < p_table.m_meta.m_count);
-  *out_0 = &p_table.m_col_0[p_index];
-  *out_1 = &p_table.m_col_1[p_index];
-  *out_2 = &p_table.m_col_2[p_index];
-};
-
-template <typename TableType>
 void __allocate_pool_1(TableType &p_table, uimax p_capacity) {
   p_table.m_meta.allocate(p_capacity);
   p_table.m_col_0 = (typename TableType::type_0 *)sys::malloc(
@@ -705,74 +520,6 @@ private:
   type_2 *m_col_2;                                                             \
   type_3 *m_col_3;
 
-#define table_vector_meta container::vector_intrusive m_meta;
-
-#define table_define_vector_1                                                  \
-  void allocate(uimax p_capacity) {                                            \
-    orm::details::__allocate_vector_1(*this, p_capacity);                      \
-  };                                                                           \
-  void free() { orm::details::__free_vector_1(*this); };                       \
-  void push_back(const type_0 &p_0) {                                          \
-    orm::details::__push_back_vector_1(*this, p_0);                            \
-  };                                                                           \
-  void remove_at(uimax p_index) {                                              \
-    orm::details::__remove_at_vector_1(*this, p_index);                        \
-  };                                                                           \
-  void at(uimax p_index, type_0 **out_0) {                                     \
-    orm::details::__at_vector_1(*this, p_index, out_0);                        \
-  };                                                                           \
-  bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_vector(*this);               \
-  };                                                                           \
-  uimax element_count() { return orm::details::__element_count_vector(*this); };
-
-#define table_define_vector_2                                                  \
-  void allocate(uimax p_capacity) {                                            \
-    orm::details::__allocate_vector_2(*this, p_capacity);                      \
-  };                                                                           \
-  void free() { orm::details::__free_vector_2(*this); };                       \
-  void push_back(const type_0 &p_0, const type_1 &p_1) {                       \
-    orm::details::__push_back_vector_2(*this, p_0, p_1);                       \
-  };                                                                           \
-  void remove_at(uimax p_index) {                                              \
-    orm::details::__remove_at_vector_2(*this, p_index);                        \
-  };                                                                           \
-  void at(uimax p_index, type_0 **out_0, type_1 **out_1) {                     \
-    orm::details::__at_vector_2(*this, p_index, out_0, out_1);                 \
-  };                                                                           \
-                                                                               \
-  void at(uimax p_index, orm::none p_none, type_1 **out_1) {                   \
-    orm::details::__at_vector_2(*this, p_index, p_none, out_1);                \
-  };                                                                           \
-                                                                               \
-  void at(uimax p_index, type_0 **out_0, orm::none p_none) {                   \
-    orm::details::__at_vector_2(*this, p_index, out_0, p_none);                \
-  };                                                                           \
-  bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_vector(*this);               \
-  };                                                                           \
-  uimax element_count() { return orm::details::__element_count_vector(*this); };
-
-#define table_define_vector_3                                                  \
-  void allocate(uimax p_capacity) {                                            \
-    orm::details::__allocate_vector_3(*this, p_capacity);                      \
-  };                                                                           \
-  void free() { orm::details::__free_vector_3(*this); };                       \
-  void push_back(const type_0 &p_0, const type_1 &p_1, const type_2 &p_2) {    \
-    orm::details::__push_back_vector_3(*this, p_0, p_1, p_2);                  \
-  };                                                                           \
-  void remove_at(uimax p_index) {                                              \
-    orm::details::__remove_at_vector_3(*this, p_index);                        \
-  };                                                                           \
-  void at(uimax p_index, type_0 **out_0, type_1 **out_1, type_2 **out_2) {     \
-    orm::details::__at_vector_3(*this, p_index, out_0, out_1, out_2);          \
-  };                                                                           \
-                                                                               \
-  bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_vector(*this);               \
-  };                                                                           \
-  uimax element_count() { return orm::details::__element_count_vector(*this); };
-
 #define table_pool_meta container::pool_intrusive m_meta;
 
 #define table_define_pool_1                                                    \
@@ -1060,6 +807,116 @@ private:
           realloc_col<Col + 1>{}(thiz, p_new_count);
         }
       };
+    };
+  };
+};
+
+template <typename... Types> struct table_vector_v2 {
+  container::vector_intrusive m_meta;
+  details::cols<Types...> m_cols;
+  static constexpr ui8 COL_COUNT = details::cols<Types...>::COL_COUNT;
+
+  uimax &count() { return m_meta.m_count; };
+  details::cols<Types...> &cols() { return m_cols; };
+
+  void allocate(uimax p_capacity) {
+    m_meta.allocate(p_capacity);
+    table_vector_allocate<0>{}(*this, p_capacity);
+  };
+
+  void free() { table_vector_free<0>{}(*this); };
+
+  template <typename... Input> void push_back(const Input &... p_input) {
+    if (m_meta.add_realloc(1)) {
+      __realloc<0>{}(*this);
+    }
+    table_vector_set_value<0, const Input &...>{}(*this, p_input...);
+  };
+
+  void remove_at(uimax p_index) {
+    assert_debug(p_index < m_meta.m_count && m_meta.m_count > 0);
+    if (p_index < m_meta.m_count - 1) {
+      table_vector_memmove_up<0>{}(*this, p_index + 1, 1, 1);
+    }
+
+    m_meta.m_count -= 1;
+  };
+
+  template <typename... Input> void at(uimax p_index, Input... p_input) {
+    assert_debug(p_index < count());
+    __at<0, Input...>{}(*this, p_index, p_input...);
+  };
+
+private:
+  template <ui8 Col> struct table_vector_allocate {
+    void operator()(table_vector_v2 &thiz, uimax p_capacity) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        l_col = (T *)sys::malloc(p_capacity * sizeof(T));
+        table_vector_allocate<Col + 1>{}(thiz, p_capacity);
+      }
+    };
+  };
+
+  template <ui8 Col> struct table_vector_free {
+    void operator()(table_vector_v2 &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        sys::free(l_col);
+        table_vector_free<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col> struct __realloc {
+    void operator()(table_vector_v2 &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        l_col = (T *)sys::realloc(l_col, thiz.m_meta.m_capacity * sizeof(T));
+        __realloc<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col, typename InputFirst, typename... Input>
+  struct table_vector_set_value {
+
+    void operator()(table_vector_v2 &thiz, const InputFirst &p_first,
+                    const Input &... p_input) {
+
+      if constexpr (!traits::is_none<InputFirst>::value) {
+        thiz.cols().template col<Col>()[thiz.m_meta.m_count - 1] = p_first;
+      }
+
+      if constexpr (Col + 1 < COL_COUNT) {
+        table_vector_set_value<Col + 1, const Input &...>{}(thiz, p_input...);
+      }
+    };
+  };
+
+  template <ui8 Col> struct table_vector_memmove_up {
+    void operator()(table_vector_v2 &thiz, uimax p_break_index,
+                    uimax p_move_delta, uimax p_chunk_count) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        sys::memmove_up_t(l_col, p_break_index, p_move_delta, p_chunk_count);
+        table_vector_memmove_up<Col + 1>{}(thiz, p_break_index, p_move_delta,
+                                           p_chunk_count);
+      }
+    };
+  };
+
+  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
+    void operator()(table_vector_v2 &thiz, uimax p_index, InputFirst p_first,
+                    Input... p_input) {
+      if constexpr (!traits::is_none<InputFirst>::value) {
+        *p_first = &(thiz.cols().template col<Col>())[p_index];
+      }
+      if constexpr (sizeof...(Input) > 0) {
+        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
+      }
     };
   };
 };

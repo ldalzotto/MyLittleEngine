@@ -172,11 +172,7 @@ struct bgfx_impl {
       table_define_heap_paged_2;
     } buffers_table;
 
-    struct buffers_ptr_mapping_table {
-      table_vector_meta;
-      table_cols_2(bgfx::Memory *, uimax);
-      table_define_vector_2;
-    } buffers_ptr_mapping_table;
+    orm::table_vector_v2<bgfx::Memory *, uimax> buffers_ptr_mapping_table;
 
     struct texture_table {
       table_pool_meta;
@@ -202,11 +198,7 @@ struct bgfx_impl {
       table_define_pool_1;
     } indexbuffer_table;
 
-    struct renderpass_table {
-      table_vector_meta;
-      table_cols_1(RenderPass);
-      table_define_vector_1;
-    } renderpass_table;
+    orm::table_vector_v2<RenderPass> renderpass_table;
 
     struct shader_table {
       table_pool_meta;
@@ -243,7 +235,7 @@ struct bgfx_impl {
       assert_debug(!program_table.has_allocated_elements());
 
       for (auto l_render_pass_it = 0;
-           l_render_pass_it < renderpass_table.element_count();
+           l_render_pass_it < renderpass_table.count();
            ++l_render_pass_it) {
         RenderPass *l_render_pass;
         renderpass_table.at(l_render_pass_it, &l_render_pass);
@@ -301,11 +293,14 @@ struct bgfx_impl {
     void free_buffer(const bgfx::Memory *p_buffer) {
 
       for (auto i = 0; i < buffers_ptr_mapping_table.m_meta.m_count; ++i) {
-        if (buffers_ptr_mapping_table.m_col_0[i] == p_buffer) {
-
+        bgfx::Memory **l_buffer;
+        buffers_ptr_mapping_table.at(i, &l_buffer, orm::none());
+        if (*l_buffer == p_buffer) {
+          uimax *l_buffer_index;
+          buffers_ptr_mapping_table.at(i, orm::none(), &l_buffer_index);
           MemoryReference *l_reference;
-          uimax l_buffers_table_count = buffers_table.at(
-              buffers_ptr_mapping_table.m_col_1[i], orm::none(), &l_reference);
+          uimax l_buffers_table_count =
+              buffers_table.at(*l_buffer_index, orm::none(), &l_reference);
           assert_debug(l_buffers_table_count == 1);
           if (!l_reference->is_ref()) {
             buffer_memory_table.remove_at(l_reference->m_buffer_index);
