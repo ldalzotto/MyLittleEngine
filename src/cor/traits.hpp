@@ -22,4 +22,14 @@ template <typename T> struct remove_ptr_ref {
   using type = typename remove_ptr<typename remove_ref<T>::type>::type;
 };
 
+template <bool B, typename Left, typename Right> struct conditional {};
+
+template <typename Left, typename Right> struct conditional<0, Left, Right> {
+  using type = Left;
+};
+
+template <typename Left, typename Right> struct conditional<1, Left, Right> {
+  using type = Right;
+};
+
 }; // namespace traits

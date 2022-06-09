@@ -652,6 +652,30 @@ private:
 
 namespace orm {
 
+template <typename T, ui8 Col> struct ref {
+  using type = T;
+  static constexpr ui8 COL = Col;
+
+  operator T &() { return *m_data; };
+  operator T * &() { return m_data; };
+  T *operator->() { return m_data; };
+  T &operator*() { return *m_data; }
+
+private:
+  T *m_data;
+
+public:
+  T *&data() { return m_data; };
+};
+
+namespace traits {
+template <typename T> struct is_orm_ref { static constexpr ui8 value = 0; };
+
+template <typename T, ui8 Col> struct is_orm_ref<ref<T, Col>> {
+  static constexpr ui8 value = 1;
+};
+}; // namespace traits
+
 namespace details {
 
 template <typename... Types> struct cols;
@@ -721,9 +745,9 @@ template <typename... Types> struct table_span_v2 {
   uimax &count() { return m_meta; };
   const uimax &count() const { return m_meta; };
 
-  template <typename... Input> void at(uimax p_index, Input... p_input) {
+  template <typename... Input> void at(uimax p_index, Input &&... p_input) {
     assert_debug(p_index < count());
-    __at<0, Input...>{}(*this, p_index, p_input...);
+    __at_v2<Input...>{}(*this, p_index, p_input...);
   };
 
   template <typename... Input> void range(Input... p_ranges) {
@@ -765,14 +789,14 @@ private:
     };
   };
 
-  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
-    void operator()(table_span_v2 &thiz, uimax p_index, InputFirst p_first,
-                    Input... p_input) {
-      if constexpr (!traits::is_none<InputFirst>::value) {
-        *p_first = &(thiz.cols().template col<Col>())[p_index];
-      }
+  template <typename InputFirst, typename... Input> struct __at_v2 {
+    void operator()(table_span_v2 &thiz, uimax p_index, InputFirst &&p_first,
+                    Input &... p_input) {
+
+      using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
+      p_first.data() = &(thiz.cols().template col<ref_t::COL>())[p_index];
       if constexpr (sizeof...(Input) > 0) {
-        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
+        __at_v2<Input...>{}(thiz, p_index, p_input...);
       }
     };
   };

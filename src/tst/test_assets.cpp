@@ -237,6 +237,22 @@ f 5/6/6 1/12/6 8/11/6
     REQUIRE(l_mesh_view.m_indices.at(35) == 17);
 
     l_mesh.free();
+
+    struct mstr {
+      ui8 m_value;
+    };
+
+    using vertex_buffer_table = orm::table_span_v2<fix32, mstr>;
+
+    using mstr_t = orm::ref<mstr, 1>;
+    vertex_buffer_table l_table;
+    l_table.allocate(10);
+    mstr_t l_v0;
+    l_table.at(0, l_v0);
+    *l_v0 = mstr{5};
+    l_table.at(0, l_v0);
+
+    // l_v0 + 1;
   }
 };
 
