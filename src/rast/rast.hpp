@@ -172,7 +172,12 @@ struct bgfx_impl {
       table_define_heap_paged_2;
     } buffers_table;
 
-    orm::table_vector_v2<bgfx::Memory *, uimax> buffers_ptr_mapping_table;
+    using buffers_ptr_mapping_t = orm::table_vector_v2<bgfx::Memory *, uimax>;
+
+    using buffers_ptr_mapping_buffer_t = orm::ref<bgfx::Memory *, 0>;
+    using buffers_ptr_mapping_buffer_index_t = orm::ref<uimax, 1>;
+
+    buffers_ptr_mapping_t buffers_ptr_mapping_table;
 
     struct texture_table {
       table_pool_meta;
@@ -198,7 +203,9 @@ struct bgfx_impl {
       table_define_pool_1;
     } indexbuffer_table;
 
-    orm::table_vector_v2<RenderPass> renderpass_table;
+    using per_renderpass_t = orm::table_vector_v2<RenderPass>;
+    using per_renderpass_renderpass_t = orm::ref<RenderPass, 0>;
+    per_renderpass_t renderpass_table;
 
     struct shader_table {
       table_pool_meta;
@@ -235,10 +242,9 @@ struct bgfx_impl {
       assert_debug(!program_table.has_allocated_elements());
 
       for (auto l_render_pass_it = 0;
-           l_render_pass_it < renderpass_table.count();
-           ++l_render_pass_it) {
-        RenderPass *l_render_pass;
-        renderpass_table.at(l_render_pass_it, &l_render_pass);
+           l_render_pass_it < renderpass_table.count(); ++l_render_pass_it) {
+        per_renderpass_renderpass_t l_render_pass;
+        renderpass_table.at(l_render_pass_it, l_render_pass);
         l_render_pass->free();
       }
       renderpass_table.free();
@@ -293,11 +299,11 @@ struct bgfx_impl {
     void free_buffer(const bgfx::Memory *p_buffer) {
 
       for (auto i = 0; i < buffers_ptr_mapping_table.m_meta.m_count; ++i) {
-        bgfx::Memory **l_buffer;
-        buffers_ptr_mapping_table.at(i, &l_buffer, orm::none());
+        buffers_ptr_mapping_buffer_t l_buffer;
+        buffers_ptr_mapping_table.at(i, l_buffer);
         if (*l_buffer == p_buffer) {
-          uimax *l_buffer_index;
-          buffers_ptr_mapping_table.at(i, orm::none(), &l_buffer_index);
+          buffers_ptr_mapping_buffer_index_t l_buffer_index;
+          buffers_ptr_mapping_table.at(i, l_buffer_index);
           MemoryReference *l_reference;
           uimax l_buffers_table_count =
               buffers_table.at(*l_buffer_index, orm::none(), &l_reference);
@@ -564,8 +570,8 @@ struct bgfx_impl {
     };
 
     RenderPassProxy RenderPass(bgfx::ViewId p_handle) {
-      struct RenderPass *l_render_pass;
-      m_heap.renderpass_table.at(p_handle, &l_render_pass);
+      heap::per_renderpass_renderpass_t l_render_pass;
+      m_heap.renderpass_table.at(p_handle, l_render_pass);
       return RenderPassProxy(m_heap, l_render_pass);
     };
 
@@ -578,8 +584,8 @@ struct bgfx_impl {
     template <typename Callback>
     void for_each_renderpass(const Callback &p_cb) {
       for (auto i = 0; i < m_heap.renderpass_table.m_meta.m_count; ++i) {
-        struct RenderPass *l_render_pass;
-        m_heap.renderpass_table.at(i, &l_render_pass);
+        heap::per_renderpass_renderpass_t l_render_pass;
+        m_heap.renderpass_table.at(i, l_render_pass);
         RenderPassProxy l_proxy(m_heap, l_render_pass);
         p_cb(l_proxy);
       }

@@ -6,6 +6,7 @@
 
 namespace orm {
 
+// TODO -> this should not be used anymore
 struct none {};
 
 namespace traits {
@@ -866,9 +867,9 @@ template <typename... Types> struct table_vector_v2 {
     m_meta.m_count -= 1;
   };
 
-  template <typename... Input> void at(uimax p_index, Input... p_input) {
+  template <typename... Input> void at(uimax p_index, Input &&... p_input) {
     assert_debug(p_index < count());
-    __at<0, Input...>{}(*this, p_index, p_input...);
+    __at_v2<Input...>{}(*this, p_index, p_input...);
   };
 
 private:
@@ -932,14 +933,14 @@ private:
     };
   };
 
-  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
-    void operator()(table_vector_v2 &thiz, uimax p_index, InputFirst p_first,
-                    Input... p_input) {
-      if constexpr (!traits::is_none<InputFirst>::value) {
-        *p_first = &(thiz.cols().template col<Col>())[p_index];
-      }
+  template <typename InputFirst, typename... Input> struct __at_v2 {
+    void operator()(table_vector_v2 &thiz, uimax p_index, InputFirst &&p_first,
+                    Input &... p_input) {
+
+      using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
+      p_first.data() = &(thiz.cols().template col<ref_t::COL>())[p_index];
       if constexpr (sizeof...(Input) > 0) {
-        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
+        __at_v2<Input...>{}(thiz, p_index, p_input...);
       }
     };
   };

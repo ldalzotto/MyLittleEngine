@@ -51,10 +51,10 @@ public:
   void open_window(window_handle p_window) { __open_window(p_window); };
   void close_window(window_handle p_window) { __close_window(p_window); };
   void draw_window(ui8 p_window_index, const rast::image_view &p_image) {
-    window_handle *l_handle;
-    window_image_buffer *l_image_buffer;
-    win::events *l_events;
-    m_window_table.at(p_window_index, &l_handle, &l_image_buffer, &l_events);
+    window_table_handle_t l_handle;
+    window_table_image_buffer_t l_image_buffer;
+    window_table_events_t l_events;
+    m_window_table.at(p_window_index, l_handle, l_image_buffer, l_events);
     rast::image_copy_stretch((rgb_t *)p_image.m_buffer.m_begin, p_image.m_width,
                              p_image.m_height,
                              (rgba_t *)l_image_buffer->m_data.m_data,
@@ -71,6 +71,11 @@ public:
 private:
   using window_table =
       orm::table_vector_v2<window_handle, window_image_buffer, win::events>;
+
+  using window_table_handle_t = orm::ref<window_handle, 0>;
+  using window_table_image_buffer_t = orm::ref<window_image_buffer, 1>;
+  using window_table_events_t = orm::ref<win::events, 2>;
+
   window_table m_window_table;
 
   container::vector<eng::input::Event> m_input_system_events;
@@ -105,11 +110,11 @@ private:
   };
 
   void __close_window(window_handle p_window) {
-    window_handle *l_handle;
-    window_image_buffer *l_image_buffer;
-    win::events *l_events;
+    window_table_handle_t l_handle;
+    window_table_image_buffer_t l_image_buffer;
+    window_table_events_t l_events;
     for (auto i = 0; i < m_window_table.count(); ++i) {
-      m_window_table.at(i, &l_handle, &l_image_buffer, &l_events);
+      m_window_table.at(i, l_handle, l_image_buffer, l_events);
       if (l_handle->m_idx == p_window.m_idx) {
         win::close_window(l_handle->m_idx);
         l_image_buffer->free();
@@ -125,10 +130,10 @@ private:
     m_input_system_events.clear();
 
     ui8 l_window_index = 0;
-    window_handle *l_handle;
-    window_image_buffer *l_image_buffer;
-    win::events *l_events;
-    m_window_table.at(l_window_index, &l_handle, &l_image_buffer, &l_events);
+    window_table_handle_t l_handle;
+    window_table_image_buffer_t l_image_buffer;
+    window_table_events_t l_events;
+    m_window_table.at(l_window_index, l_handle, l_image_buffer, l_events);
 
     {
       auto l_events_for_fetch = container::range<win::events>::make(
