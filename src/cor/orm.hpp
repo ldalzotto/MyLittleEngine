@@ -471,6 +471,7 @@ template <typename... Types> struct table_vector_v2 {
 
   uimax &count() { return m_meta.m_count; };
   details::cols<Types...> &cols() { return m_cols; };
+  ui8 has_allocated_elements() { return count() != 0; };
 
   void allocate(uimax p_capacity) {
     m_meta.allocate(p_capacity);
@@ -606,6 +607,7 @@ template <typename... Types> struct table_pool_v2 {
   };
 
   void remove_at(uimax p_index) { m_meta.free_element(p_index); };
+  ui8 has_allocated_elements() { return m_meta.has_allocated_elements(); };
 
 private:
   template <ui8 Col> struct table_pool_allocate {
@@ -691,7 +693,7 @@ template <typename... Types> struct table_heap_paged_v2 {
   };
 
   template <typename... Input> uimax at(uimax p_index, Input &&... p_input) {
-    assert_debug(p_index < m_meta.m_count);
+    assert_debug(p_index < m_meta.m_allocated_chunks.count());
     __at_v2<Input...>{}(*this, p_index, p_input...);
     return m_meta.m_allocated_chunks.at(p_index).m_chunk.m_size;
   };

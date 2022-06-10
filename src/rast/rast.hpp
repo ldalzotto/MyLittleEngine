@@ -227,7 +227,7 @@ struct bgfx_impl {
     void free() {
       assert_debug(!vertexbuffer_table.has_allocated_elements());
       assert_debug(!indexbuffer_table.has_allocated_elements());
-      assert_debug(renderpass_table.element_count() == 1);
+      assert_debug(renderpass_table.count() == 1);
       assert_debug(!shader_table.has_allocated_elements());
       assert_debug(!program_table.has_allocated_elements());
 
