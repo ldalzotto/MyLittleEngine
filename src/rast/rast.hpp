@@ -160,17 +160,12 @@ struct bgfx_impl {
 
   struct heap {
 
-    struct buffer_memory_table {
-      table_heap_paged_meta;
-      table_heap_paged_cols_1(ui8);
-      table_define_heap_paged_1;
-    } buffer_memory_table;
+    orm::table_heap_paged_v2<ui8> buffer_memory_table;
+    using buffer_memory_table_ptr_t = orm::ref<ui8, 0>;
 
-    struct buffers_table {
-      table_heap_paged_meta;
-      table_heap_paged_cols_2(bgfx::Memory, MemoryReference);
-      table_define_heap_paged_2;
-    } buffers_table;
+    orm::table_heap_paged_v2<bgfx::Memory, MemoryReference> buffers_table;
+    using buffers_table_memory_t = orm::ref<bgfx::Memory, 0>;
+    using buffers_table_memory_reference_t = orm::ref<MemoryReference, 1>;
 
     using buffers_ptr_mapping_t = orm::table_vector_v2<bgfx::Memory *, uimax>;
 
@@ -258,18 +253,20 @@ struct bgfx_impl {
       auto l_buffer_index = buffer_memory_table.push_back(p_size);
 
       bgfx::Memory l_buffer{};
-      l_buffer.size = buffer_memory_table.at(l_buffer_index, &l_buffer.data);
+      buffer_memory_table_ptr_t l_data;
+      l_buffer.size = buffer_memory_table.at(l_buffer_index, l_data);
+      l_buffer.data = l_data;
 
       uimax l_index = buffers_table.push_back(1);
-      bgfx::Memory *l_bgfx_memory;
-      MemoryReference *l_memory_refence;
+      buffers_table_memory_t l_bgfx_memory;
+      buffers_table_memory_reference_t l_memory_refence;
       uimax l_memory_count =
-          buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
+          buffers_table.at(l_index, l_bgfx_memory, l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = MemoryReference(l_buffer_index);
 
-      buffers_ptr_mapping_table.push_back(l_bgfx_memory, l_index);
+      buffers_ptr_mapping_table.push_back(l_bgfx_memory.data(), l_index);
       return l_bgfx_memory;
     };
 
@@ -279,15 +276,15 @@ struct bgfx_impl {
       l_buffer.size = p_size;
 
       uimax l_index = buffers_table.push_back(1);
-      bgfx::Memory *l_bgfx_memory;
-      MemoryReference *l_memory_refence;
+      buffers_table_memory_t l_bgfx_memory;
+      buffers_table_memory_reference_t l_memory_refence;
       uimax l_memory_count =
-          buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
+          buffers_table.at(l_index, l_bgfx_memory, l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = MemoryReference(-1);
 
-      buffers_ptr_mapping_table.push_back(l_bgfx_memory, l_index);
+      buffers_ptr_mapping_table.push_back(l_bgfx_memory.data(), l_index);
       return l_bgfx_memory;
     };
 
@@ -299,9 +296,9 @@ struct bgfx_impl {
         if (*l_buffer == p_buffer) {
           buffers_ptr_mapping_buffer_index_t l_buffer_index;
           buffers_ptr_mapping_table.at(i, l_buffer_index);
-          MemoryReference *l_reference;
+          buffers_table_memory_reference_t l_reference;
           uimax l_buffers_table_count =
-              buffers_table.at(*l_buffer_index, orm::none(), &l_reference);
+              buffers_table.at(*l_buffer_index, l_reference);
           assert_debug(l_buffers_table_count == 1);
           if (!l_reference->is_ref()) {
             buffer_memory_table.remove_at(l_reference->m_buffer_index);
