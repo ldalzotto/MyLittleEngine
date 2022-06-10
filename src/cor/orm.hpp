@@ -290,7 +290,7 @@ private:
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
           using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-          l_col = (T *)malloc_free_functions::malloc(p_count * sizeof(T));
+          l_col = (T *)default_allocator::malloc(p_count * sizeof(T));
           allocate_col<Col + 1>{}(thiz, p_count);
         };
       };
@@ -305,7 +305,7 @@ private:
       void operator()(table_span_v2 &thiz) {
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
-          malloc_free_functions::free(l_col);
+          default_allocator::free(l_col);
           free_col<Col + 1>{}(thiz);
         }
       };
@@ -349,7 +349,7 @@ private:
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
           using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-          l_col = (T *)malloc_free_functions::realloc(l_col,
+          l_col = (T *)default_allocator::realloc(l_col,
                                                       sizeof(T) * p_new_count);
           realloc_col<Col + 1>{}(thiz, p_new_count);
         }
