@@ -17,144 +17,6 @@ template <> struct is_none<orm::none> { static constexpr ui8 value = 1; };
 
 namespace details {
 
-template <typename TableType>
-void __allocate_pool_1(TableType &p_table, uimax p_capacity) {
-  p_table.m_meta.allocate(p_capacity);
-  p_table.m_col_0 = (typename TableType::type_0 *)sys::malloc(
-      sizeof(typename TableType::type_0) * p_capacity);
-};
-
-template <typename TableType> void __free_pool_1(TableType &p_table) {
-  p_table.m_meta.free();
-  sys::free(p_table.m_col_0);
-};
-
-template <typename TableType> void __realloc_pool_1(TableType &p_table) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
-      p_table.m_col_0, l_meta.m_capacity * sizeof(*p_table.m_col_0));
-};
-
-template <typename TableType>
-uimax __push_back_pool_1(TableType &p_table,
-                         const typename TableType::type_0 &p_0) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  uimax l_index;
-  if (l_meta.find_next_realloc(&l_index)) {
-    __realloc_pool_1(p_table);
-  }
-  p_table.m_col_0[l_index] = p_0;
-  return l_index;
-};
-
-template <typename TableType>
-void __at_pool_1(TableType &p_table, uimax p_index,
-                 typename TableType::type_0 **out_0) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  assert_debug(p_index < l_meta.m_count);
-  *out_0 = &p_table.m_col_0[p_index];
-};
-
-template <typename TableType>
-void __allocate_pool_2(TableType &p_table, uimax p_capacity) {
-  p_table.m_meta.allocate(p_capacity);
-  p_table.m_col_0 = (typename TableType::type_0 *)sys::malloc(
-      sizeof(typename TableType::type_0) * p_capacity);
-  p_table.m_col_1 = (typename TableType::type_1 *)sys::malloc(
-      sizeof(typename TableType::type_1) * p_capacity);
-};
-
-template <typename TableType> void __free_pool_2(TableType &p_table) {
-  p_table.m_meta.free();
-  sys::free(p_table.m_col_0);
-  sys::free(p_table.m_col_1);
-};
-
-template <typename TableType> void __realloc_pool_2(TableType &p_table) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  p_table.m_col_0 = (decltype(p_table.m_col_0))sys::realloc(
-      p_table.m_col_0, l_meta.m_capacity * sizeof(*p_table.m_col_0));
-  p_table.m_col_1 = (decltype(p_table.m_col_1))sys::realloc(
-      p_table.m_col_1, l_meta.m_capacity * sizeof(*p_table.m_col_1));
-};
-
-template <typename TableType>
-uimax __push_back_pool_2(TableType &p_table,
-                         const typename TableType::type_0 &p_0,
-                         const typename TableType::type_1 &p_1) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  uimax l_index;
-  if (l_meta.find_next_realloc(&l_index)) {
-    __realloc_pool_2(p_table);
-  }
-  p_table.m_col_0[l_index] = p_0;
-  p_table.m_col_1[l_index] = p_1;
-  return l_index;
-};
-
-template <typename TableType>
-uimax __push_back_pool_2(TableType &p_table, const orm::none &,
-                         const typename TableType::type_1 &p_1) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  uimax l_index;
-  if (l_meta.find_next_realloc(&l_index)) {
-    __realloc_pool_2(p_table);
-  }
-  p_table.m_col_1[l_index] = p_1;
-  return l_index;
-};
-
-template <typename TableType>
-uimax __push_back_pool_2(TableType &p_table,
-                         const typename TableType::type_0 &p_0,
-                         const orm::none &) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  uimax l_index;
-  if (l_meta.find_next_realloc(&l_index)) {
-    __realloc_pool_2(p_table);
-  }
-  p_table.m_col_0[l_index] = p_0;
-  return l_index;
-};
-
-template <typename TableType>
-void __at_pool_2(TableType &p_table, uimax p_index,
-                 typename TableType::type_0 **out_0,
-                 typename TableType::type_1 **out_1) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  assert_debug(p_index < l_meta.m_count);
-  *out_0 = &p_table.m_col_0[p_index];
-  *out_1 = &p_table.m_col_1[p_index];
-};
-
-template <typename TableType>
-void __at_pool_2(TableType &p_table, uimax p_index, orm::none,
-                 typename TableType::type_1 **out_1) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  assert_debug(p_index < l_meta.m_count);
-  *out_1 = &p_table.m_col_1[p_index];
-};
-
-template <typename TableType>
-void __at_pool_2(TableType &p_table, uimax p_index,
-                 typename TableType::type_0 **out_0, orm::none) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  assert_debug(p_index < l_meta.m_count);
-  *out_0 = &p_table.m_col_0[p_index];
-};
-
-template <typename TableType>
-void __remove_at_pool(TableType &p_table, uimax p_index) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  l_meta.free_element(p_index);
-};
-
-template <typename TableType>
-bool __has_allocated_elements_pool(TableType &p_table) {
-  container::pool_intrusive &l_meta = p_table.m_meta;
-  return l_meta.has_allocated_elements();
-};
-
 template <typename T> struct heap_paged_col {
   T **m_data;
 
@@ -416,6 +278,7 @@ void __remove_at_heap_paged_3(TableType &p_table, uimax p_chunk_index) {
 
 }; // namespace details
 
+// TODO -> having a better way to do this ?
 struct table_one_to_many {
 
   struct entry {
@@ -520,56 +383,6 @@ private:
   type_1 *m_col_1;                                                             \
   type_2 *m_col_2;                                                             \
   type_3 *m_col_3;
-
-#define table_pool_meta container::pool_intrusive m_meta;
-
-#define table_define_pool_1                                                    \
-  void allocate(uimax p_capacity) {                                            \
-    orm::details::__allocate_pool_1(*this, p_capacity);                        \
-  };                                                                           \
-  void free() { orm::details::__free_pool_1(*this); };                         \
-  uimax push_back(const type_0 &p_0) {                                         \
-    return orm::details::__push_back_pool_1(*this, p_0);                       \
-  };                                                                           \
-  void remove_at(uimax p_index) {                                              \
-    orm::details::__remove_at_pool(*this, p_index);                            \
-  };                                                                           \
-  bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_pool(*this);                 \
-  };                                                                           \
-  void at(uimax p_index, type_0 **out_0) {                                     \
-    orm::details::__at_pool_1(*this, p_index, out_0);                          \
-  };
-
-#define table_define_pool_2                                                    \
-  void allocate(uimax p_capacity) {                                            \
-    orm::details::__allocate_pool_2(*this, p_capacity);                        \
-  };                                                                           \
-  void free() { orm::details::__free_pool_2(*this); };                         \
-  uimax push_back(const type_0 &p_0, const type_1 &p_1) {                      \
-    return orm::details::__push_back_pool_2(*this, p_0, p_1);                  \
-  };                                                                           \
-  uimax push_back(const type_0 &p_0, const orm::none &p_none) {                \
-    return orm::details::__push_back_pool_2(*this, p_0, p_none);               \
-  };                                                                           \
-  uimax push_back(const orm::none &p_none, const type_1 &p_1) {                \
-    return orm::details::__push_back_pool_2(*this, p_none, p_1);               \
-  };                                                                           \
-  void remove_at(uimax p_index) {                                              \
-    orm::details::__remove_at_pool(*this, p_index);                            \
-  };                                                                           \
-  bool has_allocated_elements() {                                              \
-    return orm::details::__has_allocated_elements_pool(*this);                 \
-  };                                                                           \
-  void at(uimax p_index, type_0 **out_0, type_1 **out_1) {                     \
-    orm::details::__at_pool_2(*this, p_index, out_0, out_1);                   \
-  };                                                                           \
-  void at(uimax p_index, const orm::none &p_none, type_1 **out_1) {            \
-    orm::details::__at_pool_2(*this, p_index, p_none, out_1);                  \
-  };                                                                           \
-  void at(uimax p_index, type_0 **out_0, const orm::none &p_none) {            \
-    orm::details::__at_pool_2(*this, p_index, out_0, p_none);                  \
-  };
 
 #define table_heap_paged_meta container::heap_paged_intrusive m_meta;
 #define table_heap_paged_cols_1(Type0)                                         \
@@ -935,6 +748,101 @@ private:
 
   template <typename InputFirst, typename... Input> struct __at_v2 {
     void operator()(table_vector_v2 &thiz, uimax p_index, InputFirst &&p_first,
+                    Input &... p_input) {
+
+      using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
+      p_first.data() = &(thiz.cols().template col<ref_t::COL>())[p_index];
+      if constexpr (sizeof...(Input) > 0) {
+        __at_v2<Input...>{}(thiz, p_index, p_input...);
+      }
+    };
+  };
+};
+
+template <typename... Types> struct table_pool_v2 {
+  container::pool_intrusive m_meta;
+  details::cols<Types...> m_cols;
+  static constexpr ui8 COL_COUNT = details::cols<Types...>::COL_COUNT;
+
+  details::cols<Types...> &cols() { return m_cols; };
+
+  void allocate(uimax p_capacity) {
+    m_meta.allocate(p_capacity);
+    table_pool_vector_allocate<0>{}(*this, p_capacity);
+  };
+
+  void free() {
+    m_meta.free();
+    table_pool_free<0>{}(*this);
+  };
+
+  template <typename... Input> uimax push_back(const Input &... p_input) {
+    uimax l_index;
+    if (m_meta.find_next_realloc(&l_index)) {
+      __realloc<0>{}(*this);
+    }
+    table_pool_set_value<0, const Input &...>{}(*this, p_input...);
+    return l_index;
+  };
+
+  template <typename... Input> void at(uimax p_index, Input &&... p_input) {
+    assert_debug(p_index < m_meta.m_count);
+    __at_v2<Input...>{}(*this, p_index, p_input...);
+  };
+
+  void remove_at(uimax p_index) { m_meta.free_element(p_index); };
+
+private:
+  template <ui8 Col> struct table_pool_vector_allocate {
+    void operator()(table_pool_v2 &thiz, uimax p_capacity) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        l_col = (T *)sys::malloc(p_capacity * sizeof(T));
+        table_pool_vector_allocate<Col + 1>{}(thiz, p_capacity);
+      }
+    };
+  };
+
+  template <ui8 Col> struct table_pool_free {
+    void operator()(table_pool_v2 &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        sys::free(l_col);
+        table_pool_free<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col> struct __realloc {
+    void operator()(table_pool_v2 &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        l_col = (T *)sys::realloc(l_col, thiz.m_meta.m_capacity * sizeof(T));
+        __realloc<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col, typename InputFirst, typename... Input>
+  struct table_pool_set_value {
+
+    void operator()(table_pool_v2 &thiz, const InputFirst &p_first,
+                    const Input &... p_input) {
+
+      if constexpr (!traits::is_none<InputFirst>::value) {
+        thiz.cols().template col<Col>()[thiz.m_meta.m_count - 1] = p_first;
+      }
+
+      if constexpr (Col + 1 < COL_COUNT) {
+        table_pool_set_value<Col + 1, const Input &...>{}(thiz, p_input...);
+      }
+    };
+  };
+
+  template <typename InputFirst, typename... Input> struct __at_v2 {
+    void operator()(table_pool_v2 &thiz, uimax p_index, InputFirst &&p_first,
                     Input &... p_input) {
 
       using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
