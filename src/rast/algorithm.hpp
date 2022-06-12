@@ -165,10 +165,6 @@ private:
   };
 };
 
-// TODO -> move types to heap instead
-
-// TABLES
-
 using per_vertices_t =
     orm::table_span_v2<pixel_coordinates, homogeneous_coordinates>;
 
@@ -481,7 +477,7 @@ private:
       screen_polygon_area *l_area;
 
       m_heap.m_per_polygons.at(i, &l_polygon, &l_polygon_indices,
-                                   &l_bounding_rect, &l_area);
+                               &l_bounding_rect, &l_area);
 
       l_polygon_indices->p0() =
           m_input.m_index_buffer.at<vindex_t>(l_index_idx);
@@ -573,7 +569,7 @@ private:
       screen_polygon_bounding_box *l_bounding_rect;
       screen_polygon_area *l_area;
       m_heap.m_per_polygons.at(l_polygon_it, &l_polygon, &l_polygon_indices,
-                                   &l_bounding_rect, &l_area);
+                               &l_bounding_rect, &l_area);
 
       // Resetting the bouding rect visibility buffer
       container::range<ui8> l_boudingrect_visibility_range;
@@ -757,7 +753,7 @@ private:
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       visibility_bool_t *l_visibility_boolean;
       m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
-                                        none(), none());
+                                    none(), none());
       if (*l_visibility_boolean) {
 
         for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
@@ -795,12 +791,12 @@ private:
 
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
-                                        &l_visibility_weight,
-                                        &l_visibility_polygon);
+                                    &l_visibility_weight,
+                                    &l_visibility_polygon);
       if (*l_visibility_boolean) {
         polygon_vertex_indices *l_indices_polygon;
         m_heap.m_per_polygons.at(*l_visibility_polygon, none(),
-                                     &l_indices_polygon);
+                                 &l_indices_polygon);
 
         for (auto l_vertex_output_index = p_begin_index;
              l_vertex_output_index < p_end_index; ++l_vertex_output_index) {

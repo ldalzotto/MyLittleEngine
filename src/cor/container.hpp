@@ -162,11 +162,6 @@ template <typename T> struct span {
     }
   };
 
-private:
-  void __realloc(uimax p_new_count){
-
-  };
-
 public:
   void memmove_down(uimax p_break_index, uimax p_move_delta,
                     uimax p_chunk_count) {

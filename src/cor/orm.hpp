@@ -6,31 +6,6 @@
 
 namespace orm {
 
-// TODO -> remove
-template <typename T, ui8 Col> struct ref {
-  using element_type = T;
-  static constexpr ui8 COL = Col;
-
-  operator T &() { return *m_data; };
-  operator T * &() { return m_data; };
-  T *operator->() { return m_data; };
-  T &operator*() { return *m_data; }
-
-private:
-  T *m_data;
-
-public:
-  T *&data() { return m_data; };
-};
-
-namespace traits {
-template <typename T> struct is_orm_ref { static constexpr ui8 value = 0; };
-
-template <typename T, ui8 Col> struct is_orm_ref<ref<T, Col>> {
-  static constexpr ui8 value = 1;
-};
-}; // namespace traits
-
 struct one_to_many {
   container::vector<uimax> &m_rels;
 
