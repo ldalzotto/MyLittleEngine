@@ -32,7 +32,7 @@ struct Event {
 struct system {
 
   using state_table = orm::table_span_v2<State>;
-  using state_col = orm::ref<State, 0>;
+
   struct heap {
     state_table m_state_table;
 
@@ -41,9 +41,9 @@ struct system {
 
     void allocate() {
       m_state_table.allocate((uimax)Key::ENUM_MAX);
-      state_col l_state;
+      State *l_state;
       for (auto i = 0; i < m_state_table.m_meta; ++i) {
-        m_state_table.at(i, l_state);
+        m_state_table.at(i, &l_state);
         *l_state = State::UNDEFINED;
       }
       m_just_pressed_keys.allocate(0);
@@ -70,8 +70,8 @@ private:
   void __last_frame_events() {
     for (auto i = 0; i < m_heap.m_just_pressed_keys.count(); ++i) {
       uimax l_key = m_heap.m_just_pressed_keys.at(i);
-      state_col l_state;
-      m_heap.m_state_table.at(l_key, l_state);
+      State *l_state;
+      m_heap.m_state_table.at(l_key, &l_state);
       assert_debug(*l_state == State::JUST_PRESSED);
       *l_state = State::PRESSED;
     }
@@ -79,8 +79,8 @@ private:
 
     for (auto i = 0; i < m_heap.m_just_released_keys.count(); ++i) {
       uimax l_key = m_heap.m_just_released_keys.at(i);
-      state_col l_state;
-      m_heap.m_state_table.at(l_key, l_state);
+      State *l_state;
+      m_heap.m_state_table.at(l_key, &l_state);
       assert_debug(*l_state == State::JUST_RELEASED);
       *l_state = State::UNDEFINED;
     }
@@ -92,8 +92,8 @@ private:
     for (auto i = 0; i < p_events.count(); ++i) {
       const Event &l_event = p_events.at(i);
 
-      state_col l_state;
-      m_heap.m_state_table.at((uimax)l_event.m_key, l_state);
+      State *l_state;
+      m_heap.m_state_table.at((uimax)l_event.m_key, &l_state);
 
       if (l_event.m_flag == Event::Flag::PRESSED) {
         m_heap.m_just_pressed_keys.push_back((uimax)l_event.m_key);

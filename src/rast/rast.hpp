@@ -161,53 +161,27 @@ struct bgfx_impl {
   struct heap {
 
     orm::table_heap_paged_v2<ui8> buffer_memory_table;
-    using buffer_memory_table_ptr_t = orm::ref<ui8, 0>;
 
     orm::table_heap_paged_v2<bgfx::Memory, MemoryReference> buffers_table;
-    using buffers_table_memory_t = orm::ref<bgfx::Memory, 0>;
-    using buffers_table_memory_reference_t = orm::ref<MemoryReference, 1>;
 
-    using buffers_ptr_mapping_t = orm::table_vector_v2<bgfx::Memory *, uimax>;
-
-    using buffers_ptr_mapping_buffer_t = orm::ref<bgfx::Memory *, 0>;
-    using buffers_ptr_mapping_buffer_index_t = orm::ref<uimax, 1>;
+    using buffers_ptr_mapping_buffer_t = bgfx::Memory *;
+    using buffers_ptr_mapping_buffer_index_t = uimax;
+    using buffers_ptr_mapping_t =
+        orm::table_vector_v2<buffers_ptr_mapping_buffer_t,
+                             buffers_ptr_mapping_buffer_index_t>;
 
     buffers_ptr_mapping_t buffers_ptr_mapping_table;
 
-    using per_texture_t = orm::table_pool_v2<Texture>;
-    using per_texture_texture_t = orm::ref<Texture, 0>;
+    orm::table_pool_v2<Texture> texture_table;
+    orm::table_pool_v2<FrameBuffer> framebuffer_table;
+    orm::table_pool_v2<VertexBuffer> vertexbuffer_table;
+    orm::table_pool_v2<IndexBuffer> indexbuffer_table;
+    orm::table_vector_v2<RenderPass> renderpass_table;
 
-    per_texture_t texture_table;
+    using per_shader_count_t = uimax;
+    orm::table_pool_v2<Shader, per_shader_count_t> shader_table;
 
-    using per_framebuffer_t = orm::table_pool_v2<FrameBuffer>;
-    using per_framebuffer_framebuffer_t = orm::ref<FrameBuffer, 0>;
-
-    per_framebuffer_t framebuffer_table;
-
-    using per_vertexbuffer_t = orm::table_pool_v2<VertexBuffer>;
-    using per_vertexbuffer_vertexbuffer_t = orm::ref<VertexBuffer, 0>;
-
-    per_vertexbuffer_t vertexbuffer_table;
-
-    using per_indexbuffer_t = orm::table_pool_v2<IndexBuffer>;
-    using per_indexbuffer_indexbuffer_t = orm::ref<IndexBuffer, 0>;
-
-    per_indexbuffer_t indexbuffer_table;
-
-    using per_renderpass_t = orm::table_vector_v2<RenderPass>;
-    using per_renderpass_renderpass_t = orm::ref<RenderPass, 0>;
-    per_renderpass_t renderpass_table;
-
-    using per_shader_t = orm::table_pool_v2<Shader, uimax>;
-    using per_shader_shader_t = orm::ref<Shader, 0>;
-    using per_shader_count_t = orm::ref<uimax, 1>;
-
-    per_shader_t shader_table;
-
-    using per_program_t = orm::table_pool_v2<Program>;
-    using per_program_program_t = orm::ref<Program, 0>;
-
-    per_program_t program_table;
+    orm::table_pool_v2<Program> program_table;
 
     void allocate() {
       renderpass_table.allocate(0);
@@ -233,8 +207,8 @@ struct bgfx_impl {
 
       for (auto l_render_pass_it = 0;
            l_render_pass_it < renderpass_table.count(); ++l_render_pass_it) {
-        per_renderpass_renderpass_t l_render_pass;
-        renderpass_table.at(l_render_pass_it, l_render_pass);
+        RenderPass *l_render_pass;
+        renderpass_table.at(l_render_pass_it, &l_render_pass);
         l_render_pass->free();
       }
       renderpass_table.free();
@@ -253,20 +227,20 @@ struct bgfx_impl {
       auto l_buffer_index = buffer_memory_table.push_back(p_size);
 
       bgfx::Memory l_buffer{};
-      buffer_memory_table_ptr_t l_data;
-      l_buffer.size = buffer_memory_table.at(l_buffer_index, l_data);
+      ui8 *l_data;
+      l_buffer.size = buffer_memory_table.at(l_buffer_index, &l_data);
       l_buffer.data = l_data;
 
       uimax l_index = buffers_table.push_back(1);
-      buffers_table_memory_t l_bgfx_memory;
-      buffers_table_memory_reference_t l_memory_refence;
+      bgfx::Memory *l_bgfx_memory;
+      MemoryReference *l_memory_refence;
       uimax l_memory_count =
-          buffers_table.at(l_index, l_bgfx_memory, l_memory_refence);
+          buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = MemoryReference(l_buffer_index);
 
-      buffers_ptr_mapping_table.push_back(l_bgfx_memory.data(), l_index);
+      buffers_ptr_mapping_table.push_back(l_bgfx_memory, l_index);
       return l_bgfx_memory;
     };
 
@@ -276,29 +250,29 @@ struct bgfx_impl {
       l_buffer.size = p_size;
 
       uimax l_index = buffers_table.push_back(1);
-      buffers_table_memory_t l_bgfx_memory;
-      buffers_table_memory_reference_t l_memory_refence;
+      bgfx::Memory *l_bgfx_memory;
+      MemoryReference *l_memory_refence;
       uimax l_memory_count =
-          buffers_table.at(l_index, l_bgfx_memory, l_memory_refence);
+          buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = MemoryReference(-1);
 
-      buffers_ptr_mapping_table.push_back(l_bgfx_memory.data(), l_index);
+      buffers_ptr_mapping_table.push_back(l_bgfx_memory, l_index);
       return l_bgfx_memory;
     };
 
     void free_buffer(const bgfx::Memory *p_buffer) {
 
       for (auto i = 0; i < buffers_ptr_mapping_table.m_meta.m_count; ++i) {
-        buffers_ptr_mapping_buffer_t l_buffer;
-        buffers_ptr_mapping_table.at(i, l_buffer);
+        buffers_ptr_mapping_buffer_t *l_buffer;
+        buffers_ptr_mapping_table.at(i, &l_buffer, none());
         if (*l_buffer == p_buffer) {
-          buffers_ptr_mapping_buffer_index_t l_buffer_index;
-          buffers_ptr_mapping_table.at(i, l_buffer_index);
-          buffers_table_memory_reference_t l_reference;
+          buffers_ptr_mapping_buffer_index_t *l_buffer_index;
+          buffers_ptr_mapping_table.at(i, none(), &l_buffer_index);
+          MemoryReference *l_reference;
           uimax l_buffers_table_count =
-              buffers_table.at(*l_buffer_index, l_reference);
+              buffers_table.at(*l_buffer_index, none(), &l_reference);
           assert_debug(l_buffers_table_count == 1);
           if (!l_reference->is_ref()) {
             buffer_memory_table.remove_at(l_reference->m_buffer_index);
@@ -323,8 +297,8 @@ struct bgfx_impl {
     };
 
     void free_texture(bgfx::TextureHandle p_texture) {
-      per_texture_texture_t l_texture;
-      texture_table.at(p_texture.idx, l_texture);
+      Texture *l_texture;
+      texture_table.at(p_texture.idx, &l_texture);
       free_buffer(l_texture->buffer);
       texture_table.remove_at(p_texture.idx);
     };
@@ -342,8 +316,8 @@ struct bgfx_impl {
     };
 
     FrameBuffer *get_frame_buffer(bgfx::FrameBufferHandle p_frame_buffer) {
-      per_framebuffer_framebuffer_t l_frame_buffer;
-      framebuffer_table.at(p_frame_buffer.idx, l_frame_buffer);
+      FrameBuffer *l_frame_buffer;
+      framebuffer_table.at(p_frame_buffer.idx, &l_frame_buffer);
       return l_frame_buffer;
     };
 
@@ -372,8 +346,8 @@ struct bgfx_impl {
     };
 
     void free_vertex_buffer(bgfx::VertexBufferHandle p_handle) {
-      per_vertexbuffer_vertexbuffer_t l_vertex_buffer;
-      vertexbuffer_table.at(p_handle.idx, l_vertex_buffer);
+      VertexBuffer *l_vertex_buffer;
+      vertexbuffer_table.at(p_handle.idx, &l_vertex_buffer);
       free_buffer(l_vertex_buffer->memory);
       vertexbuffer_table.remove_at(p_handle.idx);
     };
@@ -388,9 +362,8 @@ struct bgfx_impl {
     };
 
     void free_index_buffer(bgfx::IndexBufferHandle p_handle) {
-
-      per_indexbuffer_indexbuffer_t l_index_buffer;
-      indexbuffer_table.at(p_handle.idx, l_index_buffer);
+      IndexBuffer *l_index_buffer;
+      indexbuffer_table.at(p_handle.idx, &l_index_buffer);
       free_buffer(l_index_buffer->memory);
       indexbuffer_table.remove_at(p_handle.idx);
     };
@@ -405,8 +378,8 @@ struct bgfx_impl {
 
     void free_shader(bgfx::ShaderHandle p_handle) {
       block_debug([&]() {
-        per_shader_count_t l_count;
-        shader_table.at(p_handle.idx, l_count);
+        per_shader_count_t *l_count;
+        shader_table.at(p_handle.idx, none(), &l_count);
         assert_debug(*l_count == 0);
       });
       shader_table.remove_at(p_handle.idx);
@@ -414,10 +387,10 @@ struct bgfx_impl {
 
     bgfx::ProgramHandle allocate_program(const Program &p_program) {
 
-      per_shader_count_t l_shader_count;
-      shader_table.at(p_program.fragment.idx, l_shader_count);
+      per_shader_count_t *l_shader_count;
+      shader_table.at(p_program.fragment.idx, none(), &l_shader_count);
       *l_shader_count += 1;
-      shader_table.at(p_program.vertex.idx, l_shader_count);
+      shader_table.at(p_program.vertex.idx, none(), &l_shader_count);
       *l_shader_count += 1;
 
       bgfx::ProgramHandle l_handle;
@@ -426,16 +399,16 @@ struct bgfx_impl {
     };
 
     void free_program(bgfx::ProgramHandle p_handle) {
-      per_program_program_t l_program;
-      program_table.at(p_handle.idx, l_program);
+      Program *l_program;
+      program_table.at(p_handle.idx, &l_program);
 
-      per_shader_count_t l_shader_count;
-      shader_table.at(l_program->fragment.idx, l_shader_count);
+      per_shader_count_t *l_shader_count;
+      shader_table.at(l_program->fragment.idx, none(), &l_shader_count);
       *l_shader_count -= 1;
       if (*l_shader_count == 0) {
         free_shader(l_program->fragment);
       }
-      shader_table.at(l_program->vertex.idx, l_shader_count);
+      shader_table.at(l_program->vertex.idx, none(), &l_shader_count);
       *l_shader_count -= 1;
       if (*l_shader_count == 0) {
         free_shader(l_program->vertex);
@@ -460,14 +433,14 @@ struct bgfx_impl {
     FrameBuffer *m_value;
 
     TextureProxy RGBTexture() {
-      heap::per_texture_texture_t l_texture;
-      m_heap.texture_table.at(m_value->m_rgb.idx, l_texture);
+      Texture *l_texture;
+      m_heap.texture_table.at(m_value->m_rgb.idx, &l_texture);
       return {.m_heap = m_heap, .m_value = l_texture};
     };
 
     TextureProxy DepthTexture() {
-      heap::per_texture_texture_t l_texture;
-      m_heap.texture_table.at(m_value->m_depth.idx, l_texture);
+      Texture *l_texture;
+      m_heap.texture_table.at(m_value->m_depth.idx, &l_texture);
       return {.m_heap = m_heap, .m_value = l_texture};
     };
   };
@@ -483,8 +456,8 @@ struct bgfx_impl {
     RenderPass *value() { return m_value; };
 
     FrameBufferProxy FrameBuffer() {
-      heap::per_framebuffer_framebuffer_t l_frame_buffer;
-      m_heap.framebuffer_table.at(m_value->framebuffer.idx, l_frame_buffer);
+      struct FrameBuffer *l_frame_buffer;
+      m_heap.framebuffer_table.at(m_value->framebuffer.idx, &l_frame_buffer);
       return {.m_heap = m_heap, .m_value = l_frame_buffer};
     };
 
@@ -510,14 +483,14 @@ struct bgfx_impl {
                           };
 
     ShaderProxy VertexShader() {
-      heap::per_shader_shader_t l_shader;
-      m_heap.shader_table.at(m_program->vertex.idx, l_shader);
+      Shader *l_shader;
+      m_heap.shader_table.at(m_program->vertex.idx, &l_shader);
       return {.m_heap = m_heap, .m_shader = l_shader};
     };
 
     ShaderProxy FragmentShader() {
-      heap::per_shader_shader_t l_shader;
-      m_heap.shader_table.at(m_program->fragment.idx, l_shader);
+      Shader *l_shader;
+      m_heap.shader_table.at(m_program->fragment.idx, &l_shader);
       return {.m_heap = m_heap, .m_shader = l_shader};
     };
   };
@@ -534,20 +507,21 @@ struct bgfx_impl {
     CommandDrawCall *value() { return m_value; };
 
     IndexBuffer *IndexBuffer() {
-      heap::per_indexbuffer_indexbuffer_t l_index_buffer;
-      m_heap.indexbuffer_table.at(m_value->index_buffer.idx, l_index_buffer);
+      struct IndexBuffer *l_index_buffer;
+      m_heap.indexbuffer_table.at(m_value->index_buffer.idx, &l_index_buffer);
       return l_index_buffer;
     };
 
     VertexBuffer *VertexBuffer() {
-      heap::per_vertexbuffer_vertexbuffer_t l_vertex_buffer;
-      m_heap.vertexbuffer_table.at(m_value->vertex_buffer.idx, l_vertex_buffer);
+      struct VertexBuffer *l_vertex_buffer;
+      m_heap.vertexbuffer_table.at(m_value->vertex_buffer.idx,
+                                   &l_vertex_buffer);
       return l_vertex_buffer;
     };
 
     ProgramProxy Program() {
-      heap::per_program_program_t l_program;
-      m_heap.program_table.at(m_value->program.idx, l_program);
+      struct Program *l_program;
+      m_heap.program_table.at(m_value->program.idx, &l_program);
       return ProgramProxy(m_heap, l_program);
     };
   };
@@ -561,22 +535,22 @@ struct bgfx_impl {
     };
 
     RenderPassProxy RenderPass(bgfx::ViewId p_handle) {
-      heap::per_renderpass_renderpass_t l_render_pass;
-      m_heap.renderpass_table.at(p_handle, l_render_pass);
+      struct RenderPass *l_render_pass;
+      m_heap.renderpass_table.at(p_handle, &l_render_pass);
       return RenderPassProxy(m_heap, l_render_pass);
     };
 
     TextureProxy Texture(bgfx::TextureHandle p_handle) {
-      heap::per_texture_texture_t l_texture;
-      m_heap.texture_table.at(p_handle.idx, l_texture);
+      struct Texture *l_texture;
+      m_heap.texture_table.at(p_handle.idx, &l_texture);
       return TextureProxy{.m_heap = m_heap, .m_value = l_texture};
     };
 
     template <typename Callback>
     void for_each_renderpass(const Callback &p_cb) {
       for (auto i = 0; i < m_heap.renderpass_table.m_meta.m_count; ++i) {
-        heap::per_renderpass_renderpass_t l_render_pass;
-        m_heap.renderpass_table.at(i, l_render_pass);
+        struct RenderPass *l_render_pass;
+        m_heap.renderpass_table.at(i, &l_render_pass);
         RenderPassProxy l_proxy(m_heap, l_render_pass);
         p_cb(l_proxy);
       }

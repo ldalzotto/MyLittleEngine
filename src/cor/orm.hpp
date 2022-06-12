@@ -6,6 +6,7 @@
 
 namespace orm {
 
+// TODO -> remove
 template <typename T, ui8 Col> struct ref {
   using element_type = T;
   static constexpr ui8 COL = Col;
@@ -256,7 +257,7 @@ template <typename... Types> struct table_span_v2 {
 
   template <typename... Input> void at(uimax p_index, Input &&... p_input) {
     assert_debug(p_index < count());
-    __at_v2<Input...>{}(*this, p_index, p_input...);
+    __at<0, Input...>{}(*this, p_index, p_input...);
   };
 
   template <typename... Input>
@@ -328,21 +329,14 @@ private:
     };
   };
 
-  template <typename InputFirst, typename... Input> struct __at_v2 {
-    void operator()(table_span_v2 &thiz, uimax p_index, InputFirst &&p_first,
-                    Input &... p_input) {
-
-      using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
-      if constexpr (traits::is_orm_ref<ref_t>::value) {
-        p_first.data() = &(thiz.cols().template col<ref_t::COL>())[p_index];
-      } else {
-        if constexpr (!::traits::is_none<ref_t>::value) {
-          *p_first = &(thiz.cols().template col<ref_t::COL>())[p_index];
-        }
+  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
+    void operator()(table_span_v2 &thiz, uimax p_index, InputFirst p_first,
+                    Input... p_input) {
+      if constexpr (!::traits::is_none<InputFirst>::value) {
+        *p_first = &(thiz.cols().template col<Col>())[p_index];
       }
-
       if constexpr (sizeof...(Input) > 0) {
-        __at_v2<Input...>{}(thiz, p_index, p_input...);
+        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
       }
     };
   };
@@ -434,7 +428,7 @@ template <typename... Types> struct table_vector_v2 {
 
   template <typename... Input> void at(uimax p_index, Input &&... p_input) {
     assert_debug(p_index < count());
-    __at_v2<Input...>{}(*this, p_index, p_input...);
+    __at<0, Input...>{}(*this, p_index, p_input...);
   };
 
 private:
@@ -470,6 +464,18 @@ private:
     };
   };
 
+  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
+    void operator()(table_vector_v2 &thiz, uimax p_index, InputFirst p_first,
+                    Input... p_input) {
+      if constexpr (!::traits::is_none<InputFirst>::value) {
+        *p_first = &(thiz.cols().template col<Col>())[p_index];
+      }
+      if constexpr (sizeof...(Input) > 0) {
+        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
+      }
+    };
+  };
+
   template <ui8 Col, typename InputFirst, typename... Input>
   struct table_vector_set_value {
 
@@ -493,18 +499,6 @@ private:
         sys::memmove_up_t(l_col, p_break_index, p_move_delta, p_chunk_count);
         table_vector_memmove_up<Col + 1>{}(thiz, p_break_index, p_move_delta,
                                            p_chunk_count);
-      }
-    };
-  };
-
-  template <typename InputFirst, typename... Input> struct __at_v2 {
-    void operator()(table_vector_v2 &thiz, uimax p_index, InputFirst &&p_first,
-                    Input &... p_input) {
-
-      using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
-      p_first.data() = &(thiz.cols().template col<ref_t::COL>())[p_index];
-      if constexpr (sizeof...(Input) > 0) {
-        __at_v2<Input...>{}(thiz, p_index, p_input...);
       }
     };
   };
@@ -538,7 +532,7 @@ template <typename... Types> struct table_pool_v2 {
 
   template <typename... Input> void at(uimax p_index, Input &&... p_input) {
     assert_debug(p_index < m_meta.m_count);
-    __at_v2<Input...>{}(*this, p_index, p_input...);
+    __at<0, Input...>{}(*this, p_index, p_input...);
   };
 
   void remove_at(uimax p_index) { m_meta.free_element(p_index); };
@@ -593,14 +587,14 @@ private:
     };
   };
 
-  template <typename InputFirst, typename... Input> struct __at_v2 {
-    void operator()(table_pool_v2 &thiz, uimax p_index, InputFirst &&p_first,
-                    Input &... p_input) {
-
-      using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
-      p_first.data() = &(thiz.cols().template col<ref_t::COL>())[p_index];
+  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
+    void operator()(table_pool_v2 &thiz, uimax p_index, InputFirst p_first,
+                    Input... p_input) {
+      if constexpr (!::traits::is_none<InputFirst>::value) {
+        *p_first = &(thiz.cols().template col<Col>())[p_index];
+      }
       if constexpr (sizeof...(Input) > 0) {
-        __at_v2<Input...>{}(thiz, p_index, p_input...);
+        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
       }
     };
   };
@@ -629,7 +623,7 @@ template <typename... Types> struct table_heap_paged_v2 {
 
   template <typename... Input> uimax at(uimax p_index, Input &&... p_input) {
     assert_debug(p_index < m_meta.m_allocated_chunks.count());
-    __at_v2<Input...>{}(*this, p_index, p_input...);
+    __at<0, Input...>{}(*this, p_index, p_input...);
     return m_meta.m_allocated_chunks.at(p_index).m_chunk.m_size;
   };
 
@@ -668,19 +662,17 @@ private:
     };
   };
 
-  template <typename InputFirst, typename... Input> struct __at_v2 {
+  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
     void operator()(table_heap_paged_v2 &thiz, uimax p_index,
-                    InputFirst &&p_first, Input &... p_input) {
-
-      using ref_t = typename ::traits::remove_ptr_ref<InputFirst>::type;
-      using T = typename ref_t::element_type;
-      details::heap_paged_col<T> &l_col =
-          thiz.cols().template col<ref_t::COL>();
-      p_first.data() =
-          l_col.map_to_ptr(thiz.m_meta.m_allocated_chunks.at(p_index));
-
+                    InputFirst p_first, Input... p_input) {
+      if constexpr (!::traits::is_none<InputFirst>::value) {
+        using T = typename ::traits::remove_ptr_ref<
+            typename ::traits::remove_ptr_ref<InputFirst>::type>::type;
+        details::heap_paged_col<T> &l_col = thiz.cols().template col<Col>();
+        *p_first = l_col.map_to_ptr(thiz.m_meta.m_allocated_chunks.at(p_index));
+      }
       if constexpr (sizeof...(Input) > 0) {
-        __at_v2<Input...>{}(thiz, p_index, p_input...);
+        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
       }
     };
   };
