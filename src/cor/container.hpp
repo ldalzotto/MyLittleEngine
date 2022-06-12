@@ -130,17 +130,19 @@ template <typename T, int N> struct arr {
   };
 };
 
-template <typename T, typename AllocFunctions = malloc_free_functions>
-struct span {
+template <typename T> struct span {
+
+  using element_type = T;
+
   T *m_data;
   uimax m_count;
 
   void allocate(uimax p_count) {
-    m_data = (T *)AllocFunctions::malloc(p_count * sizeof(T));
+    m_data = (T *)default_allocator::malloc(p_count * sizeof(T));
     m_count = p_count;
   };
 
-  void free() { AllocFunctions::free(m_data); };
+  void free() { default_allocator::free(m_data); };
 
   uimax &count() { return m_count; };
   const uimax &count() const { return m_count; };
@@ -150,16 +152,17 @@ struct span {
   uimax size_of() const { return m_count * sizeof(T); };
 
   void realloc(uimax p_new_count) {
+    m_data = (T *)default_allocator::realloc(m_data, p_new_count * sizeof(T));
     m_count = p_new_count;
-    m_data = (T *)AllocFunctions::realloc(m_data, m_count * sizeof(T));
   };
 
   void resize(uimax p_new_count) {
-    if (p_new_count > m_count) {
+    if (p_new_count > count()) {
       realloc(p_new_count);
     }
   };
 
+public:
   void memmove_down(uimax p_break_index, uimax p_move_delta,
                     uimax p_chunk_count) {
     T *l_src = m_data + p_break_index;
@@ -252,8 +255,7 @@ private:
   };
 };
 
-template <typename T, typename AllocFunctions = malloc_free_functions>
-struct vector {
+template <typename T, typename Allocator = default_allocator> struct vector {
 
   vector_intrusive m_intrusive;
   T *m_data;
@@ -261,12 +263,12 @@ struct vector {
   uimax &capacity() { return m_intrusive.m_capacity; };
   uimax &count() { return m_intrusive.m_count; };
 
-  void allocate(uimax p_capacity) {
+  void allocate(uimax p_capacity, Allocator *p_allocator = 0) {
     m_intrusive.allocate(p_capacity);
-    m_data = (T *)sys::malloc(sizeof(T) * m_intrusive.m_capacity);
+    m_data = (T *)p_allocator->malloc(sizeof(T) * m_intrusive.m_capacity);
   };
 
-  void free() { sys::free(m_data); };
+  void free(Allocator *p_allocator = 0) { p_allocator->free(m_data); };
 
   T &at(uimax p_index) {
     assert_debug(p_index < count());
@@ -275,19 +277,20 @@ struct vector {
 
   const T &at(uimax p_index) const { return ((vector *)this)->at(p_index); };
 
-  void insert_at(const T &p_element, uimax p_index) {
+  void insert_at(const T &p_element, uimax p_index,
+                 Allocator *p_allocator = 0) {
     assert_debug(p_index <= capacity());
     if (m_intrusive.add_realloc(1)) {
-      __realloc();
+      __realloc(p_allocator);
     }
     uimax l_chunk_count = count() - 1 - p_index;
     sys::memmove_down_t(m_data, p_index, l_chunk_count, 1);
     at(p_index) = p_element;
   };
 
-  void push_back(const T &p_element) {
+  void push_back(const T &p_element, Allocator *p_allocator = 0) {
     if (m_intrusive.add_realloc(1)) {
-      __realloc();
+      __realloc(p_allocator);
     }
     at(m_intrusive.m_count - 1) = p_element;
   };
@@ -316,8 +319,9 @@ struct vector {
   };
 
 private:
-  void __realloc() {
-    m_data = (T *)sys::realloc(m_data, m_intrusive.m_capacity * sizeof(T));
+  void __realloc(Allocator *p_allocator) {
+    m_data =
+        (T *)p_allocator->realloc(m_data, m_intrusive.m_capacity * sizeof(T));
   };
 };
 
@@ -452,7 +456,7 @@ static inline ui8 find_next_block(const range<heap_chunk> &p_chunks,
 static inline void defragment(vector<heap_chunk> &p_chunks) {
   if (p_chunks.count() > 0) {
     auto l_range = p_chunks.range();
-    algorithm::sort(l_range, [&](heap_chunk &p_left, heap_chunk &p_right) {
+    ::algorithm::sort(l_range, [&](heap_chunk &p_left, heap_chunk &p_right) {
       return p_left.m_begin < p_right.m_begin;
     });
 
@@ -513,6 +517,7 @@ struct heap_intrusive {
       heap_chunks::defragment(m_free_chunks);
       if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
                                         &l_chunk_index)) {
+        // TODO -> pushing a chunk by multiplying capacity by 2 like vector ?
         __push_new_chunk(p_size);
         m_state = state::NewChunkPushed;
         m_last_pushed_chunk_size = p_size;
@@ -603,6 +608,8 @@ struct heap_paged_intrusive {
   void find_next_chunk(uimax p_size, uimax *out_page_index,
                        uimax *out_chunk_index) {
 
+    assert_debug(p_size <= m_single_page_capacity);
+
     uimax l_page_index = -1;
     uimax l_chunk_index = -1;
 
@@ -680,7 +687,7 @@ private:
     l_page_chunks.allocate(0);
     heap_chunk l_chunk;
     l_chunk.m_begin = 0;
-    l_chunk.m_size = m_single_page_capacity;
+    l_chunk.m_size = m_single_page_capacity; // TODO -> dynamic size ?
     l_page_chunks.push_back(l_chunk);
     m_state = state::NewPagePushed;
   };
@@ -732,6 +739,100 @@ struct heap {
 private:
   void __push_new_chunk() {
     m_buffer.realloc(m_buffer.count() + m_intrusive.m_last_pushed_chunk_size);
+  };
+};
+
+template <typename T> struct heap_paged {
+  heap_paged_intrusive m_intrusive;
+  T **m_data;
+
+  void allocate(uimax p_page_capacity) {
+    m_intrusive.allocate(p_page_capacity);
+    m_data = (T **)sys::malloc(0);
+  };
+
+  void free() {
+    for (auto i = 0; i < m_intrusive.m_pages_intrusive.m_count; ++i) {
+      sys::free(m_data[i]);
+    }
+    sys::free(m_data);
+  };
+
+  uimax push_back(uimax p_size) {
+    uimax l_page_index, l_chunk_index;
+    m_intrusive.find_next_chunk(p_size, &l_page_index, &l_chunk_index);
+    if (m_intrusive.m_state ==
+        container::heap_paged_intrusive::state::NewPagePushed) {
+      m_intrusive.clear_state();
+      this->realloc();
+      this->allocate_page(l_page_index);
+    };
+
+    return m_intrusive.push_found_chunk(p_size, l_page_index, l_chunk_index);
+  };
+
+  container::range<T> at(uimax p_chunk_index) {
+    return map_to_range(m_intrusive.m_allocated_chunks.at(p_chunk_index));
+  };
+
+  void remove_at(uimax p_chunk_index) {
+    m_intrusive.remove_chunk(p_chunk_index);
+  };
+
+private:
+  void realloc() {
+    m_data = (T **)sys::realloc(
+        m_data, m_intrusive.m_pages_intrusive.m_capacity * sizeof(*m_data));
+  };
+
+  void allocate_page(uimax p_page_index) {
+    m_data[p_page_index] =
+        (T *)sys::malloc(sizeof(T) * m_intrusive.m_single_page_capacity);
+  };
+
+  container::range<T> map_to_range(const container::heap_paged_chunk &p_chunk) {
+    container::range<T> l_range;
+    l_range.m_begin = &(m_data[p_chunk.m_page_index])[p_chunk.m_chunk.m_begin];
+    l_range.m_count = p_chunk.m_chunk.m_size;
+    return l_range;
+  };
+
+  T *map_to_ptr(const container::heap_paged_chunk &p_chunk) {
+    return &(m_data[p_chunk.m_page_index])[p_chunk.m_chunk.m_begin];
+  };
+};
+
+struct heap_paged_allocator {
+  using header_t = uimax;
+  heap_paged<ui8> m_heap_paged;
+  void allocate(uimax p_page_capacity) {
+    m_heap_paged.allocate(p_page_capacity);
+  };
+
+  void free() { m_heap_paged.free(); };
+
+  void *malloc(uimax p_size) {
+    uimax l_chunk = m_heap_paged.push_back(sizeof(header_t) + p_size);
+    container::range<ui8> l_range = m_heap_paged.at(l_chunk);
+    *(header_t *)&l_range.at(0) = l_chunk;
+    l_range.slide_self(sizeof(header_t));
+    return l_range.m_begin;
+  };
+
+  void free(void *p_ptr) {
+    ui8 *l_ptr = (ui8 *)p_ptr;
+    header_t *l_header = (header_t *)(l_ptr - sizeof(header_t));
+    m_heap_paged.remove_at(*l_header);
+  };
+
+  void *realloc(void *p_ptr, uimax p_new_size) {
+    ui8 *l_new = (ui8 *)malloc(p_new_size);
+    ui8 *l_old = (ui8 *)p_ptr;
+    header_t *l_old_header = (header_t *)(l_old - sizeof(header_t));
+    container::range<ui8> l_old_range = m_heap_paged.at(*l_old_header);
+    sys::memcpy(l_new, l_old, l_old_range.count());
+    free(p_ptr);
+    return l_new;
   };
 };
 

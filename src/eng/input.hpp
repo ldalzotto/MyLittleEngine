@@ -31,12 +31,10 @@ struct Event {
 
 struct system {
 
+  using state_table = orm::table_span_v2<State>;
+
   struct heap {
-    struct state_table {
-      table_span_meta;
-      table_cols_1(State);
-      table_define_span_1;
-    } m_state_table;
+    state_table m_state_table;
 
     container::vector<uimax> m_just_pressed_keys;
     container::vector<uimax> m_just_released_keys;

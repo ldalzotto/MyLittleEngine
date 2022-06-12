@@ -165,31 +165,28 @@ private:
   };
 };
 
+using per_vertices_t =
+    orm::table_span_v2<pixel_coordinates, homogeneous_coordinates>;
+
+using per_polygons_t =
+    orm::table_span_v2<screen_polygon, polygon_vertex_indices,
+                       screen_polygon_bounding_box, screen_polygon_area>;
+
+using visibility_bool_t = ui8;
+using visibility_polygon_index_t = uimax;
+using visibility = orm::table_span_v2<visibility_bool_t, rasterization_weight,
+                                      visibility_polygon_index_t>;
+
 struct rasterize_heap {
 
-  struct per_vertices {
-    table_span_meta;
-    table_cols_2(pixel_coordinates, homogeneous_coordinates);
-    table_define_span_2;
-  } m_per_vertices;
-
-  struct per_polygons {
-    table_span_meta;
-    table_cols_4(screen_polygon, polygon_vertex_indices,
-                 screen_polygon_bounding_box, screen_polygon_area);
-    table_define_span_4;
-  } m_per_polygons;
+  per_vertices_t m_per_vertices;
+  per_polygons_t m_per_polygons;
 
   container::multi_byte_buffer m_vertex_output;
   container::span<ui8 *> m_vertex_output_send_to_vertex_shader;
 
-  struct visiblity {
-    table_span_meta;
-    table_cols_3(ui8, rasterization_weight, uimax);
-    table_define_span_3;
-  } m_visibility_buffer;
-
-  visiblity m_rasterizationrect_visibility_buffer;
+  visibility m_visibility_buffer;
+  visibility m_rasterizationrect_visibility_buffer;
 
   struct vertex_output_layout {
 
@@ -234,13 +231,13 @@ struct rasterize_heap {
 
   pixel_coordinates &get_pixel_coordinates(ui32 p_index) {
     pixel_coordinates *l_pixel_coordinate;
-    m_per_vertices.at(p_index, &l_pixel_coordinate, orm::none());
+    m_per_vertices.at(p_index, &l_pixel_coordinate, none());
     return *l_pixel_coordinate;
   };
 
   homogeneous_coordinates &get_vertex_homogenous(ui32 p_index) {
     homogeneous_coordinates *l_homogeneous_coordinates;
-    m_per_vertices.at(p_index, orm::none(), &l_homogeneous_coordinates);
+    m_per_vertices.at(p_index, none(), &l_homogeneous_coordinates);
     return *l_homogeneous_coordinates;
   };
 };
@@ -450,10 +447,8 @@ private:
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_fix32.cast<i16>();
 
       if (m_state.m_depth_read) {
-        homogeneous_coordinates *l_homogeneous_coordinates;
-        m_heap.m_per_vertices.at(i, orm::none(), &l_homogeneous_coordinates);
-        *l_homogeneous_coordinates =
-            homogeneous_coordinates::make(l_vertex_shader_out);
+        m_heap.m_per_vertices.set(
+            i, none(), homogeneous_coordinates::make(l_vertex_shader_out));
       }
     }
   };
@@ -545,7 +540,7 @@ private:
     } else {
       container::range<screen_polygon_bounding_box> l_polygon_rects =
           container::range<screen_polygon_bounding_box>::make(
-              m_heap.m_per_polygons.m_col_2, m_polygon_count);
+              m_heap.m_per_polygons.cols().m_col_2, m_polygon_count);
       m::rect_min_max<screen_coord_t> l_rendered_rect =
           m::bounding_rect(l_polygon_rects);
 
@@ -562,8 +557,7 @@ private:
 
   void __calculate_visibility_buffer() {
     container::range<ui8> l_visibility_range;
-    m_heap.m_visibility_buffer.range(&l_visibility_range, orm::none(),
-                                     orm::none());
+    m_heap.m_visibility_buffer.range(&l_visibility_range, none(), none());
     l_visibility_range =
         l_visibility_range.shrink_to(m_input.m_target_image_view.pixel_count());
     l_visibility_range.zero();
@@ -580,7 +574,7 @@ private:
       // Resetting the bouding rect visibility buffer
       container::range<ui8> l_boudingrect_visibility_range;
       m_heap.m_rasterizationrect_visibility_buffer.range(
-          &l_boudingrect_visibility_range, orm::none(), orm::none());
+          &l_boudingrect_visibility_range, none(), none());
       l_boudingrect_visibility_range = l_boudingrect_visibility_range.shrink_to(
           m_input.m_target_image_view.pixel_count());
 
@@ -641,9 +635,9 @@ private:
                   rasterization_weight *l_boundingrect_visibility_weight,
                   uimax *l_boundingrect_polygon_index,
                   uimax l_visibility_index) {
-                ui8 *l_visibility_boolean;
+                visibility_bool_t *l_visibility_boolean;
                 rasterization_weight *l_visibility_weight;
-                uimax *l_polygon_index;
+                visibility_polygon_index_t *l_polygon_index;
                 m_heap.m_visibility_buffer.at(
                     l_visibility_index, &l_visibility_boolean,
                     &l_visibility_weight, &l_polygon_index);
@@ -669,9 +663,9 @@ private:
                   rasterization_weight *l_boundingrect_visibility_weight,
                   uimax *l_boundingrect_polygon_index,
                   uimax l_visibility_index) {
-                ui8 *l_visibility_boolean;
+                visibility_bool_t *l_visibility_boolean;
                 rasterization_weight *l_visibility_weight;
-                uimax *l_polygon_index;
+                visibility_polygon_index_t *l_polygon_index;
                 m_heap.m_visibility_buffer.at(
                     l_visibility_index, &l_visibility_boolean,
                     &l_visibility_weight, &l_polygon_index);
@@ -694,9 +688,9 @@ private:
             [&](ui8 *l_boundingrect_visibility_boolean,
                 rasterization_weight *l_boundingrect_visibility_weight,
                 uimax *l_boundingrect_polygon_index, uimax l_visibility_index) {
-              ui8 *l_visibility_boolean;
+              visibility_bool_t *l_visibility_boolean;
               rasterization_weight *l_visibility_weight;
-              uimax *l_polygon_index;
+              visibility_polygon_index_t *l_polygon_index;
               m_heap.m_visibility_buffer.at(
                   l_visibility_index, &l_visibility_boolean,
                   &l_visibility_weight, &l_polygon_index);
@@ -720,9 +714,9 @@ private:
         auto l_boudingrect_visibility_index =
             (y * p_bounding_rect_extend.x()) + x;
 
-        ui8 *l_boundingrect_visibility_boolean;
+        visibility_bool_t *l_boundingrect_visibility_boolean;
         rasterization_weight *l_boundingrect_visibility_weight;
-        uimax *l_boundingrect_polygon_index;
+        visibility_polygon_index_t *l_boundingrect_polygon_index;
 
         m_heap.m_rasterizationrect_visibility_buffer.at(
             l_boudingrect_visibility_index, &l_boundingrect_visibility_boolean,
@@ -757,9 +751,9 @@ private:
     rgbf_t l_color_buffer;
 
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
-      ui8 *l_visibility_boolean;
+      visibility_bool_t *l_visibility_boolean;
       m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
-                                    orm::none(), orm::none());
+                                    none(), none());
       if (*l_visibility_boolean) {
 
         for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
@@ -791,9 +785,9 @@ private:
   };
 
   void __interpolate_vertex_output_range(ui8 p_begin_index, ui8 p_end_index) {
-    ui8 *l_visibility_boolean;
+    visibility_bool_t *l_visibility_boolean;
     rasterization_weight *l_visibility_weight;
-    uimax *l_visibility_polygon;
+    visibility_polygon_index_t *l_visibility_polygon;
 
     __for_each_rendered_pixels([&](uimax p_pixel_index) {
       m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
@@ -801,8 +795,8 @@ private:
                                     &l_visibility_polygon);
       if (*l_visibility_boolean) {
         polygon_vertex_indices *l_indices_polygon;
-        m_heap.m_per_polygons.at(*l_visibility_polygon, orm::none(),
-                                 &l_indices_polygon, orm::none(), orm::none());
+        m_heap.m_per_polygons.at(*l_visibility_polygon, none(),
+                                 &l_indices_polygon);
 
         for (auto l_vertex_output_index = p_begin_index;
              l_vertex_output_index < p_end_index; ++l_vertex_output_index) {

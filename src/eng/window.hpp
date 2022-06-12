@@ -3,8 +3,8 @@
 #include <cor/orm.hpp>
 #include <cor/types.hpp>
 #include <rast/model.hpp>
-#include <sys/win.hpp>
 #include <shared/types.hpp>
+#include <sys/win.hpp>
 
 namespace eng {
 
@@ -55,8 +55,8 @@ public:
     window_image_buffer *l_image_buffer;
     win::events *l_events;
     m_window_table.at(p_window_index, &l_handle, &l_image_buffer, &l_events);
-    rast::image_copy_stretch((rgb_t *)p_image.m_buffer.m_begin,
-                             p_image.m_width, p_image.m_height,
+    rast::image_copy_stretch((rgb_t *)p_image.m_buffer.m_begin, p_image.m_width,
+                             p_image.m_height,
                              (rgba_t *)l_image_buffer->m_data.m_data,
                              l_image_buffer->m_width, l_image_buffer->m_height);
     win::draw(l_handle->m_idx, l_image_buffer->m_native,
@@ -69,11 +69,10 @@ public:
   };
 
 private:
-  struct window_table {
-    table_vector_meta;
-    table_cols_3(window_handle, window_image_buffer, win::events);
-    table_define_vector_3;
-  } m_window_table;
+  using window_table =
+      orm::table_vector_v2<window_handle, window_image_buffer, win::events>;
+
+  window_table m_window_table;
 
   container::vector<eng::input::Event> m_input_system_events;
 
@@ -110,7 +109,7 @@ private:
     window_handle *l_handle;
     window_image_buffer *l_image_buffer;
     win::events *l_events;
-    for (auto i = 0; i < m_window_table.element_count(); ++i) {
+    for (auto i = 0; i < m_window_table.count(); ++i) {
       m_window_table.at(i, &l_handle, &l_image_buffer, &l_events);
       if (l_handle->m_idx == p_window.m_idx) {
         win::close_window(l_handle->m_idx);
@@ -134,7 +133,7 @@ private:
 
     {
       auto l_events_for_fetch = container::range<win::events>::make(
-          m_window_table.m_col_2, m_window_table.element_count());
+          m_window_table.m_cols.m_col_2, m_window_table.count());
       win::fetch_events(l_events_for_fetch);
     }
 
@@ -163,7 +162,7 @@ private:
     }
     l_events->m_events.clear();
 
-    if (m_window_table.element_count() == 0) {
+    if (m_window_table.count() == 0) {
       return 0;
     }
 

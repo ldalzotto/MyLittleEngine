@@ -182,11 +182,9 @@ struct mesh_intermediary {
 
     container::vector<index> l_unique_indices;
 
-    struct per_face {
-      table_span_meta;
-      table_cols_2(vindex_t, face_hash_t);
-      table_define_span_2;
-    } l_per_face_indices;
+    orm::table_span_v2<vindex_t, face_hash_t> l_per_face_indices;
+    using per_face_vindex_t = vindex_t;
+    using per_face_hash_t = face_hash_t;
 
     l_unique_indices.allocate(0);
     l_per_face_indices.allocate(face().count() * 3);
@@ -241,9 +239,10 @@ struct mesh_intermediary {
           l_index_found = l_unique_indices.count() - 1;
         }
 
-        vindex_t *l_face_index_value;
-        face_hash_t *l_face_hash;
-        l_per_face_indices.at(l_face_index, &l_face_index_value, &l_face_hash);
+        per_face_vindex_t *l_face_index_value;
+        per_face_hash_t *l_face_hash;
+        l_per_face_indices.at(l_face_index, &l_face_index_value,
+                                  &l_face_hash);
         *l_face_index_value = l_index_found;
         *l_face_hash = l_hash;
       }
@@ -255,8 +254,8 @@ struct mesh_intermediary {
 
     for (auto l_face_index_it = 0; l_face_index_it < l_per_face_indices.count();
          ++l_face_index_it) {
-      vindex_t *l_index;
-      l_per_face_indices.at(l_face_index_it, &l_index, orm::none());
+      per_face_vindex_t *l_index;
+      l_per_face_indices.at(l_face_index_it, &l_index, none());
       l_mesh.m_indices.at(l_face_index_it) = *l_index;
     }
 
