@@ -53,11 +53,6 @@ target_include_directories(STB INTERFACE ./tp/stb/)
 add_library(DOCTEST INTERFACE)
 target_include_directories(DOCTEST INTERFACE ./tp/doctest/)
 
-add_library(WholeProject INTERFACE)
-target_include_directories(WholeProject INTERFACE ./src/)
-target_link_libraries(WholeProject INTERFACE BGFX_API)
-
-
 add_library(WIN INTERFACE)
 
 if (WIN_HEADLESS)
@@ -67,15 +62,16 @@ else()
     find_package(X11 REQUIRED)
     target_link_libraries(WIN INTERFACE ${X11_LIBRARIES})
 endif()
+target_include_directories(WIN INTERFACE ./src/)
 
-target_link_libraries(WIN INTERFACE WholeProject)
 
-add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_assets.cpp ./src/tst/test_numbers.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
-target_link_libraries(TESTS PUBLIC WIN)
-target_link_libraries(TESTS PUBLIC STB)
+add_library(ENGINE INTERFACE)
+target_link_libraries(ENGINE INTERFACE WIN)
+target_link_libraries(ENGINE INTERFACE STB)
+target_link_libraries(ENGINE INTERFACE BGFX_API)
+
+add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_container.cpp ./src/tst/test_assets.cpp ./src/tst/test_ren.cpp ./src/tst/test_numbers.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
+target_link_libraries(TESTS PUBLIC ENGINE)
 target_link_libraries(TESTS PUBLIC DOCTEST)
-
-add_library(API SHARED ./src/api/c_api.cpp)
-target_link_libraries(API PUBLIC WIN)
 
 add_subdirectory(./sandbox)

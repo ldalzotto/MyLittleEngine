@@ -124,7 +124,7 @@ let build_emscripten = async function (p_project_name: string, p_subdirectories:
     fs.emptyDirSync(emscripten_out_dir);
 
     {
-        let l_js: string = await Deno.readTextFile(path.join(ninja_build_out_dir, "/TEST_0"));
+        let l_js: string = await Deno.readTextFile(path.join(ninja_build_out_dir, "/SANDBOX_MESH_VIZUALIZER"));
         l_js = l_js.replace(`${p_project_name}.wasm`, "main.wasm");
         Deno.writeTextFile(path.join(emscripten_out_dir, "main.js"), l_js);
     }
@@ -167,7 +167,7 @@ else if (l_type == "BUILD_EMSCRIPTEN") {
     let l_last_commit_hash: string = await execute_command_with_output(["git", "rev-parse", "HEAD"], root_path);
     l_last_commit_hash = l_last_commit_hash.trim();
 
-    await build_emscripten("TEST_0", ["sandbox"], build_path, l_last_commit_hash);
+    await build_emscripten("SANDBOX_MESH_VIZUALIZER", ["sandbox"], build_path, l_last_commit_hash);
 }
 else if (l_type == "BUILD_PUBLISH_EMSCRIPTEN") {
 
@@ -178,7 +178,7 @@ else if (l_type == "BUILD_PUBLISH_EMSCRIPTEN") {
     fs.emptyDirSync(build_path);
     await execute_command(["git", "clone", "https://github.com/ldalzotto/ldalzotto.github.io"], tmp_path);
     const github_page_path = path.join(tmp_path, "ldalzotto.github.io");
-    await build_emscripten("TEST_0", ["sandbox"], github_page_path, l_last_commit_hash);
+    await build_emscripten("SANDBOX_MESH_VIZUALIZER", ["sandbox"], github_page_path, l_last_commit_hash);
 
     let l_github_token: string = Deno.args[1];
 
