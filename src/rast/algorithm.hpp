@@ -578,8 +578,7 @@ private:
 
   void __calculate_visibility_buffer() {
     container::range<ui8> l_visibility_range;
-    m_heap.m_visibility_buffer.range(&l_visibility_range, orm::none(),
-                                     orm::none());
+    m_heap.m_visibility_buffer.range(&l_visibility_range, none(), none());
     l_visibility_range =
         l_visibility_range.shrink_to(m_input.m_target_image_view.pixel_count());
     l_visibility_range.zero();
@@ -596,7 +595,7 @@ private:
       // Resetting the bouding rect visibility buffer
       container::range<ui8> l_boudingrect_visibility_range;
       m_heap.m_rasterizationrect_visibility_buffer.range(
-          &l_boudingrect_visibility_range, orm::none(), orm::none());
+          &l_boudingrect_visibility_range, none(), none());
       l_boudingrect_visibility_range = l_boudingrect_visibility_range.shrink_to(
           m_input.m_target_image_view.pixel_count());
 

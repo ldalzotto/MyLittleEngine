@@ -1,5 +1,9 @@
 #pragma once
 
+
+struct none {};
+
+
 namespace traits {
 
 template <bool B, class T = void> struct enable_if {};
@@ -22,14 +26,15 @@ template <typename T> struct remove_ptr_ref {
   using type = typename remove_ptr<typename remove_ref<T>::type>::type;
 };
 
-template <bool B, typename Left, typename Right> struct conditional {};
+template <bool B, class T, class F> struct conditional { using type = T; };
 
-template <typename Left, typename Right> struct conditional<0, Left, Right> {
-  using type = Left;
-};
+template <class T, class F> struct conditional<false, T, F> { using type = F; };
 
-template <typename Left, typename Right> struct conditional<1, Left, Right> {
-  using type = Right;
-};
+template< bool B, class T, class F >
+using conditional_t = typename conditional<B,T,F>::type;
+
+template <typename T> struct is_none { static constexpr bool value = 0; };
+
+template <> struct is_none<none> { static constexpr bool value = 1; };
 
 }; // namespace traits
