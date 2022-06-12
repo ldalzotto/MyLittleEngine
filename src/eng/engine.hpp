@@ -1,6 +1,5 @@
 #pragma once
 
-#include "./tmp_renderer.hpp"
 #include <eng/input.hpp>
 #include <eng/window.hpp>
 #include <rast/rast.hpp>
@@ -13,7 +12,6 @@ struct engine {
 
   input::system m_input_system;
   ren::ren_handle m_renderer;
-  tmp_renderer m_tmp_scene;
 
   void allocate(ui16 p_window_width, ui16 p_window_height) {
     m_window_system.allocate();
@@ -21,7 +19,6 @@ struct engine {
     bgfx::init();
     m_renderer = ren::ren_handle_allocate();
     m_renderer.allocate();
-    m_tmp_scene.allocate(m_renderer);
 
     m_window_system.open_window(
         m_window_system.create_window(p_window_width, p_window_height));
@@ -30,23 +27,23 @@ struct engine {
   void free() {
     m_window_system.free();
     m_input_system.free();
-    m_tmp_scene.free(m_renderer);
     m_renderer.free();
     ren::ren_handle_free(m_renderer);
     bgfx::shutdown();
   };
 
-  ui8 update() {
+  template <typename UpdateCallback>
+  ui8 update(const UpdateCallback &p_update) {
 
     if (m_window_system.fetch_events()) {
       m_input_system.update(m_window_system.input_system_events());
 
-      // TODO -> custom logic here ?
+      p_update();
 
-      m_tmp_scene.frame(m_renderer);
       m_renderer.frame();
       bgfx::frame();
-      m_window_system.draw_window(0, m_tmp_scene.frame_view(m_renderer));
+      m_window_system.draw_window(
+          0, m_renderer.frame_view(ren::camera_handle{.m_idx = 0}));
       return 1;
     }
 

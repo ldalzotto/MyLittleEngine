@@ -1,13 +1,10 @@
-#pragma once
 
 #include <assets/loader/mesh_obj.hpp>
-#include <assets/mesh.hpp>
 #include <cstring>
+#include <eng/engine.hpp>
 #include <m/const.hpp>
-#include <rast/rast.hpp>
-#include <ren/ren.hpp>
 
-struct tmp_renderer {
+struct mesh_visualizer {
 
   bgfx::ProgramHandle m_frame_program;
 
@@ -20,7 +17,7 @@ private:
   inline static ui16 m_height = 128;
 
 public:
-  void allocate(ren::ren_handle p_ren) {
+  void allocate(eng::engine &p_engine) {
     ren::camera l_camera;
     l_camera.m_width = m_width;
     l_camera.m_height = m_height;
@@ -35,7 +32,7 @@ public:
         m::perspective(fix32(60.0f) * m::deg_to_rad, fix32(m_width) / m_height,
                        fix32(0.1f), fix32(100.0f));
 
-    m_camera = p_ren.create_camera(l_camera);
+    m_camera = p_engine.m_renderer.create_camera(l_camera);
 
     auto l_obj_str = R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -76,18 +73,18 @@ f 7/7 4/4 8/8
     assets::mesh l_mesh = assets::obj_mesh_loader().compile(
         container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-    m_mesh = p_ren.create_mesh(l_mesh);
+    m_mesh = p_engine.m_renderer.create_mesh(l_mesh);
     l_mesh.free();
 
-    m_shader = p_ren.create_shader(
+    m_shader = p_engine.m_renderer.create_shader(
         ColorInterpolationShader::s_vertex_output.range(),
         &ColorInterpolationShader::vertex, &ColorInterpolationShader::fragment);
   };
 
-  void free(ren::ren_handle p_ren) {
-    p_ren.destroy(m_camera);
-    p_ren.destroy(m_shader);
-    p_ren.destroy(m_mesh);
+  void free(eng::engine &p_engine) {
+    p_engine.m_renderer.destroy(m_camera);
+    p_engine.m_renderer.destroy(m_shader);
+    p_engine.m_renderer.destroy(m_mesh);
 
     bgfx::destroy(m_frame_program);
   };
@@ -95,7 +92,7 @@ f 7/7 4/4 8/8
   ui32 m_counter = 0;
   fix32 m_delta = 0.1f;
 
-  void frame(ren::ren_handle p_ren) {
+  void frame(eng::engine &p_engine) {
 
     m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
     l_transform =
@@ -104,7 +101,8 @@ f 7/7 4/4 8/8
     container::arr<m::mat<fix32, 4, 4>, 1> l_mesh_transform = {l_transform};
     container::arr<ren::mesh_handle, 1> l_meshes = {m_mesh};
 
-    p_ren.draw(m_camera, m_shader, l_mesh_transform.range(), l_meshes.range());
+    p_engine.m_renderer.draw(m_camera, m_shader, l_mesh_transform.range(),
+                             l_meshes.range());
 
     m_counter += 1;
   };
@@ -141,3 +139,51 @@ private:
     };
   };
 };
+
+inline static mesh_visualizer s_mesh_visualizer;
+
+// TODO -> move to another header
+
+#if PLATFORM_WEBASSEMBLY_PREPROCESS
+
+#include <emscripten/emscripten.h>
+#include <emscripten/html5.h>
+
+#else
+
+#define EMSCRIPTEN_KEEPALIVE
+
+#endif
+
+inline static eng::engine s_engine;
+
+extern "C" {
+EMSCRIPTEN_KEEPALIVE
+void initialize() {
+  s_engine.allocate(800, 800);
+  s_mesh_visualizer.allocate(s_engine);
+};
+EMSCRIPTEN_KEEPALIVE
+unsigned char main_loop() {
+  return s_engine.update([&]() { s_mesh_visualizer.frame(s_engine); });
+};
+EMSCRIPTEN_KEEPALIVE
+void terminate() {
+  s_mesh_visualizer.free(s_engine);
+  s_engine.free();
+};
+}
+
+#if !PLATFORM_WEBASSEMBLY_PREPROCESS
+int main() {
+  initialize();
+  while (main_loop()) {
+  };
+  terminate();
+};
+#endif
+
+bgfx_impl s_bgfx_impl = bgfx_impl();
+
+#include <sys/sys_impl.hpp>
+#include <sys/win_impl.hpp>

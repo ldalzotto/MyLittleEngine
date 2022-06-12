@@ -13,9 +13,9 @@ struct ren_handle {
   void free();
 
   camera_handle create_camera(const camera &p_camera);
-  void destroy(camera_handle);
+  void destroy(camera_handle p_camera);
   mesh_handle create_mesh(const assets::mesh &p_mesh);
-  void destroy(mesh_handle);
+  void destroy(mesh_handle p_mesh);
 
   // TODO -> having a version with shader assets ?
   shader_handle
