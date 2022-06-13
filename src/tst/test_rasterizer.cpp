@@ -105,8 +105,7 @@ struct WhiteShader {
         p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
   };
 
-  static void fragment(ui8 **p_vertex_output_interpolated,
-                       rgbf_t &out_color) {
+  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
     out_color = {1, 1, 1};
   };
 
@@ -136,8 +135,7 @@ struct ColorInterpolationShader {
     (*l_vertex_color) = l_color.cast<fix32>() / 255;
   };
 
-  static void fragment(ui8 **p_vertex_output_interpolated,
-                       rgbf_t &out_color) {
+  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
     rgbf_t *l_vertex_color = (position_t *)p_vertex_output_interpolated[0];
     out_color = *l_vertex_color;
   };
@@ -200,6 +198,7 @@ TEST_CASE("rast.single_triangle.visibility") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   bgfx::shutdown();
 }
@@ -277,6 +276,7 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
 
@@ -363,6 +363,7 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   bgfx::shutdown();
 }
@@ -451,6 +452,7 @@ TEST_CASE("rast.depth.comparison") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
 
@@ -542,6 +544,7 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
 
@@ -632,6 +635,7 @@ TEST_CASE("rast.depth.comparison.readonly") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
 
@@ -723,6 +727,7 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
 
@@ -850,6 +855,7 @@ TEST_CASE("rast.3Dcube") {
   bgfx::destroy(l_index_buffer);
   bgfx::destroy(l_vertex_buffer);
   bgfx::destroy(l_program);
+  bgfx::destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
 
