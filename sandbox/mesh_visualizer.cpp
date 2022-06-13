@@ -88,13 +88,13 @@ f 7/7 4/4 8/8
 # www.blender.org
 mtllib cube.mtl
 o Cube
-v -1.500000 1.000000 1.000000
+v -0.500000 1.000000 1.000000
 v 1.000000 1.000000 1.000000
-v -1.000000 -1.000000 1.000000
+v -0.500000 -1.000000 1.000000
 v 1.000000 -1.000000 1.000000
-v -1.000000 1.000000 -1.000
+v -0.500000 1.000000 -1.000
 v 1.0000 1.000000 -1.00000
-v -1.000000 -1.000000 -1.000000
+v -0.500000 -1.000000 -1.000000
 v 1.000000 -1.000000 -1.000000
 vc 0 0 0
 vc 0 0 255
@@ -116,7 +116,7 @@ f 6/6 8/8 4/4
 f 1/1 5/5 2/2
 f 5/5 6/6 2/2
 f 3/3 4/4 7/7
-f 7/7 4/4 8/8
+f 7/7 4/4 8/8  
   )"""";
 
       assets::mesh l_mesh =
@@ -138,6 +138,7 @@ f 7/7 4/4 8/8
     p_engine.m_renderer.destroy(m_camera);
     p_engine.m_renderer.destroy(m_shader);
     p_engine.m_renderer.destroy(m_mesh_0);
+    p_engine.m_renderer.destroy(m_mesh_1);
 
     bgfx::destroy(m_frame_program);
   };
@@ -152,7 +153,9 @@ f 7/7 4/4 8/8
       p_engine.m_input_system.m_heap.m_state_table.at(
           (uimax)eng::input::Key::ARROW_LEFT, &l_state);
       if (*l_state == eng::input::State::JUST_PRESSED) {
-        m_current_mesh = &m_mesh_0;
+        if (m_current_mesh != &m_mesh_0) {
+          m_current_mesh = &m_mesh_0;
+        }
       }
     }
 
@@ -161,7 +164,9 @@ f 7/7 4/4 8/8
       p_engine.m_input_system.m_heap.m_state_table.at(
           (uimax)eng::input::Key::ARROW_RIGHT, &l_state);
       if (*l_state == eng::input::State::JUST_PRESSED) {
-        m_current_mesh = &m_mesh_1;
+        if (m_current_mesh != &m_mesh_1) {
+          m_current_mesh = &m_mesh_1;
+        }
       }
     }
 

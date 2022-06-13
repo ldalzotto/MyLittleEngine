@@ -75,6 +75,13 @@ struct ren_implementations {
     return camera_handle{.m_idx = l_index};
   };
 
+  void destroy_camera(camera_handle p_camera) {
+    bgfx::FrameBufferHandle *l_frame_buffer;
+    m_heap.m_camera_table.at(p_camera.m_idx, none(), &l_frame_buffer);
+    bgfx::destroy(*l_frame_buffer);
+    m_heap.m_camera_table.remove_at(p_camera.m_idx);
+  };
+
   mesh_handle create_mesh(const assets::mesh &p_mesh) {
     bgfx::VertexBufferHandle l_vertex_buffer;
     bgfx::IndexBufferHandle l_index_buffer;
@@ -83,6 +90,16 @@ struct ren_implementations {
     uimax l_index = m_heap.m_mesh_table.push_back(ren::mesh{}, l_vertex_buffer,
                                                   l_index_buffer);
     return mesh_handle{.m_idx = l_index};
+  };
+
+  void destroy_mesh(mesh_handle p_mesh) {
+    bgfx::VertexBufferHandle *l_vertex_buffer;
+    bgfx::IndexBufferHandle *l_index_buffer;
+    m_heap.m_mesh_table.at(p_mesh.m_idx, none(), &l_vertex_buffer,
+                           &l_index_buffer);
+    bgfx::destroy(*l_vertex_buffer);
+    bgfx::destroy(*l_index_buffer);
+    m_heap.m_mesh_table.remove_at(p_mesh.m_idx);
   };
 
   shader_handle
@@ -117,6 +134,13 @@ struct ren_implementations {
     render_pass l_render_pass;
     l_render_pass.allocate(p_camera, p_shader, p_transforms, p_meshes);
     m_heap.m_render_passes.push_back(l_render_pass);
+  };
+
+  void destroy_shader(shader_handle p_shader) {
+    bgfx::ProgramHandle *l_program;
+    m_heap.m_shader_table.at(p_shader.m_idx, none(), &l_program);
+    bgfx::destroy(*l_program);
+    m_heap.m_shader_table.remove_at(p_shader.m_idx);
   };
 
   void frame() {
@@ -221,8 +245,9 @@ inline camera_handle ren_handle::create_camera(const camera &p_camera) {
   return l_ren->create_camera(p_camera);
 };
 
-inline void ren_handle::destroy(camera_handle p_camera){
-
+inline void ren_handle::destroy(camera_handle p_camera) {
+  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
+  l_ren->destroy_camera(p_camera);
 };
 
 inline mesh_handle ren_handle::create_mesh(const assets::mesh &p_mesh) {
@@ -230,8 +255,9 @@ inline mesh_handle ren_handle::create_mesh(const assets::mesh &p_mesh) {
   return l_ren->create_mesh(p_mesh);
 };
 
-inline void ren_handle::destroy(mesh_handle p_mesh){
-
+inline void ren_handle::destroy(mesh_handle p_mesh) {
+  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
+  l_ren->destroy_mesh(p_mesh);
 };
 
 inline shader_handle ren_handle::create_shader(
@@ -243,8 +269,9 @@ inline shader_handle ren_handle::create_shader(
   return l_ren->create_shader(p_vertex_output, p_vertex, p_fragment);
 };
 
-inline void ren_handle::destroy(shader_handle p_shader){
-
+inline void ren_handle::destroy(shader_handle p_shader) {
+  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
+  l_ren->destroy_shader(p_shader);
 };
 
 inline ren_handle ren_handle_allocate() {
