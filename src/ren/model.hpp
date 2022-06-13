@@ -1,6 +1,5 @@
 #pragma once
 
-// #include <bgfx/bgfx.h>
 #include <m/mat.hpp>
 
 namespace ren {
@@ -31,19 +30,8 @@ struct camera {
   camera() = default;
 };
 
-struct shader {
-  // bgfx::ShaderHandle m_shader;
-};
+struct shader {};
 
-struct mesh {
-};
-
-/*
-struct render_pass {
-  camera m_camera;
-  shader m_shader;
-  mesh m_mesh;
-};
-*/
+struct mesh {};
 
 }; // namespace ren
