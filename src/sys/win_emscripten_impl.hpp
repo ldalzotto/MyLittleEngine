@@ -6,8 +6,6 @@
 #include <rast/model.hpp>
 #include <sys/win.hpp>
 
-#include <iostream>
-
 namespace emscripten_input {
 
 static const container::arr<ui8, 10> s_key_arrow_down = {"ArrowDown"};
@@ -62,8 +60,10 @@ i32 on_key_event(i32 p_event_type, const EmscriptenKeyboardEvent *p_event,
     s_emscripten_key_pressed.at(uimax(l_event.m_input.m_key)) = 0;
   }
 
+#if 0
   std::cout << (ui32)l_event.m_input.m_key << std::endl;
   std::cout << p_event->key << std::endl;
+#endif
 
   s_events.push_back(l_event);
   return 1;

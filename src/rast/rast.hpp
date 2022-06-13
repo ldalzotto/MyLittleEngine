@@ -204,6 +204,7 @@ struct bgfx_impl {
       assert_debug(renderpass_table.count() == 1);
       assert_debug(!shader_table.has_allocated_elements());
       assert_debug(!program_table.has_allocated_elements());
+      assert_debug(!framebuffer_table.has_allocated_elements());
 
       for (auto l_render_pass_it = 0;
            l_render_pass_it < renderpass_table.count(); ++l_render_pass_it) {
@@ -870,6 +871,10 @@ inline FrameBufferHandle createFrameBuffer(void *_nwh, uint16_t _width,
                                            TextureFormat::Enum _depthFormat) {
   return s_bgfx_impl.allocate_frame_buffer(_width, _height, _format,
                                            _depthFormat);
+};
+
+inline void destroy(FrameBufferHandle _handle) {
+  s_bgfx_impl.heap.free_frame_buffer(_handle);
 };
 
 inline TextureHandle getTexture(FrameBufferHandle _handle,
