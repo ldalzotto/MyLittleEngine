@@ -8,7 +8,7 @@
 namespace ren {
 namespace details {
 
-struct ren_implementations {
+struct ren_impl_v2 {
 
   // TODO -> this should evolve in the future.
   // The camera should be able to be linked to multiple shader.
@@ -207,79 +207,5 @@ private:
 };
 
 }; // namespace details
-
-}; // namespace ren
-
-namespace ren {
-
-inline void ren_handle::allocate() {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  l_ren->allocate();
-};
-
-inline void ren_handle::free() {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  l_ren->free();
-};
-
-inline void ren_handle::frame() {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  l_ren->frame();
-};
-
-inline void
-ren_handle::draw(camera_handle p_camera, shader_handle p_shader,
-                 const container::range<m::mat<fix32, 4, 4>> &p_transforms,
-                 const container::range<mesh_handle> &p_meshes) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  l_ren->draw(p_camera, p_shader, p_transforms, p_meshes);
-};
-
-inline rast::image_view ren_handle::frame_view(camera_handle p_camera) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  return l_ren->frame_view(p_camera);
-};
-
-inline camera_handle ren_handle::create_camera(const camera &p_camera) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  return l_ren->create_camera(p_camera);
-};
-
-inline void ren_handle::destroy(camera_handle p_camera) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  l_ren->destroy_camera(p_camera);
-};
-
-inline mesh_handle ren_handle::create_mesh(const assets::mesh &p_mesh) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  return l_ren->create_mesh(p_mesh);
-};
-
-inline void ren_handle::destroy(mesh_handle p_mesh) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  l_ren->destroy_mesh(p_mesh);
-};
-
-inline shader_handle ren_handle::create_shader(
-    const container::range<rast::shader_vertex_output_parameter>
-        &p_vertex_output,
-    rast::shader_vertex_function p_vertex,
-    rast::shader_fragment_function p_fragment) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  return l_ren->create_shader(p_vertex_output, p_vertex, p_fragment);
-};
-
-inline void ren_handle::destroy(shader_handle p_shader) {
-  details::ren_implementations *l_ren = (details::ren_implementations *)(m_ptr);
-  l_ren->destroy_shader(p_shader);
-};
-
-inline ren_handle ren_handle_allocate() {
-  ren_handle l_handle;
-  l_handle.m_ptr = sys::malloc(sizeof(details::ren_implementations));
-  return l_handle;
-};
-
-inline void ren_handle_free(ren_handle p_handle) { sys::free(p_handle.m_ptr); };
 
 }; // namespace ren

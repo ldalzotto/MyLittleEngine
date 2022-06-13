@@ -4,6 +4,8 @@
 #include <eng/engine.hpp>
 #include <m/const.hpp>
 
+#include <ren/impl/ren_impl.hpp>
+
 struct mesh_visualizer {
 
   bgfx::ProgramHandle m_frame_program;
@@ -21,7 +23,8 @@ private:
   inline static ui16 m_height = 128;
 
 public:
-  void allocate(eng::engine &p_engine) {
+  template <typename EngineImpl>
+  void allocate(eng::engine_api<EngineImpl> p_engine) {
     ren::camera l_camera;
     l_camera.m_width = m_width;
     l_camera.m_height = m_height;
@@ -36,7 +39,7 @@ public:
         m::perspective(fix32(60.0f) * m::deg_to_rad, fix32(m_width) / m_height,
                        fix32(0.1f), fix32(100.0f));
 
-    m_camera = p_engine.m_renderer.create_camera(l_camera);
+    m_camera = p_engine.renderer().create_camera(l_camera);
 
     {
       auto l_obj_str = R""""(
@@ -79,7 +82,7 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-      m_mesh_0 = p_engine.m_renderer.create_mesh(l_mesh);
+      m_mesh_0 = p_engine.renderer().create_mesh(l_mesh);
       l_mesh.free();
     }
     {
@@ -123,22 +126,23 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-      m_mesh_1 = p_engine.m_renderer.create_mesh(l_mesh);
+      m_mesh_1 = p_engine.renderer().create_mesh(l_mesh);
       l_mesh.free();
     }
 
     m_current_mesh = &m_mesh_0;
 
-    m_shader = p_engine.m_renderer.create_shader(
+    m_shader = p_engine.renderer().create_shader(
         ColorInterpolationShader::s_vertex_output.range(),
         &ColorInterpolationShader::vertex, &ColorInterpolationShader::fragment);
   };
 
-  void free(eng::engine &p_engine) {
-    p_engine.m_renderer.destroy(m_camera);
-    p_engine.m_renderer.destroy(m_shader);
-    p_engine.m_renderer.destroy(m_mesh_0);
-    p_engine.m_renderer.destroy(m_mesh_1);
+  template <typename EngineImpl>
+  void free(eng::engine_api<EngineImpl> p_engine) {
+    p_engine.renderer().destroy(m_camera);
+    p_engine.renderer().destroy(m_shader);
+    p_engine.renderer().destroy(m_mesh_0);
+    p_engine.renderer().destroy(m_mesh_1);
 
     bgfx::destroy(m_frame_program);
   };
@@ -146,11 +150,12 @@ f 7/7 4/4 8/8
   i32 m_counter = 0;
   fix32 m_delta = 0.1f;
 
-  void frame(eng::engine &p_engine) {
+  template <typename EngineImpl>
+  void frame(eng::engine_api<EngineImpl> p_engine) {
 
     {
       eng::input::State *l_state;
-      p_engine.m_input_system.m_heap.m_state_table.at(
+      p_engine.input().m_heap.m_state_table.at(
           (uimax)eng::input::Key::ARROW_LEFT, &l_state);
       if (*l_state == eng::input::State::JUST_PRESSED) {
         if (m_current_mesh != &m_mesh_0) {
@@ -161,7 +166,7 @@ f 7/7 4/4 8/8
 
     {
       eng::input::State *l_state;
-      p_engine.m_input_system.m_heap.m_state_table.at(
+      p_engine.input().m_heap.m_state_table.at(
           (uimax)eng::input::Key::ARROW_RIGHT, &l_state);
       if (*l_state == eng::input::State::JUST_PRESSED) {
         if (m_current_mesh != &m_mesh_1) {
@@ -177,13 +182,9 @@ f 7/7 4/4 8/8
     container::arr<m::mat<fix32, 4, 4>, 1> l_mesh_transform = {l_transform};
     container::arr<ren::mesh_handle, 1> l_meshes = {*m_current_mesh};
 
-    p_engine.m_renderer.draw(m_camera, m_shader, l_mesh_transform.range(),
+    p_engine.renderer().draw(m_camera, m_shader, l_mesh_transform.range(),
                              l_meshes.range());
     m_counter += 1;
-  };
-
-  rast::image_view frame_view(ren::ren_handle p_ren) {
-    return p_ren.frame_view(m_camera);
   };
 
 private:
@@ -230,7 +231,8 @@ inline static mesh_visualizer s_mesh_visualizer;
 
 #endif
 
-inline static eng::engine s_engine;
+inline static eng::details::engine<ren::details::ren_impl_v2> s_engine_impl;
+inline static eng::engine_api<decltype(s_engine_impl)> s_engine(s_engine_impl);
 
 extern "C" {
 EMSCRIPTEN_KEEPALIVE
