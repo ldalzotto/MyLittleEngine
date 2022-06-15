@@ -4,6 +4,7 @@
 #include <rast/rast.hpp>
 
 namespace ren {
+namespace details {
 
 namespace algorithm {
 
@@ -70,5 +71,7 @@ inline void upload_mesh_to_gpu(const assets::mesh &p_mesh,
 };
 
 }; // namespace algorithm
+
+}; // namespace details
 
 }; // namespace ren

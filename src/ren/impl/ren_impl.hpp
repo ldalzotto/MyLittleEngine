@@ -1,7 +1,7 @@
 #pragma once
 
 #include <rast/model.hpp>
-#include <ren/algorithm.hpp>
+#include <ren/impl/algorithm.hpp>
 #include <ren/model.hpp>
 #include <ren/ren.hpp>
 
@@ -85,8 +85,7 @@ struct ren_impl_v2 {
   mesh_handle create_mesh(const assets::mesh &p_mesh) {
     bgfx::VertexBufferHandle l_vertex_buffer;
     bgfx::IndexBufferHandle l_index_buffer;
-    ren::algorithm::upload_mesh_to_gpu(p_mesh, &l_vertex_buffer,
-                                       &l_index_buffer);
+    algorithm::upload_mesh_to_gpu(p_mesh, &l_vertex_buffer, &l_index_buffer);
     uimax l_index = m_heap.m_mesh_table.push_back(ren::mesh{}, l_vertex_buffer,
                                                   l_index_buffer);
     return mesh_handle{.m_idx = l_index};
