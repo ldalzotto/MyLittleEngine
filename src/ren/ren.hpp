@@ -2,6 +2,7 @@
 
 #include <assets/mesh.hpp>
 #include <rast/model.hpp>
+#include <rast/rast.hpp>
 #include <ren/model.hpp>
 
 namespace ren {
@@ -10,7 +11,10 @@ template <typename Private> struct ren_api {
   Private &thiz;
   ren_api(Private &p_thiz) : thiz(p_thiz){};
 
-  FORCE_INLINE void allocate() { thiz.allocate(); };
+  template <typename Rasterizer>
+  FORCE_INLINE void allocate(rast_api<Rasterizer> p_rasterizer) {
+    thiz.allocate(p_rasterizer);
+  };
 
   FORCE_INLINE void free() { thiz.free(); };
 

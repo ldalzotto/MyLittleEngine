@@ -3,6 +3,7 @@
 #include <cstring>
 #include <eng/engine.hpp>
 #include <m/const.hpp>
+#include <rast/rast.hpp>
 
 #include <ren/impl/ren_impl.hpp>
 
@@ -82,6 +83,10 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
+      ren::ren_api<
+          typename traits::remove_ref<decltype(p_engine.renderer().thiz)>::type>
+          zd = p_engine.renderer();
+
       m_mesh_0 = p_engine.renderer().create_mesh(l_mesh);
       l_mesh.free();
     }
@@ -144,7 +149,7 @@ f 7/7 4/4 8/8
     p_engine.renderer().destroy(m_mesh_0);
     p_engine.renderer().destroy(m_mesh_1);
 
-    bgfx::destroy(m_frame_program);
+    p_engine.rasterizer().destroy(m_frame_program);
   };
 
   i32 m_counter = 0;
@@ -231,7 +236,9 @@ inline static mesh_visualizer s_mesh_visualizer;
 
 #endif
 
-inline static eng::details::engine<ren::details::ren_impl_v2> s_engine_impl;
+inline static eng::details::engine<
+    ren::details::ren_impl_v2<rast_impl_software>, rast_impl_software>
+    s_engine_impl;
 inline static eng::engine_api<decltype(s_engine_impl)> s_engine(s_engine_impl);
 
 extern "C" {
@@ -260,7 +267,7 @@ int main() {
 };
 #endif
 
-bgfx_impl s_bgfx_impl = bgfx_impl();
+rast_impl_software s_bgfx_impl = rast_impl_software();
 
 #include <sys/sys_impl.hpp>
 #include <sys/win_impl.hpp>

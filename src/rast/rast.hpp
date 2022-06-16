@@ -9,8 +9,172 @@
 #include <m/vec.hpp>
 #include <rast/algorithm.hpp>
 
-struct bgfx_impl {
+template <typename Private> struct rast_api {
+  Private &thiz;
+  rast_api(Private &p_thiz) : thiz(p_thiz){};
 
+  FORCE_INLINE ui8 init(const bgfx::Init &p_init = {}) {
+    return rast_api_init(&thiz, p_init);
+  };
+
+  FORCE_INLINE void shutdown() { rast_api_shutdown(&thiz); };
+
+  FORCE_INLINE const bgfx::Memory *alloc(uint32_t _size) {
+    return rast_api_alloc(&thiz, _size);
+  };
+
+  FORCE_INLINE const bgfx::Memory *makeRef(const void *_data, uint32_t _size,
+                                           bgfx::ReleaseFn _releaseFn = NULL,
+                                           void *_userData = NULL) {
+    return rast_api_makeRef(&thiz, _data, _size, _releaseFn, _userData);
+  };
+
+  FORCE_INLINE bgfx::TextureHandle
+  createTexture2D(uint16_t _width, uint16_t _height, bool _hasMips,
+                  uint16_t _numLayers, bgfx::TextureFormat::Enum _format,
+                  uint64_t _flags = BGFX_TEXTURE_NONE | BGFX_SAMPLER_NONE,
+                  const bgfx::Memory *_mem = NULL) {
+    return rast_api_createTexture2D(&thiz, _width, _height, _hasMips,
+                                    _numLayers, _format, _flags, _mem);
+  };
+
+  FORCE_INLINE bgfx::FrameBufferHandle createFrameBuffer(
+      uint16_t _width, uint16_t _height, bgfx::TextureFormat::Enum _format,
+      uint64_t _textureFlags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP) {
+    return rast_api_createFrameBuffer(&thiz, _width, _height, _format,
+                                      _textureFlags);
+  };
+
+  FORCE_INLINE bgfx::FrameBufferHandle createFrameBuffer(
+      void *_nwh, uint16_t _width, uint16_t _height,
+      bgfx::TextureFormat::Enum _format = bgfx::TextureFormat::Count,
+      bgfx::TextureFormat::Enum _depthFormat = bgfx::TextureFormat::Count) {
+    return rast_api_createFrameBuffer(&thiz, _width, _height, _format,
+                                      _depthFormat);
+  };
+
+  FORCE_INLINE void destroy(bgfx::FrameBufferHandle _handle) {
+    rast_api_destroy(&thiz, _handle);
+  };
+
+  FORCE_INLINE bgfx::TextureHandle getTexture(bgfx::FrameBufferHandle _handle,
+                                              uint8_t _attachment = 0) {
+    return rast_api_getTexture(&thiz, _handle, _attachment);
+  };
+
+  FORCE_INLINE container::range<ui8>
+  fetchTextureSync(bgfx::TextureHandle _texture) {
+    return rast_api_fetchTextureSync(&thiz, _texture);
+  };
+
+  FORCE_INLINE bgfx::VertexBufferHandle
+  createVertexBuffer(const bgfx::Memory *_mem,
+                     const bgfx::VertexLayout &_layout,
+                     uint16_t _flags = BGFX_BUFFER_NONE) {
+    return rast_api_createVertexBuffer(&thiz, _mem, _layout, _flags);
+  };
+
+  FORCE_INLINE void destroy(bgfx::VertexBufferHandle _handle) {
+    rast_api_destroy(&thiz, _handle);
+  };
+
+  FORCE_INLINE bgfx::IndexBufferHandle
+  createIndexBuffer(const bgfx::Memory *_mem,
+                    uint16_t _flags = BGFX_BUFFER_NONE) {
+    return rast_api_createIndexBuffer(&thiz, _mem, _flags);
+  };
+
+  FORCE_INLINE void destroy(bgfx::IndexBufferHandle _handle) {
+    rast_api_destroy(&thiz, _handle);
+  };
+
+  FORCE_INLINE bgfx::ShaderHandle createShader(const bgfx::Memory *_mem) {
+    return rast_api_createShader(&thiz, _mem);
+  };
+
+  FORCE_INLINE void destroy(bgfx::ShaderHandle _handle) {
+    rast_api_destroy(&thiz, _handle);
+  };
+
+  FORCE_INLINE bgfx::ProgramHandle createProgram(bgfx::ShaderHandle _vsh,
+                                                 bgfx::ShaderHandle _fsh,
+                                                 bool _destroyShaders = false) {
+    return rast_api_createProgram(&thiz, _vsh, _fsh, _destroyShaders);
+  };
+
+  FORCE_INLINE void destroy(bgfx::ProgramHandle _handle) {
+    rast_api_destroy(&thiz, _handle);
+  };
+
+  FORCE_INLINE void setViewRect(bgfx::ViewId _id, uint16_t _x, uint16_t _y,
+                                uint16_t _width, uint16_t _height) {
+    rast_api_setViewRect(&thiz, _id, _x, _y, _width, _height);
+  };
+
+  FORCE_INLINE void setViewFrameBuffer(bgfx::ViewId _id,
+                                       bgfx::FrameBufferHandle _handle) {
+    rast_api_setViewFrameBuffer(&thiz, _id, _handle);
+  };
+
+  FORCE_INLINE void setViewClear(bgfx::ViewId _id, uint16_t _flags,
+                                 uint32_t _rgba = 0x000000ff,
+                                 float _depth = 1.0f, uint8_t _stencil = 0) {
+    rast_api_setViewClear(&thiz, _id, _flags, _rgba, _depth);
+  };
+
+  FORCE_INLINE void setViewTransform(bgfx::ViewId _id, const void *_view,
+                                     const void *_proj) {
+    rast_api_setViewTransform(&thiz, _id, _view, _proj);
+  };
+
+  FORCE_INLINE uint32_t setTransform(const void *_mtx, uint16_t _num = 1) {
+    return rast_api_setTransform(&thiz, _mtx, _num);
+  };
+
+  FORCE_INLINE void setVertexBuffer(uint8_t _stream,
+                                    bgfx::VertexBufferHandle _handle) {
+    rast_api_setVertexBuffer(&thiz, _stream, _handle);
+  };
+
+  FORCE_INLINE void setIndexBuffer(bgfx::IndexBufferHandle _handle) {
+    rast_api_setIndexBuffer(&thiz, _handle);
+  };
+
+  FORCE_INLINE void setState(uint64_t _state, uint32_t _rgba = 0) {
+    rast_api_setState(&thiz, _state, _rgba);
+  };
+
+  FORCE_INLINE void touch(bgfx::ViewId _id){/* bgfx_impl.view_submit(_id); */};
+
+  FORCE_INLINE void submit(bgfx::ViewId _id, bgfx::ProgramHandle _program,
+                           uint32_t _depth = 0,
+                           uint8_t _flags = BGFX_DISCARD_ALL) {
+    rast_api_submit(&thiz, _id, _program, _depth, _flags);
+  };
+
+  FORCE_INLINE uint32_t frame(bool _capture = false) {
+    return rast_api_frame(&thiz, _capture);
+  };
+};
+
+inline ui8 textureformat_to_pixel_size(bgfx::TextureFormat::Enum p_format) {
+  switch (p_format) {
+  case bgfx::TextureFormat::Enum::R8:
+    return sizeof(ui8);
+  case bgfx::TextureFormat::Enum::RG8:
+    return sizeof(ui8) * 2;
+  case bgfx::TextureFormat::Enum::RGB8:
+    return sizeof(ui8) * 3;
+  case bgfx::TextureFormat::Enum::RGBA8:
+    return sizeof(ui8) * 4;
+  case bgfx::TextureFormat::Enum::D32F:
+    return sizeof(fix32);
+  }
+  return ui8(0);
+};
+
+// TODO -> move this to an impl folder
+struct rast_impl_software {
   struct MemoryReference {
     uimax m_buffer_index;
     ui8 is_ref() { return m_buffer_index == -1; };
@@ -568,7 +732,7 @@ struct bgfx_impl {
     l_texture_info.format = p_format;
     l_texture_info.width = p_width;
     l_texture_info.height = p_height;
-    l_texture_info.bitsPerPixel = get_pixel_size_from_texture_format(p_format);
+    l_texture_info.bitsPerPixel = textureformat_to_pixel_size(p_format);
     assert_debug(l_texture_info.bitsPerPixel != 0);
     return heap.allocate_texture(l_texture_info);
   };
@@ -753,26 +917,7 @@ struct bgfx_impl {
     m_rasterize_heap.free();
     // TODO
   };
-
-private:
-  ui8 get_pixel_size_from_texture_format(bgfx::TextureFormat::Enum p_format) {
-    switch (p_format) {
-    case bgfx::TextureFormat::Enum::R8:
-      return sizeof(ui8);
-    case bgfx::TextureFormat::Enum::RG8:
-      return sizeof(ui8) * 2;
-    case bgfx::TextureFormat::Enum::RGB8:
-      return sizeof(ui8) * 3;
-    case bgfx::TextureFormat::Enum::RGBA8:
-      return sizeof(ui8) * 4;
-    case bgfx::TextureFormat::Enum::D32F:
-      return sizeof(fix32);
-    }
-    return ui8(0);
-  };
 };
-
-extern bgfx_impl s_bgfx_impl;
 
 namespace bgfx {
 
@@ -804,7 +949,7 @@ inline VertexLayout &VertexLayout::add(Attrib::Enum _attrib, uint8_t _num,
   assert_debug(!has(_attrib));
   m_attributes[_attrib] = _attrib;
   m_offset[_attrib] = m_stride;
-  m_stride += bgfx_impl::AttribType::get_size(_type) * _num;
+  m_stride += rast_impl_software::AttribType::get_size(_type) * _num;
   return *this;
 };
 
@@ -828,142 +973,173 @@ inline void VertexLayout::decode(Attrib::Enum _attrib, uint8_t &_num,
   _normalized = 0;
   _asInt = 0;
 };
+}; // namespace bgfx
 
-inline bool init(const Init &p_init) {
-  s_bgfx_impl.initialize();
+FORCE_INLINE ui8 rast_api_init(rast_impl_software *thiz,
+                               const bgfx::Init &p_init = {}) {
+  thiz->initialize();
   return 1;
 };
 
-inline void shutdown() { s_bgfx_impl.terminate(); };
-
-inline const Memory *alloc(uint32_t _size) {
-  return s_bgfx_impl.heap.allocate_buffer(uimax(_size));
+FORCE_INLINE void rast_api_shutdown(rast_impl_software *thiz) {
+  thiz->terminate();
 };
 
-inline const Memory *makeRef(const void *_data, uint32_t _size,
-                             ReleaseFn _releaseFn, void *_userData) {
-  return s_bgfx_impl.heap.allocate_ref(_data, _size);
+FORCE_INLINE const bgfx::Memory *rast_api_alloc(rast_impl_software *thiz,
+                                                uint32_t _size) {
+  return thiz->heap.allocate_buffer(_size);
 };
 
-inline TextureHandle createTexture2D(uint16_t _width, uint16_t _height,
-                                     bool _hasMips, uint16_t _numLayers,
-                                     TextureFormat::Enum _format,
-                                     uint64_t _flags, const Memory *_mem) {
-  return s_bgfx_impl.allocate_texture(_width, _height, _hasMips, _numLayers,
-                                      _format, _flags);
+FORCE_INLINE const bgfx::Memory *
+rast_api_makeRef(rast_impl_software *thiz, const void *_data, uint32_t _size,
+                 bgfx::ReleaseFn _releaseFn = NULL, void *_userData = NULL) {
+  return thiz->heap.allocate_ref(_data, _size);
 };
 
-inline uint32_t readTexture(TextureHandle _handle, void *_data, uint8_t _mip) {
-  s_bgfx_impl.read_texture(_handle, (ui8 *)_data);
+FORCE_INLINE bgfx::TextureHandle rast_api_createTexture2D(
+    rast_impl_software *thiz, uint16_t _width, uint16_t _height, bool _hasMips,
+    uint16_t _numLayers, bgfx::TextureFormat::Enum _format,
+    uint64_t _flags = BGFX_TEXTURE_NONE | BGFX_SAMPLER_NONE,
+    const bgfx::Memory *_mem = NULL) {
+  return thiz->allocate_texture(_width, _height, _hasMips, _numLayers, _format,
+                                _flags);
+};
+
+FORCE_INLINE bgfx::FrameBufferHandle rast_api_createFrameBuffer(
+    rast_impl_software *thiz, uint16_t _width, uint16_t _height,
+    bgfx::TextureFormat::Enum _format,
+    uint64_t _textureFlags = BGFX_SAMPLER_U_CLAMP | BGFX_SAMPLER_V_CLAMP) {
+  return thiz->allocate_frame_buffer(_width, _height, _format, _textureFlags);
+};
+
+FORCE_INLINE bgfx::FrameBufferHandle rast_api_createFrameBuffer(
+    rast_impl_software *thiz, void *_nwh, uint16_t _width, uint16_t _height,
+    bgfx::TextureFormat::Enum _format = bgfx::TextureFormat::Count,
+    bgfx::TextureFormat::Enum _depthFormat = bgfx::TextureFormat::Count) {
+  return thiz->allocate_frame_buffer(_width, _height, _format, _depthFormat);
+};
+
+FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
+                                   bgfx::FrameBufferHandle _handle) {
+  thiz->heap.free_frame_buffer(_handle);
+};
+
+FORCE_INLINE bgfx::TextureHandle
+rast_api_getTexture(rast_impl_software *thiz, bgfx::FrameBufferHandle _handle,
+                    uint8_t _attachment = 0) {
+  return thiz->get_texture(_handle);
+};
+
+FORCE_INLINE container::range<ui8>
+rast_api_fetchTextureSync(rast_impl_software *thiz,
+                          bgfx::TextureHandle _texture) {
+  return thiz->proxy().Texture(_texture).value()->range();
+};
+
+FORCE_INLINE bgfx::VertexBufferHandle
+rast_api_createVertexBuffer(rast_impl_software *thiz, const bgfx::Memory *_mem,
+                            const bgfx::VertexLayout &_layout,
+                            uint16_t _flags = BGFX_BUFFER_NONE) {
+  return thiz->heap.allocate_vertex_buffer(_mem, _layout);
+};
+
+FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
+                                   bgfx::VertexBufferHandle _handle) {
+  thiz->heap.free_vertex_buffer(_handle);
+};
+
+FORCE_INLINE bgfx::IndexBufferHandle
+rast_api_createIndexBuffer(rast_impl_software *thiz, const bgfx::Memory *_mem,
+                           uint16_t _flags) {
+  return thiz->heap.allocate_index_buffer(_mem);
+};
+
+FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
+                                   bgfx::IndexBufferHandle _handle) {
+  thiz->heap.free_index_buffer(_handle);
+};
+
+FORCE_INLINE bgfx::ShaderHandle
+rast_api_createShader(rast_impl_software *thiz, const bgfx::Memory *_mem) {
+  return thiz->heap.allocate_shader(_mem);
+};
+
+FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
+                                   bgfx::ShaderHandle _handle) {
+  thiz->heap.free_shader(_handle);
+};
+
+FORCE_INLINE bgfx::ProgramHandle
+rast_api_createProgram(rast_impl_software *thiz, bgfx::ShaderHandle _vsh,
+                       bgfx::ShaderHandle _fsh, bool _destroyShaders = false) {
+  return thiz->allocate_program(_vsh, _fsh);
+};
+
+FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
+                                   bgfx::ProgramHandle _handle) {
+  thiz->heap.free_program(_handle);
+};
+
+FORCE_INLINE void rast_api_setViewRect(rast_impl_software *thiz,
+                                       bgfx::ViewId _id, uint16_t _x,
+                                       uint16_t _y, uint16_t _width,
+                                       uint16_t _height) {
+  thiz->view_set_rect(_id, _x, _y, _width, _height);
+};
+
+FORCE_INLINE void rast_api_setViewFrameBuffer(rast_impl_software *thiz,
+                                              bgfx::ViewId _id,
+                                              bgfx::FrameBufferHandle _handle) {
+  thiz->view_set_framebuffer(_id, _handle);
+};
+
+FORCE_INLINE void rast_api_setViewClear(rast_impl_software *thiz,
+                                        bgfx::ViewId _id, uint16_t _flags,
+                                        uint32_t _rgba = 0x000000ff,
+                                        float _depth = 1.0f,
+                                        uint8_t _stencil = 0) {
+  thiz->view_set_clear(_id, _flags, _rgba, _depth);
+};
+
+FORCE_INLINE void rast_api_setViewTransform(rast_impl_software *thiz,
+                                            bgfx::ViewId _id, const void *_view,
+                                            const void *_proj) {
+  thiz->view_set_transform(_id, *(const m::mat<fix32, 4, 4> *)_view,
+                           *(const m::mat<fix32, 4, 4> *)_proj);
+};
+
+FORCE_INLINE uint32_t rast_api_setTransform(rast_impl_software *thiz,
+                                            const void *_mtx,
+                                            uint16_t _num = 1) {
+  thiz->set_transform(*(const m::mat<fix32, 4, 4> *)_mtx);
   return 0;
 };
 
-inline FrameBufferHandle createFrameBuffer(uint16_t _width, uint16_t _height,
-                                           TextureFormat::Enum _format,
-                                           uint64_t _textureFlags) {
-  return s_bgfx_impl.allocate_frame_buffer(_width, _height, _format,
-                                           _textureFlags);
+FORCE_INLINE void rast_api_setVertexBuffer(rast_impl_software *thiz,
+                                           uint8_t _stream,
+                                           bgfx::VertexBufferHandle _handle) {
+  thiz->set_vertex_buffer(_handle);
 };
 
-inline FrameBufferHandle createFrameBuffer(void *_nwh, uint16_t _width,
-                                           uint16_t _height,
-                                           TextureFormat::Enum _format,
-                                           TextureFormat::Enum _depthFormat) {
-  return s_bgfx_impl.allocate_frame_buffer(_width, _height, _format,
-                                           _depthFormat);
+FORCE_INLINE void rast_api_setIndexBuffer(rast_impl_software *thiz,
+                                          bgfx::IndexBufferHandle _handle) {
+  thiz->set_index_buffer(_handle);
 };
 
-inline void destroy(FrameBufferHandle _handle) {
-  s_bgfx_impl.heap.free_frame_buffer(_handle);
+FORCE_INLINE void rast_api_setState(rast_impl_software *thiz, uint64_t _state,
+                                    uint32_t _rgba = 0) {
+  thiz->set_state(_state, _rgba);
 };
 
-inline TextureHandle getTexture(FrameBufferHandle _handle,
-                                uint8_t _attachment) {
-  return s_bgfx_impl.get_texture(_handle);
+FORCE_INLINE void rast_api_submit(rast_impl_software *thiz, bgfx::ViewId _id,
+                                  bgfx::ProgramHandle _program,
+                                  uint32_t _depth = 0,
+                                  uint8_t _flags = BGFX_DISCARD_ALL) {
+  thiz->view_submit(_id, _program);
 };
 
-inline VertexBufferHandle createVertexBuffer(const Memory *_mem,
-                                             const VertexLayout &_layout,
-                                             uint16_t _flags) {
-  return s_bgfx_impl.heap.allocate_vertex_buffer(_mem, _layout);
-};
-
-inline void destroy(VertexBufferHandle _handle) {
-  return s_bgfx_impl.heap.free_vertex_buffer(_handle);
-};
-
-inline IndexBufferHandle createIndexBuffer(const Memory *_mem,
-                                           uint16_t _flags) {
-  return s_bgfx_impl.heap.allocate_index_buffer(_mem);
-};
-
-inline void destroy(IndexBufferHandle _handle) {
-  return s_bgfx_impl.heap.free_index_buffer(_handle);
-};
-
-inline ShaderHandle createShader(const Memory *_mem) {
-  return s_bgfx_impl.heap.allocate_shader(_mem);
-};
-
-inline void destroy(ShaderHandle _handle) {
-  s_bgfx_impl.heap.free_shader(_handle);
-};
-
-inline ProgramHandle createProgram(ShaderHandle _vsh, ShaderHandle _fsh,
-                                   bool _destroyShaders) {
-  return s_bgfx_impl.allocate_program(_vsh, _fsh);
-};
-
-inline void destroy(ProgramHandle _handle) {
-  s_bgfx_impl.heap.free_program(_handle);
-};
-
-inline void setViewRect(ViewId _id, uint16_t _x, uint16_t _y, uint16_t _width,
-                        uint16_t _height) {
-  s_bgfx_impl.view_set_rect(_id, _x, _y, _width, _height);
-};
-
-inline void setViewFrameBuffer(ViewId _id, FrameBufferHandle _handle) {
-  s_bgfx_impl.view_set_framebuffer(_id, _handle);
-};
-
-inline void setViewClear(ViewId _id, uint16_t _flags, uint32_t _rgba,
-                         float _depth, uint8_t _stencil) {
-  s_bgfx_impl.view_set_clear(_id, _flags, _rgba, _depth);
-};
-
-inline void setViewTransform(ViewId _id, const void *_view, const void *_proj) {
-  s_bgfx_impl.view_set_transform(_id, *(const m::mat<fix32, 4, 4> *)_view,
-                                 *(const m::mat<fix32, 4, 4> *)_proj);
-};
-
-inline uint32_t setTransform(const void *_mtx, uint16_t _num) {
-  s_bgfx_impl.set_transform(*(const m::mat<fix32, 4, 4> *)_mtx);
-  return -1;
-};
-
-inline void setVertexBuffer(uint8_t _stream, VertexBufferHandle _handle) {
-  s_bgfx_impl.set_vertex_buffer(_handle);
-};
-
-inline void setIndexBuffer(IndexBufferHandle _handle) {
-  s_bgfx_impl.set_index_buffer(_handle);
-};
-
-inline void setState(uint64_t _state, uint32_t _rgba) {
-  s_bgfx_impl.set_state(_state, _rgba);
-};
-
-inline void touch(ViewId _id){/* bgfx_impl.view_submit(_id); */};
-
-inline void submit(ViewId _id, ProgramHandle _program, uint32_t _depth,
-                   uint8_t _flags) {
-  s_bgfx_impl.view_submit(_id, _program);
-};
-
-inline uint32_t frame(bool _capture) {
-  s_bgfx_impl.frame();
+FORCE_INLINE uint32_t rast_api_frame(rast_impl_software *thiz,
+                                     bool _capture = false) {
+  thiz->frame();
   return 0;
 };
-
-}; // namespace bgfx

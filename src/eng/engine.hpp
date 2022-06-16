@@ -9,6 +9,7 @@ namespace eng {
 
 template <typename EngineImpl> struct engine_api {
   using ren_api_t = ren::ren_api<typename EngineImpl::ren_impl_t>;
+  using rast_api_t = rast_api<typename EngineImpl::rast_impl_t>;
   EngineImpl &thiz;
   engine_api(EngineImpl &p_thiz) : thiz(p_thiz){};
 
@@ -21,29 +22,36 @@ template <typename EngineImpl> struct engine_api {
     return thiz.update(p_update);
   };
   FORCE_INLINE ren_api_t renderer() { return thiz.renderer(); };
+  FORCE_INLINE rast_api_t rasterizer() { return thiz.rasterizer(); };
   FORCE_INLINE input::system &input() { return thiz.m_input_system; };
 };
 
 namespace details {
-template <typename RenImpl> struct engine {
+template <typename RenImpl, typename RastImpl> struct engine {
 
   using ren_impl_t = RenImpl;
+  using rast_impl_t = RastImpl;
 
   window::system m_window_system;
 
   input::system m_input_system;
 
   ren_impl_t m_renderer;
+  rast_impl_t m_rasterizer;
 
   ren::ren_api<ren_impl_t> renderer() {
     return ren::ren_api<ren_impl_t>(m_renderer);
   };
 
+  rast_api<rast_impl_t> rasterizer() {
+    return rast_api<rast_impl_t>(m_rasterizer);
+  };
+
   void allocate(ui16 p_window_width, ui16 p_window_height) {
     m_window_system.allocate();
     m_input_system.allocate();
-    bgfx::init();
-    renderer().allocate();
+    rasterizer().init();
+    renderer().allocate(rasterizer());
 
     m_window_system.open_window(
         m_window_system.create_window(p_window_width, p_window_height));
@@ -53,7 +61,7 @@ template <typename RenImpl> struct engine {
     m_window_system.free();
     m_input_system.free();
     renderer().free();
-    bgfx::shutdown();
+    rasterizer().shutdown();
   };
 
   template <typename UpdateCallback>
@@ -65,7 +73,7 @@ template <typename RenImpl> struct engine {
       p_update();
 
       m_renderer.frame();
-      bgfx::frame();
+      m_rasterizer.frame();
       m_window_system.draw_window(
           0, m_renderer.frame_view(ren::camera_handle{.m_idx = 0}));
       return 1;

@@ -8,7 +8,9 @@ namespace details {
 
 namespace algorithm {
 
-inline void upload_mesh_to_gpu(const assets::mesh &p_mesh,
+template <typename Rasterizer>
+inline void upload_mesh_to_gpu(rast_api<Rasterizer> p_rast,
+                               const assets::mesh &p_mesh,
                                bgfx::VertexBufferHandle *out_vertex_buffer,
                                bgfx::IndexBufferHandle *out_index_buffer) {
 
@@ -28,14 +30,14 @@ inline void upload_mesh_to_gpu(const assets::mesh &p_mesh,
   }
   l_vertex_layout.end();
 
-  const bgfx::Memory *l_vertex_index = bgfx::alloc(p_mesh.m_indices.size_of());
+  const bgfx::Memory *l_vertex_index = p_rast.alloc(p_mesh.m_indices.size_of());
   container::range<ui8>::make(l_vertex_index->data, l_vertex_index->size)
       .copy_from(p_mesh.m_indices.range());
 
   auto l_mesh_view = p_mesh.view();
 
   const bgfx::Memory *l_vertex_buffer =
-      bgfx::alloc(l_vertex_layout.getSize(l_mesh_view.m_positions.count()));
+      p_rast.alloc(l_vertex_layout.getSize(l_mesh_view.m_positions.count()));
   container::range<ui8> l_vertex_buffer_range =
       container::range<ui8>::make(l_vertex_buffer->data, l_vertex_buffer->size);
 
@@ -65,9 +67,9 @@ inline void upload_mesh_to_gpu(const assets::mesh &p_mesh,
     l_vertex_buffer_range.slide_self(l_vertex_stride);
   }
 
-  *out_index_buffer = bgfx::createIndexBuffer(l_vertex_index);
+  *out_index_buffer = p_rast.createIndexBuffer(l_vertex_index);
   *out_vertex_buffer =
-      bgfx::createVertexBuffer(l_vertex_buffer, l_vertex_layout);
+      p_rast.createVertexBuffer(l_vertex_buffer, l_vertex_layout);
 };
 
 }; // namespace algorithm

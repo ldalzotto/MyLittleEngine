@@ -29,21 +29,20 @@ struct image_view {
   const ui16 &m_height;
   const ui8 &m_bits_per_pixel;
   container::range<ui8> m_buffer;
-  uimax m_stride;
 
   image_view(const ui16 &p_width, const ui16 &p_height,
              const ui8 &p_bits_per_pixel, const container::range<ui8> &p_buffer)
       : m_width(p_width), m_height(p_height),
-        m_bits_per_pixel(p_bits_per_pixel), m_buffer(p_buffer) {
-    m_stride = m_bits_per_pixel * m_width;
-  };
+        m_bits_per_pixel(p_bits_per_pixel), m_buffer(p_buffer){};
+
+  uimax stride() const { return m_bits_per_pixel * m_width; };
 
   template <typename SizeType> uimax get_buffer_index(SizeType r, SizeType c) {
 
     assert_debug(r < m_height);
     assert_debug(c < m_width);
 
-    return (r * m_stride) + (c * m_bits_per_pixel);
+    return (r * stride()) + (c * m_bits_per_pixel);
   };
 
   template <typename SizeType> uimax get_buffer_index(SizeType p) {
@@ -72,7 +71,7 @@ struct image_view {
     *(rgb_t *)at(p) = p_pixel;
   };
 
-  uimax size_of() { return m_stride * m_height; };
+  uimax size_of() { return stride() * m_height; };
   uimax pixel_count() { return m_height * m_width; };
 
   template <typename T, typename CallbackFunc>

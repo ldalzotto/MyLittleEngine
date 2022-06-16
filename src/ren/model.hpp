@@ -17,7 +17,6 @@ struct shader_handle {
 };
 
 struct camera {
-
   ui32 m_rendertexture_width;
   ui32 m_rendertexture_height;
 
