@@ -40,7 +40,8 @@ public:
         m::perspective(fix32(60.0f) * m::deg_to_rad, fix32(m_width) / m_height,
                        fix32(0.1f), fix32(100.0f));
 
-    m_camera = p_engine.renderer().create_camera(l_camera);
+    m_camera =
+        p_engine.renderer().create_camera(l_camera, p_engine.rasterizer());
 
     {
       auto l_obj_str = R""""(
@@ -83,11 +84,9 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-      ren::ren_api<
-          typename traits::remove_ref<decltype(p_engine.renderer().thiz)>::type>
-          zd = p_engine.renderer();
+      idecltype(ren::ren_api, l_renderer, p_engine.renderer().thiz);
 
-      m_mesh_0 = p_engine.renderer().create_mesh(l_mesh);
+      m_mesh_0 = p_engine.renderer().create_mesh(l_mesh, p_engine.rasterizer());
       l_mesh.free();
     }
     {
@@ -131,7 +130,7 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-      m_mesh_1 = p_engine.renderer().create_mesh(l_mesh);
+      m_mesh_1 = p_engine.renderer().create_mesh(l_mesh, p_engine.rasterizer());
       l_mesh.free();
     }
 
@@ -139,15 +138,16 @@ f 7/7 4/4 8/8
 
     m_shader = p_engine.renderer().create_shader(
         ColorInterpolationShader::s_vertex_output.range(),
-        &ColorInterpolationShader::vertex, &ColorInterpolationShader::fragment);
+        &ColorInterpolationShader::vertex, &ColorInterpolationShader::fragment,
+        p_engine.rasterizer());
   };
 
   template <typename EngineImpl>
   void free(eng::engine_api<EngineImpl> p_engine) {
-    p_engine.renderer().destroy(m_camera);
-    p_engine.renderer().destroy(m_shader);
-    p_engine.renderer().destroy(m_mesh_0);
-    p_engine.renderer().destroy(m_mesh_1);
+    p_engine.renderer().destroy(m_camera, p_engine.rasterizer());
+    p_engine.renderer().destroy(m_shader, p_engine.rasterizer());
+    p_engine.renderer().destroy(m_mesh_0, p_engine.rasterizer());
+    p_engine.renderer().destroy(m_mesh_1, p_engine.rasterizer());
 
     p_engine.rasterizer().destroy(m_frame_program);
   };
@@ -236,8 +236,8 @@ inline static mesh_visualizer s_mesh_visualizer;
 
 #endif
 
-inline static eng::details::engine<
-    ren::details::ren_impl_v2<rast_impl_software>, rast_impl_software>
+inline static eng::details::engine<ren::details::ren_impl_v2,
+                                   rast_impl_software>
     s_engine_impl;
 inline static eng::engine_api<decltype(s_engine_impl)> s_engine(s_engine_impl);
 
@@ -266,8 +266,6 @@ int main() {
   terminate();
 };
 #endif
-
-rast_impl_software s_bgfx_impl = rast_impl_software();
 
 #include <sys/sys_impl.hpp>
 #include <sys/win_impl.hpp>

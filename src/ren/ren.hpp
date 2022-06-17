@@ -11,38 +11,47 @@ template <typename Private> struct ren_api {
   Private &thiz;
   ren_api(Private &p_thiz) : thiz(p_thiz){};
 
-  template <typename Rasterizer>
-  FORCE_INLINE void allocate(rast_api<Rasterizer> p_rasterizer) {
-    thiz.allocate(p_rasterizer);
-  };
+  FORCE_INLINE void allocate() { thiz.allocate(); };
 
   FORCE_INLINE void free() { thiz.free(); };
 
-  FORCE_INLINE camera_handle create_camera(const camera &p_camera) {
-    return thiz.create_camera(p_camera);
+  template <typename Rasterizer>
+  FORCE_INLINE camera_handle create_camera(const camera &p_camera,
+                                           rast_api<Rasterizer> p_rast) {
+    return thiz.create_camera(p_camera, p_rast);
   };
 
-  FORCE_INLINE void destroy(camera_handle p_camera) {
-    thiz.destroy_camera(p_camera);
+  template <typename Rasterizer>
+  FORCE_INLINE void destroy(camera_handle p_camera,
+                            rast_api<Rasterizer> p_rast) {
+    thiz.destroy_camera(p_camera, p_rast);
   };
 
-  FORCE_INLINE mesh_handle create_mesh(const assets::mesh &p_mesh) {
-    return thiz.create_mesh(p_mesh);
+  template <typename Rasterizer>
+  FORCE_INLINE mesh_handle create_mesh(const assets::mesh &p_mesh,
+                                       rast_api<Rasterizer> p_rast) {
+    return thiz.create_mesh(p_mesh, p_rast);
   };
 
-  FORCE_INLINE void destroy(mesh_handle p_mesh) { thiz.destroy_mesh(p_mesh); };
+  template <typename Rasterizer>
+  FORCE_INLINE void destroy(mesh_handle p_mesh, rast_api<Rasterizer> p_rast) {
+    thiz.destroy_mesh(p_mesh, p_rast);
+  };
 
   // TODO -> having a version with shader assets ?
-  FORCE_INLINE shader_handle
-  create_shader(const container::range<rast::shader_vertex_output_parameter>
-                    &p_vertex_output,
-                rast::shader_vertex_function p_vertex,
-                rast::shader_fragment_function p_fragment) {
-    return thiz.create_shader(p_vertex_output, p_vertex, p_fragment);
+  template <typename Rasterizer>
+  FORCE_INLINE shader_handle create_shader(
+      const container::range<rast::shader_vertex_output_parameter>
+          &p_vertex_output,
+      rast::shader_vertex_function p_vertex,
+      rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
+    return thiz.create_shader(p_vertex_output, p_vertex, p_fragment, p_rast);
   };
 
-  FORCE_INLINE void destroy(shader_handle p_shader) {
-    thiz.destroy_shader(p_shader);
+  template <typename Rasterizer>
+  FORCE_INLINE void destroy(shader_handle p_shader,
+                            rast_api<Rasterizer> p_rast) {
+    thiz.destroy_shader(p_shader, p_rast);
   };
 
   // Pushes a render pass.

@@ -39,11 +39,11 @@ template <typename RenImpl, typename RastImpl> struct engine {
   ren_impl_t m_renderer;
   rast_impl_t m_rasterizer;
 
-  ren::ren_api<ren_impl_t> renderer() {
+  FORCE_INLINE ren::ren_api<ren_impl_t> renderer() {
     return ren::ren_api<ren_impl_t>(m_renderer);
   };
 
-  rast_api<rast_impl_t> rasterizer() {
+  FORCE_INLINE rast_api<rast_impl_t> rasterizer() {
     return rast_api<rast_impl_t>(m_rasterizer);
   };
 
@@ -51,7 +51,7 @@ template <typename RenImpl, typename RastImpl> struct engine {
     m_window_system.allocate();
     m_input_system.allocate();
     rasterizer().init();
-    renderer().allocate(rasterizer());
+    renderer().allocate();
 
     m_window_system.open_window(
         m_window_system.create_window(p_window_width, p_window_height));
@@ -72,10 +72,11 @@ template <typename RenImpl, typename RastImpl> struct engine {
 
       p_update();
 
-      m_renderer.frame();
+      m_renderer.frame(rasterizer());
       m_rasterizer.frame();
       m_window_system.draw_window(
-          0, m_renderer.frame_view(ren::camera_handle{.m_idx = 0}));
+          0,
+          m_renderer.frame_view(ren::camera_handle{.m_idx = 0}, rasterizer()));
       return 1;
     }
 
