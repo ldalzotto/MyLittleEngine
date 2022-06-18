@@ -49,7 +49,7 @@ template <typename Private> struct rast_api {
       void *_nwh, uint16_t _width, uint16_t _height,
       bgfx::TextureFormat::Enum _format = bgfx::TextureFormat::Count,
       bgfx::TextureFormat::Enum _depthFormat = bgfx::TextureFormat::Count) {
-    return rast_api_createFrameBuffer(&thiz, _width, _height, _format,
+    return rast_api_createFrameBuffer(&thiz, _nwh, _width, _height, _format,
                                       _depthFormat);
   };
 

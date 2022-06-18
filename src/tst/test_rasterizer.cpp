@@ -453,8 +453,9 @@ TEST_CASE("rast.depth.comparison") {
   constexpr ui16 l_width = 8, l_height = 8;
   auto l_frame_buffer_rgb_format = bgfx::TextureFormat::RGB8;
 
-  bgfx::FrameBufferHandle l_frame_buffer = l_rast.createFrameBuffer(
-      l_width, l_height, l_frame_buffer_rgb_format, bgfx::TextureFormat::D32F);
+  bgfx::FrameBufferHandle l_frame_buffer =
+      l_rast.createFrameBuffer(0, l_width, l_height, l_frame_buffer_rgb_format,
+                               bgfx::TextureFormat::D32F);
   rast::image_view l_frame_buffer_view = rast::image_view(
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
@@ -552,8 +553,9 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
   constexpr ui16 l_width = 400, l_height = 400;
   auto l_frame_buffer_rgb_format = bgfx::TextureFormat::RGB8;
 
-  bgfx::FrameBufferHandle l_frame_buffer = l_rast.createFrameBuffer(
-      l_width, l_height, l_frame_buffer_rgb_format, bgfx::TextureFormat::D32F);
+  bgfx::FrameBufferHandle l_frame_buffer =
+      l_rast.createFrameBuffer(0, l_width, l_height, l_frame_buffer_rgb_format,
+                               bgfx::TextureFormat::D32F);
   rast::image_view l_frame_buffer_view = rast::image_view(
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
@@ -651,8 +653,9 @@ TEST_CASE("rast.depth.comparison.readonly") {
   constexpr ui16 l_width = 8, l_height = 8;
   auto l_frame_buffer_rgb_format = bgfx::TextureFormat::RGB8;
 
-  bgfx::FrameBufferHandle l_frame_buffer = l_rast.createFrameBuffer(
-      l_width, l_height, l_frame_buffer_rgb_format, bgfx::TextureFormat::D32F);
+  bgfx::FrameBufferHandle l_frame_buffer =
+      l_rast.createFrameBuffer(0, l_width, l_height, l_frame_buffer_rgb_format,
+                               bgfx::TextureFormat::D32F);
   rast::image_view l_frame_buffer_view = rast::image_view(
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
@@ -751,8 +754,9 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
   constexpr ui16 l_width = 8, l_height = 8;
   auto l_frame_buffer_rgb_format = bgfx::TextureFormat::RGB8;
 
-  bgfx::FrameBufferHandle l_frame_buffer = l_rast.createFrameBuffer(
-      l_width, l_height, l_frame_buffer_rgb_format, bgfx::TextureFormat::D32F);
+  bgfx::FrameBufferHandle l_frame_buffer =
+      l_rast.createFrameBuffer(0, l_width, l_height, l_frame_buffer_rgb_format,
+                               bgfx::TextureFormat::D32F);
   rast::image_view l_frame_buffer_view = rast::image_view(
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
@@ -863,8 +867,9 @@ TEST_CASE("rast.3Dcube") {
   constexpr ui16 l_width = 128, l_height = 128;
   auto l_frame_buffer_rgb_format = bgfx::TextureFormat::RGB8;
 
-  bgfx::FrameBufferHandle l_frame_buffer = l_rast.createFrameBuffer(
-      l_width, l_height, l_frame_buffer_rgb_format, bgfx::TextureFormat::D32F);
+  bgfx::FrameBufferHandle l_frame_buffer =
+      l_rast.createFrameBuffer(0, l_width, l_height, l_frame_buffer_rgb_format,
+                               bgfx::TextureFormat::D32F);
   rast::image_view l_frame_buffer_view = rast::image_view(
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
