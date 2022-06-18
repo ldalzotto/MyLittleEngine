@@ -25,9 +25,9 @@ static void image_copy_stretch(rgb_t *p_from, ui16 p_from_width,
 };
 
 struct image_view {
-  const ui16 &m_width;
-  const ui16 &m_height;
-  const ui8 &m_bits_per_pixel;
+  ui16 m_width;
+  ui16 m_height;
+  ui8 m_bits_per_pixel;
   container::range<ui8> m_buffer;
 
   image_view(const ui16 &p_width, const ui16 &p_height,
