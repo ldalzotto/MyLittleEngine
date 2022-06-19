@@ -64,7 +64,10 @@ template <typename Private> struct ren_api {
     thiz.draw(p_camera, p_shader, p_transforms, p_meshes);
   };
 
-  FORCE_INLINE void frame() { thiz.frame(); };
+  template <typename Rasterizer>
+  FORCE_INLINE void frame(rast_api<Rasterizer> p_rast) {
+    thiz.frame(p_rast);
+  };
 
   FORCE_INLINE rast::image_view frame_view(camera_handle p_camera) {
     return thiz.frame_view(p_camera);
