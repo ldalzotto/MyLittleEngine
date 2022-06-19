@@ -24,6 +24,8 @@ template <typename T> struct remove_ptr_ref {
   using type = typename remove_ptr<typename remove_ref<T>::type>::type;
 };
 
+template <typename T> using remove_ptr_ref_t = typename remove_ptr_ref<T>::type;
+
 template <bool B, class T, class F> struct conditional { using type = T; };
 
 template <class T, class F> struct conditional<false, T, F> { using type = F; };
@@ -36,3 +38,6 @@ template <typename T> struct is_none { static constexpr bool value = 0; };
 template <> struct is_none<none> { static constexpr bool value = 1; };
 
 }; // namespace traits
+
+#define api_decltype(api_type, var_name, code)                                 \
+  api_type<traits::remove_ptr_ref_t<decltype(code)>> var_name = code

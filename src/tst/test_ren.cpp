@@ -3,11 +3,9 @@
 #include <cor/container.hpp>
 #include <cstring>
 #include <doctest.h>
-#include <ren/algorithm.hpp>
+#include <ren/ren.hpp>
 
 TEST_CASE("ren.test") {
-
-  bgfx::init();
 
   auto l_obj_str = R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -63,16 +61,10 @@ f 5/6/6 1/12/6 8/11/6
 
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
-  ren::algorithm::upload_mesh_to_gpu(l_mesh, &l_vertex_buffer, &l_index_buffer);
 
   // TODO -> we can't test this for now ?
 
   l_mesh.free();
-
-  bgfx::destroy(l_vertex_buffer);
-  bgfx::destroy(l_index_buffer);
-
-  bgfx::shutdown();
 };
 
 #include <sys/sys_impl.hpp>

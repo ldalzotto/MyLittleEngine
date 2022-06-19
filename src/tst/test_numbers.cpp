@@ -11,6 +11,9 @@ TEST_CASE("math.fixed") {
   REQUIRE(((l_value_f >= 20.9f) && (l_value_f <= 21.1f)));
   fix32 l_value_div = l_value / 2;
   REQUIRE(((l_value_div >= fix32(5.20f)) && (l_value_div <= 5.30f)));
+
+  fix32 l_value_negative = ui32(-3);
+  REQUIRE(l_value_negative == ui32(-3));
 };
 
 struct trigo_test_accumulator {
@@ -186,7 +189,8 @@ TEST_CASE("math.fixed.ln") {
     l_acc.m_errors.at(i) = m::abs(l_ln - l_real_ln);
   }
   fix32 l_ln_error = l_acc.get_accumulated();
-  REQUIRE(l_ln_error.m_value == 6804); // TODO -> check from where the error come from ?
+  REQUIRE(l_ln_error.m_value ==
+          6804); // TODO -> check from where the error come from ?
   l_acc.free();
   l_ln_input.free();
 };
@@ -208,11 +212,13 @@ TEST_CASE("math.fixed.pow") {
   l_acc.allocate(l_pow_input.count());
   for (auto i = 0; i < l_pow_input.count(); ++i) {
     fix32 l_ln = m::pow(l_pow_input.at(i).low, l_pow_input.at(i).high);
-    f32 l_real_ln = m::pow(f32(l_pow_input.at(i).low), f32(l_pow_input.at(i).high));
+    f32 l_real_ln =
+        m::pow(f32(l_pow_input.at(i).low), f32(l_pow_input.at(i).high));
     l_acc.m_errors.at(i) = m::abs(l_ln - l_real_ln);
   }
   fix32 l_ln_error = l_acc.get_accumulated();
-  REQUIRE(l_ln_error.m_value == 2916); // TODO -> check from where the error come from ?
+  REQUIRE(l_ln_error.m_value ==
+          2916); // TODO -> check from where the error come from ?
   l_acc.free();
   l_pow_input.free();
 };

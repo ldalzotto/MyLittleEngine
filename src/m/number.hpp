@@ -175,22 +175,15 @@ private:
 
   template <typename TT>
   FORCE_INLINE constexpr void
-  __make(TT p_value, traits::enable_if_t<!is_signed<TT>::value, void *> = 0,
+  __make(TT p_value,
          traits::enable_if_t<get_number_type<TT>() == NumberType::Integer,
                              void *> = 0) {
-    m_value = i32(p_value) << ScaleFactor;
-  };
-
-  template <typename TT>
-  FORCE_INLINE constexpr void
-  __make(TT p_value, traits::enable_if_t<is_signed<TT>::value, void *> = 0,
-         traits::enable_if_t<get_number_type<TT>() == NumberType::Integer,
-                             void *> = 0) {
-    if (p_value < 0) {
-      m_value = -(i32(-p_value) << ScaleFactor);
+    i32 l_value = i32(p_value);
+    if (l_value < 0) {
+      m_value = -(-l_value << ScaleFactor);
 
     } else {
-      m_value = i32(p_value) << ScaleFactor;
+      m_value = l_value << ScaleFactor;
     }
   };
 

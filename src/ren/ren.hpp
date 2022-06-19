@@ -2,41 +2,76 @@
 
 #include <assets/mesh.hpp>
 #include <rast/model.hpp>
+#include <rast/rast.hpp>
 #include <ren/model.hpp>
 
 namespace ren {
 
-struct ren_handle {
-  void *m_ptr;
+template <typename Private> struct ren_api {
+  Private &thiz;
+  ren_api(Private &p_thiz) : thiz(p_thiz){};
 
-  void allocate();
-  void free();
+  FORCE_INLINE void allocate() { thiz.allocate(); };
 
-  camera_handle create_camera(const camera &p_camera);
-  void destroy(camera_handle p_camera);
-  mesh_handle create_mesh(const assets::mesh &p_mesh);
-  void destroy(mesh_handle p_mesh);
+  FORCE_INLINE void free() { thiz.free(); };
+
+  template <typename Rasterizer>
+  FORCE_INLINE camera_handle create_camera(const camera &p_camera,
+                                           rast_api<Rasterizer> p_rast) {
+    return thiz.create_camera(p_camera, p_rast);
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE void destroy(camera_handle p_camera,
+                            rast_api<Rasterizer> p_rast) {
+    thiz.destroy_camera(p_camera, p_rast);
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE mesh_handle create_mesh(const assets::mesh &p_mesh,
+                                       rast_api<Rasterizer> p_rast) {
+    return thiz.create_mesh(p_mesh, p_rast);
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE void destroy(mesh_handle p_mesh, rast_api<Rasterizer> p_rast) {
+    thiz.destroy_mesh(p_mesh, p_rast);
+  };
 
   // TODO -> having a version with shader assets ?
-  shader_handle
-  create_shader(const container::range<rast::shader_vertex_output_parameter>
-                    &p_vertex_output,
-                rast::shader_vertex_function, rast::shader_fragment_function);
-  void destroy(shader_handle);
+  template <typename Rasterizer>
+  FORCE_INLINE shader_handle create_shader(
+      const container::range<rast::shader_vertex_output_parameter>
+          &p_vertex_output,
+      rast::shader_vertex_function p_vertex,
+      rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
+    return thiz.create_shader(p_vertex_output, p_vertex, p_fragment, p_rast);
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE void destroy(shader_handle p_shader,
+                            rast_api<Rasterizer> p_rast) {
+    thiz.destroy_shader(p_shader, p_rast);
+  };
 
   // Pushes a render pass.
   // TODO -> this will evolve in the future ?
   // TODO -> have special allocations for buffer ?
-  void draw(camera_handle, shader_handle,
-            const container::range<m::mat<fix32, 4, 4>> &p_transforms,
-            const container::range<mesh_handle> &p_meshes);
+  FORCE_INLINE void
+  draw(camera_handle p_camera, shader_handle p_shader,
+       const container::range<m::mat<fix32, 4, 4>> &p_transforms,
+       const container::range<mesh_handle> &p_meshes) {
+    thiz.draw(p_camera, p_shader, p_transforms, p_meshes);
+  };
 
-  void frame();
+  template <typename Rasterizer>
+  FORCE_INLINE void frame(rast_api<Rasterizer> p_rast) {
+    thiz.frame(p_rast);
+  };
 
-  rast::image_view frame_view(camera_handle p_camera);
+  FORCE_INLINE rast::image_view frame_view(camera_handle p_camera) {
+    return thiz.frame_view(p_camera);
+  };
 };
-
-extern ren_handle ren_handle_allocate();
-extern void ren_handle_free(ren_handle);
 
 }; // namespace ren
