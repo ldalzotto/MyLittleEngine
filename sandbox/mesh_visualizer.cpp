@@ -84,8 +84,6 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-      idecltype(ren::ren_api, l_renderer, p_engine.renderer().thiz);
-
       m_mesh_0 = p_engine.renderer().create_mesh(l_mesh, p_engine.rasterizer());
       l_mesh.free();
     }
@@ -236,8 +234,7 @@ inline static mesh_visualizer s_mesh_visualizer;
 
 #endif
 
-inline static eng::details::engine<ren::details::ren_impl_v2,
-                                   rast_impl_software>
+inline static eng::details::engine<ren::details::ren_impl, rast_impl_software>
     s_engine_impl;
 inline static eng::engine_api<decltype(s_engine_impl)> s_engine(s_engine_impl);
 

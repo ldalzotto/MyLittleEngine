@@ -37,5 +37,5 @@ template <> struct is_none<none> { static constexpr bool value = 1; };
 
 }; // namespace traits
 
-#define idecltype(api_type, var_name, code)                                 \
+#define api_decltype(api_type, var_name, code)                                 \
   api_type<decltype(code)> var_name = code

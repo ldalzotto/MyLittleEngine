@@ -62,9 +62,6 @@ f 5/6/6 1/12/6 8/11/6
   bgfx::VertexBufferHandle l_vertex_buffer;
   bgfx::IndexBufferHandle l_index_buffer;
 
-  //   ren::algorithm::upload_mesh_to_gpu(l_mesh, &l_vertex_buffer,
-  //   &l_index_buffer);
-
   // TODO -> we can't test this for now ?
 
   l_mesh.free();

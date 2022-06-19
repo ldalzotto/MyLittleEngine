@@ -13,7 +13,7 @@ static constexpr bgfx::TextureFormat::Enum s_camera_rgb_format =
 static constexpr bgfx::TextureFormat::Enum s_camera_depth_format =
     bgfx::TextureFormat::D32F;
 
-struct ren_impl_v2 {
+struct ren_impl {
 
   // TODO -> this should evolve in the future.
   // The camera should be able to be linked to multiple shader.

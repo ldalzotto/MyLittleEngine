@@ -153,7 +153,7 @@ struct ColorInterpolationShader {
 TEST_CASE("rast.single_triangle.visibility") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
@@ -218,7 +218,7 @@ TEST_CASE("rast.single_triangle.visibility") {
 TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
@@ -307,7 +307,7 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
 TEST_CASE("rast.cull.clockwise.counterclockwise") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
@@ -401,7 +401,7 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
 TEST_CASE("rast.depth.comparison") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
@@ -501,7 +501,7 @@ TEST_CASE("rast.depth.comparison") {
 TEST_CASE("rast.depth.comparison.large_framebuffer") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
@@ -601,7 +601,7 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
 TEST_CASE("rast.depth.comparison.readonly") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
@@ -702,7 +702,7 @@ TEST_CASE("rast.depth.comparison.readonly") {
 TEST_CASE("rast.depth.comparison.outofbounds") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
@@ -802,7 +802,7 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
 TEST_CASE("rast.3Dcube") {
 
   rast_impl_software __rast;
-  rast_api<decltype(__rast)> l_rast = {__rast};
+  api_decltype(rast_api, l_rast, __rast);
 
   l_rast.init();
 
