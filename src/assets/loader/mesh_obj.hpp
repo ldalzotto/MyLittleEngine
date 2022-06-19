@@ -21,6 +21,8 @@ struct obj_mesh_bytes {
   uimax m_face_begin;
   uimax m_face_count;
 
+  void validity_pass() { deserializer{*this}.validity_pass(); };
+
   void mesh_header_pass() {
     m_position_count = 0;
     m_position_begin = -1;
@@ -58,7 +60,14 @@ private:
 
     void mesh_header_pass() {
       m_state = state::Undefined;
-      m_line_iterator.for_each_line([&](auto) { process_line(); });
+      m_line_iterator.for_each_line(
+          [&](auto) { process_line_to_fill_header(); });
+    };
+
+    void validity_pass() {
+      m_state = state::Undefined;
+      m_line_iterator.for_each_line(
+          [&](auto) { process_line_for_validity_check(); });
     };
 
     void mesh_fill_pass(mesh_intermediary &p_mesh_intermediary) {
@@ -199,7 +208,7 @@ private:
       return l_out;
     };
 
-    void process_line() {
+    void process_line_to_fill_header() {
       state l_next_state;
       if (state_will_change(&l_next_state)) {
         on_state_change(l_next_state);
@@ -215,6 +224,20 @@ private:
         thiz.m_normal_count += 1;
       } else if (m_state == state::ReadFace) {
         thiz.m_face_count += 1;
+      }
+    };
+
+    void process_line_for_validity_check() {
+      state l_next_state;
+      if (state_will_change(&l_next_state)) {
+        m_state = l_next_state;
+      }
+
+      if (m_state != state::Undefined) {
+        container::range<ui8> l_line = m_line_iterator.line();
+        ui8 l_last_char = l_line.at(l_line.count() - 1);
+        sys::sassert(l_last_char == '/' ||
+                     (l_last_char >= '0' && l_last_char <= '9'));
       }
     };
 
@@ -279,6 +302,7 @@ private:
   mesh __compile(const container::range<ui8> &p_raw_obj) {
     details::obj_mesh_bytes l_mesh_bytes =
         details::obj_mesh_bytes{.m_data = p_raw_obj};
+    block_debug([&]() { l_mesh_bytes.validity_pass(); });
     l_mesh_bytes.mesh_header_pass();
 
     details::mesh_intermediary l_mesh_intermediary;
