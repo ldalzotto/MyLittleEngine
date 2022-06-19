@@ -8,8 +8,6 @@
 namespace eng {
 
 template <typename EngineImpl> struct engine_api {
-  using ren_api_t = ren::ren_api<typename EngineImpl::ren_impl_t>;
-  using rast_api_t = rast_api<typename EngineImpl::rast_impl_t>;
   EngineImpl &thiz;
   engine_api(EngineImpl &p_thiz) : thiz(p_thiz){};
 
@@ -21,8 +19,12 @@ template <typename EngineImpl> struct engine_api {
   FORCE_INLINE ui8 update(const UpdateCallback &p_update) {
     return thiz.update(p_update);
   };
-  FORCE_INLINE ren_api_t renderer() { return thiz.renderer(); };
-  FORCE_INLINE rast_api_t rasterizer() { return thiz.rasterizer(); };
+  FORCE_INLINE typename EngineImpl::ren_impl_t &renderer() {
+    return thiz.m_renderer;
+  };
+  FORCE_INLINE typename EngineImpl::rast_impl_t &rasterizer() {
+    return thiz.m_rasterizer;
+  };
   FORCE_INLINE input::system &input() { return thiz.m_input_system; };
 };
 
@@ -38,14 +40,6 @@ template <typename RenImpl, typename RastImpl> struct engine {
 
   ren_impl_t m_renderer;
   rast_impl_t m_rasterizer;
-
-  FORCE_INLINE ren::ren_api<ren_impl_t> renderer() {
-    return ren::ren_api<ren_impl_t>(m_renderer);
-  };
-
-  FORCE_INLINE rast_api<rast_impl_t> rasterizer() {
-    return rast_api<rast_impl_t>(m_rasterizer);
-  };
 
   void allocate(ui16 p_window_width, ui16 p_window_height) {
     m_window_system.allocate();

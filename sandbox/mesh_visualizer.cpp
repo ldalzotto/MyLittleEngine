@@ -26,6 +26,10 @@ private:
 public:
   template <typename EngineImpl>
   void allocate(eng::engine_api<EngineImpl> p_engine) {
+
+    api_decltype(ren::ren_api, l_ren, p_engine.renderer());
+    api_decltype(rast_api, l_rast, p_engine.rasterizer());
+
     ren::camera l_camera;
     l_camera.m_width = m_width;
     l_camera.m_height = m_height;
@@ -40,8 +44,7 @@ public:
         m::perspective(fix32(60.0f) * m::deg_to_rad, fix32(m_width) / m_height,
                        fix32(0.1f), fix32(100.0f));
 
-    m_camera =
-        p_engine.renderer().create_camera(l_camera, p_engine.rasterizer());
+    m_camera = l_ren.create_camera(l_camera, l_rast);
 
     {
       auto l_obj_str = R""""(
@@ -84,7 +87,7 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-      m_mesh_0 = p_engine.renderer().create_mesh(l_mesh, p_engine.rasterizer());
+      m_mesh_0 = l_ren.create_mesh(l_mesh, l_rast);
       l_mesh.free();
     }
     {
@@ -128,26 +131,30 @@ f 7/7 4/4 8/8
           assets::obj_mesh_loader().compile(container::range<ui8>::make(
               (ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
-      m_mesh_1 = p_engine.renderer().create_mesh(l_mesh, p_engine.rasterizer());
+      m_mesh_1 = l_ren.create_mesh(l_mesh, l_rast);
       l_mesh.free();
     }
 
     m_current_mesh = &m_mesh_0;
 
-    m_shader = p_engine.renderer().create_shader(
-        ColorInterpolationShader::s_vertex_output.range(),
-        &ColorInterpolationShader::vertex, &ColorInterpolationShader::fragment,
-        p_engine.rasterizer());
+    m_shader =
+        l_ren.create_shader(ColorInterpolationShader::s_vertex_output.range(),
+                            &ColorInterpolationShader::vertex,
+                            &ColorInterpolationShader::fragment, l_rast);
   };
 
   template <typename EngineImpl>
   void free(eng::engine_api<EngineImpl> p_engine) {
-    p_engine.renderer().destroy(m_camera, p_engine.rasterizer());
-    p_engine.renderer().destroy(m_shader, p_engine.rasterizer());
-    p_engine.renderer().destroy(m_mesh_0, p_engine.rasterizer());
-    p_engine.renderer().destroy(m_mesh_1, p_engine.rasterizer());
 
-    p_engine.rasterizer().destroy(m_frame_program);
+    api_decltype(ren::ren_api, l_ren, p_engine.renderer());
+    api_decltype(rast_api, l_rast, p_engine.rasterizer());
+
+    l_ren.destroy(m_camera, l_rast);
+    l_ren.destroy(m_shader, l_rast);
+    l_ren.destroy(m_mesh_0, l_rast);
+    l_ren.destroy(m_mesh_1, l_rast);
+
+    l_rast.destroy(m_frame_program);
   };
 
   i32 m_counter = 0;
