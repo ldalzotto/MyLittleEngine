@@ -44,7 +44,7 @@ public:
         m::perspective(fix32(60.0f) * m::deg_to_rad, fix32(m_width) / m_height,
                        fix32(0.1f), fix32(100.0f));
 
-    m_camera = l_ren.create_camera(l_camera, l_rast);
+    m_camera = l_ren.camera_create(l_camera, l_rast);
 
     {
       auto l_obj_str = R""""(
@@ -149,7 +149,7 @@ f 7/7 4/4 8/8
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
 
-    l_ren.destroy(m_camera, l_rast);
+    l_ren.camera_destroy(m_camera, l_rast);
     l_ren.destroy(m_shader, l_rast);
     l_ren.destroy(m_mesh_0, l_rast);
     l_ren.destroy(m_mesh_1, l_rast);

@@ -73,7 +73,7 @@ struct ren_impl {
   void free() { m_heap.free(); };
 
   template <typename Rasterizer>
-  camera_handle create_camera(const camera &p_camera,
+  camera_handle camera_create(const camera &p_camera,
                               rast_api<Rasterizer> p_rast) {
     bgfx::FrameBufferHandle l_frame_buffer = p_rast.createFrameBuffer(
         0, p_camera.m_rendertexture_width, p_camera.m_rendertexture_height,
@@ -83,7 +83,7 @@ struct ren_impl {
   };
 
   template <typename Rasterizer>
-  void destroy_camera(camera_handle p_camera, rast_api<Rasterizer> p_rast) {
+  void camera_destroy(camera_handle p_camera, rast_api<Rasterizer> p_rast) {
     bgfx::FrameBufferHandle *l_frame_buffer;
     m_heap.m_camera_table.at(p_camera.m_idx, none(), &l_frame_buffer);
     p_rast.destroy(*l_frame_buffer);

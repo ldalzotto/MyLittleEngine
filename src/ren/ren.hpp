@@ -15,16 +15,36 @@ template <typename Private> struct ren_api {
 
   FORCE_INLINE void free() { thiz.free(); };
 
+  // TODO -> remove that
   template <typename Rasterizer>
-  FORCE_INLINE camera_handle create_camera(const camera &p_camera,
+  FORCE_INLINE camera_handle camera_create(const camera &p_camera,
                                            rast_api<Rasterizer> p_rast) {
-    return thiz.create_camera(p_camera, p_rast);
+    return thiz.camera_create(p_camera, p_rast);
+  };
+
+#if 0
+
+  FORCE_INLINE camera_handle camera_create() { return thiz.camera_create(); };
+  FORCE_INLINE void camera_set_width_height(camera_handle p_camera,
+                                            ui32 p_width, ui32 p_height) {
+    thiz.camera_set_width_height(p_camera, p_width, p_height);
   };
 
   template <typename Rasterizer>
-  FORCE_INLINE void destroy(camera_handle p_camera,
-                            rast_api<Rasterizer> p_rast) {
-    thiz.destroy_camera(p_camera, p_rast);
+  FORCE_INLINE void
+  camera_set_render_width_height(camera_handle p_camera,
+                                 ui32 p_rendertexture_width,
+                                 ui32 p_rendertexture_height) {
+    thiz.camera_set_render_width_height(p_camera, p_rendertexture_width,
+                                        p_rendertexture_height);
+  };
+
+#endif
+
+  template <typename Rasterizer>
+  FORCE_INLINE void camera_destroy(camera_handle p_camera,
+                                   rast_api<Rasterizer> p_rast) {
+    thiz.camera_destroy(p_camera, p_rast);
   };
 
   template <typename Rasterizer>
