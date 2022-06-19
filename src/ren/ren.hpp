@@ -22,7 +22,7 @@ template <typename Private> struct ren_api {
     return thiz.camera_create(p_camera, p_rast);
   };
 
-#if 0
+#if 1
 
   FORCE_INLINE camera_handle camera_create() { return thiz.camera_create(); };
   FORCE_INLINE void camera_set_width_height(camera_handle p_camera,
@@ -34,9 +34,9 @@ template <typename Private> struct ren_api {
   FORCE_INLINE void
   camera_set_render_width_height(camera_handle p_camera,
                                  ui32 p_rendertexture_width,
-                                 ui32 p_rendertexture_height) {
+                                 ui32 p_rendertexture_height, rast_api<Rasterizer> p_rast) {
     thiz.camera_set_render_width_height(p_camera, p_rendertexture_width,
-                                        p_rendertexture_height);
+                                        p_rendertexture_height, p_rast);
   };
 
 #endif

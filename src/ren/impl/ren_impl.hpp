@@ -82,6 +82,35 @@ struct ren_impl {
     return camera_handle{.m_idx = l_index};
   };
 
+  camera_handle camera_create() {
+    return {m_heap.m_camera_table.push_back(none(), none())};
+  };
+
+  void camera_set_width_height(camera_handle p_camera, ui32 p_width,
+                               ui32 p_height) {
+    camera *l_camera;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
+    l_camera->m_width = p_width;
+    l_camera->m_height = p_height;
+  };
+
+  template <typename Rasterizer>
+  void camera_set_render_width_height(camera_handle p_camera,
+                                      ui32 p_rendertexture_width,
+                                      ui32 p_rendertexture_height,
+                                      rast_api<Rasterizer> p_rast) {
+
+    camera *l_camera;
+    bgfx::FrameBufferHandle *l_frame_buffer;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, &l_frame_buffer);
+    l_camera->m_rendertexture_width = p_rendertexture_width;
+    l_camera->m_rendertexture_height = p_rendertexture_height;
+
+    *l_frame_buffer = p_rast.createFrameBuffer(
+        0, l_camera->m_rendertexture_width, l_camera->m_rendertexture_height,
+        s_camera_rgb_format, s_camera_depth_format);
+  };
+
   template <typename Rasterizer>
   void camera_destroy(camera_handle p_camera, rast_api<Rasterizer> p_rast) {
     bgfx::FrameBufferHandle *l_frame_buffer;

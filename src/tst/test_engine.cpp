@@ -19,10 +19,15 @@ TEST_CASE("engine.drawCube") {
   l_engine.allocate(l_width, l_height);
   l_scene.allocate();
 
-  eng::object_handle __camera =
-      l_scene.camera_create(l_width, l_height, l_width, l_height,
-                            fix32(60) * m::deg_to_rad, 0.01, 100);
+  /*
+    eng::object_handle __camera =
+        l_scene.camera_create(l_width, l_height, l_width, l_height,
+                              fix32(60) * m::deg_to_rad, 0.01, 100);
+                              */
+  eng::object_handle __camera = l_scene.camera_create();
   eng::camera_view<scene_t> l_camera = l_scene.camera(__camera);
+  l_camera.set_width_height(l_width, l_height);
+  l_camera.set_render_width_height(l_width, l_height);
   l_camera.set_local_position({1.0f, 2.0f, 3.0f});
 
   auto l_frame_func = [&]() { l_scene.update(); };

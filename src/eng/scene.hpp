@@ -64,6 +64,26 @@ template <typename Scene> struct camera_view : object_view<Scene> {
     object_view<Scene>::m_transform = __get_camera().m_transform;
   };
 
+  void set_width_height(ui32 p_width, ui32 p_height) {
+    api_decltype(eng::engine_api, l_engine,
+                 object_view<Scene>::m_scene->m_engine);
+    api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+    camera &l_camera = __get_camera();
+    l_ren.camera_set_width_height(l_camera.m_camera, p_width, p_height);
+  };
+
+  void set_render_width_height(ui32 p_rendertexture_width,
+                               ui32 p_rendertexture_height) {
+    api_decltype(eng::engine_api, l_engine,
+                 object_view<Scene>::m_scene->m_engine);
+    api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+    api_decltype(rast_api, l_rast, l_engine.rasterizer());
+    camera &l_camera = __get_camera();
+    l_ren.camera_set_render_width_height(l_camera.m_camera,
+                                         p_rendertexture_width,
+                                         p_rendertexture_height, l_rast);
+  };
+
 private:
   camera &__get_camera() {
     return object_view<Scene>::m_scene->m_cameras.at(m_handle.m_idx);
@@ -72,7 +92,7 @@ private:
 
 template <typename Engine> struct scene {
 
-  engine_api<Engine> m_engine;
+  Engine &m_engine;
 
   container::pool<transform> m_transforms;
 
@@ -104,8 +124,9 @@ template <typename Engine> struct scene {
         m::perspective(p_far, fix32(p_width) / p_height, p_near, p_far);
     l_ren_camera.m_view = {0}; // TODO, this must be set on update ?
 
-    api_decltype(ren::ren_api, l_ren, m_engine.renderer());
-    api_decltype(rast_api, l_rast, m_engine.rasterizer());
+    api_decltype(eng::engine_api, l_engine, m_engine);
+    api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+    api_decltype(rast_api, l_rast, l_engine.rasterizer());
     struct camera l_camera;
     l_camera.m_transform = {m_transforms.push_back(transform::make_default())};
     l_camera.m_camera = l_ren.camera_create(l_ren_camera, l_rast);
@@ -119,8 +140,9 @@ template <typename Engine> struct scene {
       if (m_allocated_cameras.at(i) == p_camera.m_idx) {
         m_allocated_cameras.remove_at(i);
         struct camera &l_camera = m_cameras.at(p_camera.m_idx);
-        api_decltype(ren::ren_api, l_ren, m_engine.renderer());
-        api_decltype(rast_api, l_rast, m_engine.rasterizer());
+        api_decltype(eng::engine_api, l_engine, m_engine);
+        api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+        api_decltype(rast_api, l_rast, l_engine.rasterizer());
         l_ren.camera_destroy(l_camera.m_camera, l_rast);
         m_cameras.remove_at(p_camera.m_idx);
         return;
