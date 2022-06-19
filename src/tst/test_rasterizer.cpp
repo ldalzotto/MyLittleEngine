@@ -1,6 +1,7 @@
 
 #include <doctest.h>
 #include <m/const.hpp>
+#include <rast/impl/rast_impl.hpp>
 #include <rast/rast.hpp>
 #include <tst/test_rasterizer_assets.hpp>
 

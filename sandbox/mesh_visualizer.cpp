@@ -3,8 +3,8 @@
 #include <cstring>
 #include <eng/engine.hpp>
 #include <m/const.hpp>
-#include <rast/rast.hpp>
 
+#include <rast/impl/rast_impl.hpp>
 #include <ren/impl/ren_impl.hpp>
 
 struct mesh_visualizer {

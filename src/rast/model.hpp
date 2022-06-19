@@ -6,7 +6,40 @@
 #include <m/rect.hpp>
 #include <shared/types.hpp>
 
+inline ui8 textureformat_to_pixel_size(bgfx::TextureFormat::Enum p_format) {
+  switch (p_format) {
+  case bgfx::TextureFormat::Enum::R8:
+    return sizeof(ui8);
+  case bgfx::TextureFormat::Enum::RG8:
+    return sizeof(ui8) * 2;
+  case bgfx::TextureFormat::Enum::RGB8:
+    return sizeof(ui8) * 3;
+  case bgfx::TextureFormat::Enum::RGBA8:
+    return sizeof(ui8) * 4;
+  case bgfx::TextureFormat::Enum::D32F:
+    return sizeof(fix32);
+  default:
+    sys::abort();
+  }
+  return ui8(0);
+};
+
 namespace rast {
+
+struct attrib_type : bgfx::AttribType {
+  static uint8_t get_size(bgfx::AttribType::Enum p_attrib_type) {
+    switch (p_attrib_type) {
+    case bgfx::AttribType::Enum::Uint8:
+      return sizeof(uint8_t);
+    case bgfx::AttribType::Enum::Int16:
+      return sizeof(int32_t);
+    case bgfx::AttribType::Enum::Float:
+      return sizeof(float);
+    default:
+      return 0;
+    }
+  };
+};
 
 // TODO -> improve that
 static void image_copy_stretch(rgb_t *p_from, ui16 p_from_width,
