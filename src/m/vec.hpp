@@ -235,6 +235,9 @@ template <typename T> struct vec<T, 3> {
   template <typename TT> ui8 operator==(const vec<TT, 3> &p_other) const {
     return x() == p_other.x() && y() == p_other.y() && z() == p_other.z();
   };
+  template <typename TT> ui8 operator!=(const vec<TT, 3> &p_other) const {
+    return !(*this == p_other);
+  };
 
   static vec getZero() { return {0}; };
 

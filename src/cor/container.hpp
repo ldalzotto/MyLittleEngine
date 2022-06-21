@@ -401,12 +401,16 @@ template <typename T> struct pool {
   };
 
   uimax push_back(const T &p_value) {
+    uimax l_index = push_back();
+    at(l_index) = p_value;
+    return l_index;
+  };
+
+  uimax push_back() {
     uimax l_index;
     if (m_intrusive.find_next_realloc(&l_index)) {
       __realloc();
     }
-
-    at(l_index) = p_value;
     return l_index;
   };
 

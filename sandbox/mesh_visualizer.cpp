@@ -4,14 +4,19 @@
 #include <eng/engine.hpp>
 #include <m/const.hpp>
 
+#include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
 #include <ren/impl/ren_impl.hpp>
 
-struct mesh_visualizer {
+template <typename EngineImpl> struct mesh_visualizer {
+
+  using scene_t = eng::scene<EngineImpl>;
+  scene_t m_scene;
 
   bgfx::ProgramHandle m_frame_program;
 
-  ren::camera_handle m_camera;
+  eng::object_handle m_camera;
+
   ren::mesh_handle m_mesh_0;
   ren::mesh_handle m_mesh_1;
 
@@ -24,27 +29,23 @@ private:
   inline static ui16 m_height = 128;
 
 public:
-  template <typename EngineImpl>
   void allocate(eng::engine_api<EngineImpl> p_engine) {
 
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
 
-    ren::camera l_camera;
-    l_camera.m_width = m_width;
-    l_camera.m_height = m_height;
-    l_camera.m_rendertexture_width = m_width;
-    l_camera.m_rendertexture_height = m_height;
+    m_scene.m_engine = &p_engine.thiz;
+    m_scene.allocate();
 
-    const m::vec<fix32, 3> at = {0.0f, 0.0f, 0.0f};
-    const m::vec<fix32, 3> eye = {-5.0f, 5.0f, -5.0f};
-
-    l_camera.m_view = m::look_at(eye, at, {0, 1, 0});
-    l_camera.m_projection =
-        m::perspective(fix32(60.0f) * m::deg_to_rad, fix32(m_width) / m_height,
-                       fix32(0.1f), fix32(100.0f));
-
-    m_camera = l_ren.create_camera(l_camera, l_rast);
+    m_camera = m_scene.camera_create();
+    {
+      eng::camera_view<scene_t> l_camera_view = m_scene.camera(m_camera);
+      l_camera_view.set_width_height(m_width, m_height);
+      l_camera_view.set_render_width_height(m_width, m_height);
+      l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
+                                    fix32(100.0f));
+      l_camera_view.set_local_position({-5, 5, -5});
+    }
 
     {
       auto l_obj_str = R""""(
@@ -143,13 +144,12 @@ f 7/7 4/4 8/8
                             &ColorInterpolationShader::fragment, l_rast);
   };
 
-  template <typename EngineImpl>
   void free(eng::engine_api<EngineImpl> p_engine) {
 
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
 
-    l_ren.destroy(m_camera, l_rast);
+    m_scene.camera_destroy(m_camera);
     l_ren.destroy(m_shader, l_rast);
     l_ren.destroy(m_mesh_0, l_rast);
     l_ren.destroy(m_mesh_1, l_rast);
@@ -160,7 +160,6 @@ f 7/7 4/4 8/8
   i32 m_counter = 0;
   fix32 m_delta = 0.1f;
 
-  template <typename EngineImpl>
   void frame(eng::engine_api<EngineImpl> p_engine) {
 
     {
@@ -170,6 +169,7 @@ f 7/7 4/4 8/8
       if (*l_state == eng::input::State::JUST_PRESSED) {
         if (m_current_mesh != &m_mesh_0) {
           m_current_mesh = &m_mesh_0;
+          m_scene.camera(m_camera).set_local_position({-5, 5, -5});
         }
       }
     }
@@ -181,9 +181,12 @@ f 7/7 4/4 8/8
       if (*l_state == eng::input::State::JUST_PRESSED) {
         if (m_current_mesh != &m_mesh_1) {
           m_current_mesh = &m_mesh_1;
+          m_scene.camera(m_camera).set_local_position({-10, 10, -10});
         }
       }
     }
+
+    m_scene.update();
 
     m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
     l_transform =
@@ -192,7 +195,9 @@ f 7/7 4/4 8/8
     container::arr<m::mat<fix32, 4, 4>, 1> l_mesh_transform = {l_transform};
     container::arr<ren::mesh_handle, 1> l_meshes = {*m_current_mesh};
 
-    p_engine.renderer().draw(m_camera, m_shader, l_mesh_transform.range(),
+    ren::camera_handle l_ren_camera =
+        m_scene.camera(m_camera).get_camera().m_camera;
+    p_engine.renderer().draw(l_ren_camera, m_shader, l_mesh_transform.range(),
                              l_meshes.range());
     m_counter += 1;
   };
@@ -226,8 +231,6 @@ private:
   };
 };
 
-inline static mesh_visualizer s_mesh_visualizer;
-
 // TODO -> move to another header
 
 #if PLATFORM_WEBASSEMBLY_PREPROCESS
@@ -244,6 +247,8 @@ inline static mesh_visualizer s_mesh_visualizer;
 inline static eng::details::engine<ren::details::ren_impl, rast_impl_software>
     s_engine_impl;
 inline static eng::engine_api<decltype(s_engine_impl)> s_engine(s_engine_impl);
+
+inline static mesh_visualizer<decltype(s_engine_impl)> s_mesh_visualizer;
 
 extern "C" {
 EMSCRIPTEN_KEEPALIVE

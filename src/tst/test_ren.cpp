@@ -1,9 +1,11 @@
 
-#include <assets/loader/mesh_obj.hpp>
-#include <cor/container.hpp>
 #include <cstring>
 #include <doctest.h>
-#include <ren/ren.hpp>
+
+#include <assets/loader/mesh_obj.hpp>
+#include <eng/engine.hpp>
+#include <rast/impl/rast_impl.hpp>
+#include <ren/impl/ren_impl.hpp>
 
 TEST_CASE("ren.test") {
 
@@ -56,15 +58,21 @@ f 4/13/5 3/9/5 8/11/5
 f 5/6/6 1/12/6 8/11/6
   )"""";
 
-  assets::mesh l_mesh = assets::obj_mesh_loader().compile(
-      container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
+  eng::details::engine<ren::details::ren_impl, rast_impl_software> __engine;
+  api_decltype(eng::engine_api, l_engine, __engine);
 
-  bgfx::VertexBufferHandle l_vertex_buffer;
-  bgfx::IndexBufferHandle l_index_buffer;
+  api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+  api_decltype(rast_api, l_rast, l_engine.rasterizer());
 
   // TODO -> we can't test this for now ?
 
+  assets::mesh l_mesh = assets::obj_mesh_loader().compile(
+      container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
+
   l_mesh.free();
+
+  l_engine.allocate(32, 32);
+  l_engine.free();
 };
 
 #include <sys/sys_impl.hpp>
