@@ -38,9 +38,9 @@ template <typename T> struct mat<T, 4, 4> {
 template <typename T>
 static mat<T, 4, 4> translate(const vec<T, 3> &p_translate) {
   mat<T, 4, 4> l_mat = l_mat.getIdentity();
-  l_mat.col0().x() = p_translate.x();
-  l_mat.col0().y() = p_translate.y();
-  l_mat.col0().z() = p_translate.z();
+  l_mat.col3().x() = p_translate.x();
+  l_mat.col3().y() = p_translate.y();
+  l_mat.col3().z() = p_translate.z();
   return l_mat;
 };
 

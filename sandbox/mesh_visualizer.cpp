@@ -20,7 +20,8 @@ template <typename EngineImpl> struct mesh_visualizer {
   ren::mesh_handle m_mesh_0;
   ren::mesh_handle m_mesh_1;
 
-  ren::mesh_handle *m_current_mesh;
+  // ren::mesh_handle *m_current_mesh;
+  eng::object_handle m_mesh_renderer;
 
   ren::shader_handle m_shader;
 
@@ -44,7 +45,7 @@ public:
       l_camera_view.set_render_width_height(m_width, m_height);
       l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
                                     fix32(100.0f));
-      l_camera_view.set_local_position({-5, 5, -5});
+      l_camera_view.set_local_position({5, 5, 5});
     }
 
     {
@@ -97,13 +98,13 @@ f 7/7 4/4 8/8
 # www.blender.org
 mtllib cube.mtl
 o Cube
-v -0.500000 1.000000 1.000000
+v -0.000000 1.000000 1.000000
 v 1.000000 1.000000 1.000000
-v -0.500000 -1.000000 1.000000
+v -0.000000 -1.000000 1.000000
 v 1.000000 -1.000000 1.000000
-v -0.500000 1.000000 -1.000
+v -0.000000 1.000000 -1.000
 v 1.0000 1.000000 -1.00000
-v -0.500000 -1.000000 -1.000000
+v -0.000000 -1.000000 -1.000000
 v 1.000000 -1.000000 -1.000000
 vc 0 0 0
 vc 0 0 255
@@ -136,12 +137,18 @@ f 7/7 4/4 8/8
       l_mesh.free();
     }
 
-    m_current_mesh = &m_mesh_0;
+    m_mesh_renderer = m_scene.mesh_renderer_create();
 
     m_shader =
         l_ren.create_shader(ColorInterpolationShader::s_vertex_output.range(),
                             &ColorInterpolationShader::vertex,
                             &ColorInterpolationShader::fragment, l_rast);
+
+    eng::mesh_renderer_view<scene_t> l_mesh_renderer =
+        m_scene.mesh_renderer(m_mesh_renderer);
+    l_mesh_renderer.set_mesh(m_mesh_0);
+    l_mesh_renderer.set_program(m_shader);
+    l_mesh_renderer.set_local_position({0, 0, 0});
   };
 
   void free(eng::engine_api<EngineImpl> p_engine) {
@@ -150,11 +157,10 @@ f 7/7 4/4 8/8
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
 
     m_scene.camera_destroy(m_camera);
+    m_scene.mesh_renderer_destroy(m_mesh_renderer);
     l_ren.destroy(m_shader, l_rast);
     l_ren.destroy(m_mesh_0, l_rast);
     l_ren.destroy(m_mesh_1, l_rast);
-
-    l_rast.destroy(m_frame_program);
   };
 
   i32 m_counter = 0;
@@ -167,10 +173,8 @@ f 7/7 4/4 8/8
       p_engine.input().m_heap.m_state_table.at(
           (uimax)eng::input::Key::ARROW_LEFT, &l_state);
       if (*l_state == eng::input::State::JUST_PRESSED) {
-        if (m_current_mesh != &m_mesh_0) {
-          m_current_mesh = &m_mesh_0;
-          m_scene.camera(m_camera).set_local_position({-5, 5, -5});
-        }
+        m_scene.mesh_renderer(m_mesh_renderer).set_mesh(m_mesh_0);
+        m_scene.camera(m_camera).set_local_position({5, 5, 5});
       }
     }
 
@@ -179,26 +183,20 @@ f 7/7 4/4 8/8
       p_engine.input().m_heap.m_state_table.at(
           (uimax)eng::input::Key::ARROW_RIGHT, &l_state);
       if (*l_state == eng::input::State::JUST_PRESSED) {
-        if (m_current_mesh != &m_mesh_1) {
-          m_current_mesh = &m_mesh_1;
-          m_scene.camera(m_camera).set_local_position({-10, 10, -10});
-        }
+        m_scene.mesh_renderer(m_mesh_renderer).set_mesh(m_mesh_1);
+        m_scene.camera(m_camera).set_local_position({10, 10, 10});
       }
     }
 
-    m_scene.update();
-
+// TODO
+#if 0
     m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
     l_transform =
         m::rotate_around(l_transform, fix32(m_counter) * m_delta, {0, 1, 0});
+#endif
 
-    container::arr<m::mat<fix32, 4, 4>, 1> l_mesh_transform = {l_transform};
-    container::arr<ren::mesh_handle, 1> l_meshes = {*m_current_mesh};
+    m_scene.update();
 
-    ren::camera_handle l_ren_camera =
-        m_scene.camera(m_camera).get_camera().m_camera;
-    p_engine.renderer().draw(l_ren_camera, m_shader, l_mesh_transform.range(),
-                             l_meshes.range());
     m_counter += 1;
   };
 
