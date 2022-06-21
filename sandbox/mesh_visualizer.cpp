@@ -8,7 +8,7 @@
 #include <rast/impl/rast_impl.hpp>
 #include <ren/impl/ren_impl.hpp>
 
-template <typename EngineImpl> struct mesh_visualizer_v2 {
+template <typename EngineImpl> struct mesh_visualizer {
 
   using scene_t = eng::scene<EngineImpl>;
   scene_t m_scene;
@@ -248,7 +248,7 @@ inline static eng::details::engine<ren::details::ren_impl, rast_impl_software>
     s_engine_impl;
 inline static eng::engine_api<decltype(s_engine_impl)> s_engine(s_engine_impl);
 
-inline static mesh_visualizer_v2<decltype(s_engine_impl)> s_mesh_visualizer;
+inline static mesh_visualizer<decltype(s_engine_impl)> s_mesh_visualizer;
 
 extern "C" {
 EMSCRIPTEN_KEEPALIVE

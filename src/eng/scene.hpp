@@ -3,10 +3,6 @@
 #include <cor/traits.hpp>
 #include <eng/engine.hpp>
 
-#define scene_get_object(scene_var, name, p_handle)                            \
-  eng::name##_view<traits::remove_ptr_ref_t<decltype(scene_var)>> name =       \
-      (scene_var).##name##(p_handle)
-
 namespace eng {
 
 struct transform_handle {
@@ -160,18 +156,9 @@ template <typename Engine> struct scene {
         api_decltype(engine_api, l_engine, *m_engine);
         api_decltype(ren::ren_api, l_ren, l_engine.renderer());
 
-        // TODO
-        if(0)
-        {
-const m::vec<fix32, 3> eye = {-5.0f, 5.0f, -5.0f};
         l_ren.camera_set_view(
             l_camera.m_camera,
-            m::look_at(eye, l_transform.m_local_position, {0, 1, 0}));
-        }
-        
-        l_ren.camera_set_view(
-            l_camera.m_camera,
-            m::look_at(l_transform.m_local_position, {0,0,0}, {0, 1, 0}));
+            m::look_at(l_transform.m_local_position, {0, 0, 0}, {0, 1, 0}));
       }
     }
   };
