@@ -72,18 +72,9 @@ struct ren_impl {
 
   void free() { m_heap.free(); };
 
-  template <typename Rasterizer>
-  camera_handle camera_create(const camera &p_camera,
-                              rast_api<Rasterizer> p_rast) {
-    bgfx::FrameBufferHandle l_frame_buffer = p_rast.createFrameBuffer(
-        0, p_camera.m_rendertexture_width, p_camera.m_rendertexture_height,
-        s_camera_rgb_format, s_camera_depth_format);
-    uimax l_index = m_heap.m_camera_table.push_back(p_camera, l_frame_buffer);
-    return camera_handle{.m_idx = l_index};
-  };
-
   camera_handle camera_create() {
-    return {m_heap.m_camera_table.push_back(none(), none())};
+    return {
+        m_heap.m_camera_table.push_back(camera(), bgfx::FrameBufferHandle())};
   };
 
   void camera_set_width_height(camera_handle p_camera, ui32 p_width,
@@ -109,6 +100,21 @@ struct ren_impl {
     *l_frame_buffer = p_rast.createFrameBuffer(
         0, l_camera->m_rendertexture_width, l_camera->m_rendertexture_height,
         s_camera_rgb_format, s_camera_depth_format);
+  };
+
+  void camera_set_perspective(camera_handle p_camera, fix32 p_fov, fix32 p_near,
+                              fix32 p_far) {
+    camera *l_camera;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
+    l_camera->m_projection = m::perspective(
+        p_far, fix32(l_camera->m_width) / l_camera->m_height, p_near, p_far);
+  };
+
+
+  void camera_set_view(camera_handle p_camera, m::mat<fix32, 4, 4> p_view) {
+    camera *l_camera;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
+    l_camera->m_view = p_view;
   };
 
   template <typename Rasterizer>

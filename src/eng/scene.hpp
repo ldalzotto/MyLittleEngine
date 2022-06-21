@@ -84,6 +84,14 @@ template <typename Scene> struct camera_view : object_view<Scene> {
                                          p_rendertexture_height, l_rast);
   };
 
+  void set_perspective(fix32 p_fov, fix32 p_near, fix32 p_far) {
+    camera &l_camera = __get_camera();
+    api_decltype(eng::engine_api, l_engine,
+                 object_view<Scene>::m_scene->m_engine);
+    api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+    l_ren.camera_set_perspective(l_camera.m_camera, p_fov, p_near, p_far);
+  };
+
 private:
   camera &__get_camera() {
     return object_view<Scene>::m_scene->m_cameras.at(m_handle.m_idx);
@@ -110,29 +118,16 @@ template <typename Engine> struct scene {
     m_allocated_cameras.free();
   };
 
-  object_handle camera_create(ui32 p_width, ui32 p_height,
-                              ui32 p_rendertexture_width,
-                              ui32 p_rendertexture_height, fix32 p_fov,
-                              fix32 p_near, fix32 p_far) {
-
-    ren::camera l_ren_camera;
-    l_ren_camera.m_width = p_width;
-    l_ren_camera.m_height = p_height;
-    l_ren_camera.m_rendertexture_width = p_rendertexture_width;
-    l_ren_camera.m_rendertexture_height = p_rendertexture_height;
-    l_ren_camera.m_projection =
-        m::perspective(p_far, fix32(p_width) / p_height, p_near, p_far);
-    l_ren_camera.m_view = {0}; // TODO, this must be set on update ?
-
-    api_decltype(eng::engine_api, l_engine, m_engine);
+  object_handle camera_create() {
+    struct camera l_scene_camera;
+    api_decltype(engine_api, l_engine, m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-    api_decltype(rast_api, l_rast, l_engine.rasterizer());
-    struct camera l_camera;
-    l_camera.m_transform = {m_transforms.push_back(transform::make_default())};
-    l_camera.m_camera = l_ren.camera_create(l_ren_camera, l_rast);
-    uimax l_index = m_cameras.push_back(l_camera);
-    m_allocated_cameras.push_back(l_index);
-    return {l_index};
+    l_scene_camera.m_camera = l_ren.camera_create();
+    l_scene_camera.m_transform = {
+        m_transforms.push_back(transform::make_default())};
+    uimax l_camera_index = m_cameras.push_back(l_scene_camera);
+    m_allocated_cameras.push_back(l_camera_index);
+    return {l_camera_index};
   };
 
   void camera_destroy(object_handle p_camera) {
@@ -162,8 +157,14 @@ template <typename Engine> struct scene {
       transform &l_transform = m_transforms.at(l_camera.m_transform.m_idx);
       if (l_transform.m_changed) {
         __update_transform(l_transform);
-        api_decltype(ren::ren_api, l_ren, m_engine.renderer());
-        // l_ren.ca
+        api_decltype(engine_api, l_engine, m_engine);
+        api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+
+        // TODO
+        const m::vec<fix32, 3> eye = {-5.0f, 5.0f, -5.0f};
+        l_ren.camera_set_view(
+            l_camera.m_camera,
+            m::look_at(eye, l_transform.m_local_position, {0, 1, 0}));
       }
     }
   };
