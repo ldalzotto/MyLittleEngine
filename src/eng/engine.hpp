@@ -41,6 +41,8 @@ template <typename RenImpl, typename RastImpl> struct engine {
   ren_impl_t m_renderer;
   rast_impl_t m_rasterizer;
 
+  window_handle m_window;
+
   void allocate(ui16 p_window_width, ui16 p_window_height) {
     m_window_system.allocate();
     m_input_system.allocate();
@@ -51,14 +53,16 @@ template <typename RenImpl, typename RastImpl> struct engine {
     l_rast.init();
     l_renderer.allocate();
 
-    m_window_system.open_window(
-        m_window_system.create_window(p_window_width, p_window_height));
+    m_window = m_window_system.create_window(p_window_width, p_window_height);
+    m_window_system.open_window(m_window);
   };
 
   void free() {
 
     api_decltype(ren::ren_api, l_renderer, m_renderer);
     api_decltype(rast_api, l_rast, m_rasterizer);
+
+    m_window_system.close_window(m_window);
 
     m_window_system.free();
     m_input_system.free();

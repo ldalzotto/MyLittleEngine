@@ -12,7 +12,7 @@ TEST_CASE("engine.drawCube") {
   using scene_t = eng::scene<engine_t>;
   engine_t __engine;
   api_decltype(eng::engine_api, l_engine, __engine);
-  scene_t l_scene = {__engine};
+  scene_t l_scene = {&__engine};
 
   ui32 l_width = 32;
   ui32 l_height = 32;
