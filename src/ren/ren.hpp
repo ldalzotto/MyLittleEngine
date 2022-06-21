@@ -57,6 +57,7 @@ template <typename Private> struct ren_api {
   };
 
   // TODO -> having a version with shader assets ?
+  // Yes, with a shader cache I guess ?
   template <typename Rasterizer>
   FORCE_INLINE shader_handle create_shader(
       const container::range<rast::shader_vertex_output_parameter>

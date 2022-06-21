@@ -58,7 +58,8 @@ load_program(rast_api<Rasterizer> p_rast,
              const container::range<rast::shader_vertex_output_parameter>
                  &p_vertex_output,
              rast::shader_vertex_function p_vertex,
-             rast::shader_fragment_function p_fragment) {
+             rast::shader_fragment_function p_fragment,
+             bgfx::ShaderHandle *out_vertex, bgfx::ShaderHandle *out_fragment) {
 
   uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(1);
   const bgfx::Memory *l_vertex_shader_memory =
@@ -71,9 +72,9 @@ load_program(rast_api<Rasterizer> p_rast,
   rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
       p_fragment);
 
-  bgfx::ShaderHandle l_vertex = p_rast.createShader(l_vertex_shader_memory);
-  bgfx::ShaderHandle l_fragment = p_rast.createShader(l_fragment_shader_memory);
-  return p_rast.createProgram(l_vertex, l_fragment);
+  *out_vertex = p_rast.createShader(l_vertex_shader_memory);
+  *out_fragment = p_rast.createShader(l_fragment_shader_memory);
+  return p_rast.createProgram(*out_vertex, *out_fragment);
 };
 
 template <typename Rasterizer>
@@ -113,9 +114,12 @@ struct WhiteShader {
   };
 
   template <typename Rasterizer>
-  inline static bgfx::ProgramHandle load_program(rast_api<Rasterizer> p_rast) {
+  inline static bgfx::ProgramHandle
+  load_program(rast_api<Rasterizer> p_rast, bgfx::ShaderHandle *out_vertex,
+               bgfx::ShaderHandle *out_fragment) {
     return RasterizerTestToolbox::load_program(p_rast, s_vertex_output.range(),
-                                               vertex, fragment);
+                                               vertex, fragment, out_vertex,
+                                               out_fragment);
   };
 };
 
@@ -145,9 +149,12 @@ struct ColorInterpolationShader {
   };
 
   template <typename Rasterizer>
-  inline static bgfx::ProgramHandle load_program(rast_api<Rasterizer> p_rast) {
+  inline static bgfx::ProgramHandle
+  load_program(rast_api<Rasterizer> p_rast, bgfx::ShaderHandle *out_vertex,
+               bgfx::ShaderHandle *out_fragment) {
     return RasterizerTestToolbox::load_program(p_rast, s_vertex_output.range(),
-                                               vertex, fragment);
+                                               vertex, fragment, out_vertex,
+                                               out_fragment);
   };
 };
 
@@ -182,7 +189,9 @@ TEST_CASE("rast.single_triangle.visibility") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
-  bgfx::ProgramHandle l_program = WhiteShader::load_program(l_rast);
+  bgfx::ShaderHandle l_vertex, l_fragment;
+  bgfx::ProgramHandle l_program =
+      WhiteShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
@@ -211,6 +220,8 @@ TEST_CASE("rast.single_triangle.visibility") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_rast.shutdown();
@@ -266,8 +277,9 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
+  bgfx::ShaderHandle l_vertex, l_fragment;
   bgfx::ProgramHandle l_program =
-      ColorInterpolationShader::load_program(l_rast);
+      ColorInterpolationShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
@@ -298,6 +310,8 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
@@ -343,7 +357,9 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
-  bgfx::ProgramHandle l_program = WhiteShader::load_program(l_rast);
+  bgfx::ShaderHandle l_vertex, l_fragment;
+  bgfx::ProgramHandle l_program =
+      WhiteShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
@@ -394,6 +410,8 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_rast.shutdown();
@@ -461,8 +479,9 @@ TEST_CASE("rast.depth.comparison") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
+  bgfx::ShaderHandle l_vertex, l_fragment;
   bgfx::ProgramHandle l_program =
-      ColorInterpolationShader::load_program(l_rast);
+      ColorInterpolationShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
@@ -492,6 +511,8 @@ TEST_CASE("rast.depth.comparison") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
@@ -561,8 +582,9 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
+  bgfx::ShaderHandle l_vertex, l_fragment;
   bgfx::ProgramHandle l_program =
-      ColorInterpolationShader::load_program(l_rast);
+      ColorInterpolationShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
@@ -592,6 +614,8 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
@@ -661,8 +685,9 @@ TEST_CASE("rast.depth.comparison.readonly") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
+  bgfx::ShaderHandle l_vertex, l_fragment;
   bgfx::ProgramHandle l_program =
-      ColorInterpolationShader::load_program(l_rast);
+      ColorInterpolationShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
@@ -692,6 +717,8 @@ TEST_CASE("rast.depth.comparison.readonly") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
@@ -762,8 +789,9 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
+  bgfx::ShaderHandle l_vertex, l_fragment;
   bgfx::ProgramHandle l_program =
-      ColorInterpolationShader::load_program(l_rast);
+      ColorInterpolationShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_indentity = l_indentity.getIdentity();
 
@@ -793,6 +821,8 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
@@ -875,8 +905,9 @@ TEST_CASE("rast.3Dcube") {
       l_width, l_height, textureformat_to_pixel_size(l_frame_buffer_rgb_format),
       l_rast.fetchTextureSync(l_rast.getTexture(l_frame_buffer)));
 
+  bgfx::ShaderHandle l_vertex, l_fragment;
   bgfx::ProgramHandle l_program =
-      ColorInterpolationShader::load_program(l_rast);
+      ColorInterpolationShader::load_program(l_rast, &l_vertex, &l_fragment);
 
   m::mat<fix32, 4, 4> l_view, l_proj;
   {
@@ -931,6 +962,8 @@ TEST_CASE("rast.3Dcube") {
   l_rast.destroy(l_index_buffer);
   l_rast.destroy(l_vertex_buffer);
   l_rast.destroy(l_program);
+  l_rast.destroy(l_vertex);
+  l_rast.destroy(l_fragment);
   l_rast.destroy(l_frame_buffer);
 
   l_triangle_vertices.free();
