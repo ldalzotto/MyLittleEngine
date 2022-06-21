@@ -61,46 +61,46 @@ template <typename Scene> struct camera_view : object_view<Scene> {
 
   camera_view(Scene &p_scene, object_handle p_handle) : m_handle(p_handle) {
     object_view<Scene>::m_scene = &p_scene;
-    object_view<Scene>::m_transform = __get_camera().m_transform;
+    object_view<Scene>::m_transform = get_camera().m_transform;
+  };
+
+  // TODO -> temporary public
+  camera &get_camera() {
+    return object_view<Scene>::m_scene->m_cameras.at(m_handle.m_idx);
   };
 
   void set_width_height(ui32 p_width, ui32 p_height) {
     api_decltype(eng::engine_api, l_engine,
-                 object_view<Scene>::m_scene->m_engine);
+                 *object_view<Scene>::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-    camera &l_camera = __get_camera();
+    camera &l_camera = get_camera();
     l_ren.camera_set_width_height(l_camera.m_camera, p_width, p_height);
   };
 
   void set_render_width_height(ui32 p_rendertexture_width,
                                ui32 p_rendertexture_height) {
     api_decltype(eng::engine_api, l_engine,
-                 object_view<Scene>::m_scene->m_engine);
+                 *object_view<Scene>::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
     api_decltype(rast_api, l_rast, l_engine.rasterizer());
-    camera &l_camera = __get_camera();
+    camera &l_camera = get_camera();
     l_ren.camera_set_render_width_height(l_camera.m_camera,
                                          p_rendertexture_width,
                                          p_rendertexture_height, l_rast);
   };
 
   void set_perspective(fix32 p_fov, fix32 p_near, fix32 p_far) {
-    camera &l_camera = __get_camera();
+    camera &l_camera = get_camera();
     api_decltype(eng::engine_api, l_engine,
-                 object_view<Scene>::m_scene->m_engine);
+                 *object_view<Scene>::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
     l_ren.camera_set_perspective(l_camera.m_camera, p_fov, p_near, p_far);
-  };
-
-private:
-  camera &__get_camera() {
-    return object_view<Scene>::m_scene->m_cameras.at(m_handle.m_idx);
   };
 };
 
 template <typename Engine> struct scene {
 
-  Engine &m_engine;
+  Engine *m_engine;
 
   container::pool<transform> m_transforms;
 
@@ -120,7 +120,7 @@ template <typename Engine> struct scene {
 
   object_handle camera_create() {
     struct camera l_scene_camera;
-    api_decltype(engine_api, l_engine, m_engine);
+    api_decltype(engine_api, l_engine, *m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
     l_scene_camera.m_camera = l_ren.camera_create();
     l_scene_camera.m_transform = {
@@ -135,7 +135,7 @@ template <typename Engine> struct scene {
       if (m_allocated_cameras.at(i) == p_camera.m_idx) {
         m_allocated_cameras.remove_at(i);
         struct camera &l_camera = m_cameras.at(p_camera.m_idx);
-        api_decltype(eng::engine_api, l_engine, m_engine);
+        api_decltype(eng::engine_api, l_engine, *m_engine);
         api_decltype(ren::ren_api, l_ren, l_engine.renderer());
         api_decltype(rast_api, l_rast, l_engine.rasterizer());
         l_ren.camera_destroy(l_camera.m_camera, l_rast);
@@ -157,14 +157,21 @@ template <typename Engine> struct scene {
       transform &l_transform = m_transforms.at(l_camera.m_transform.m_idx);
       if (l_transform.m_changed) {
         __update_transform(l_transform);
-        api_decltype(engine_api, l_engine, m_engine);
+        api_decltype(engine_api, l_engine, *m_engine);
         api_decltype(ren::ren_api, l_ren, l_engine.renderer());
 
         // TODO
-        const m::vec<fix32, 3> eye = {-5.0f, 5.0f, -5.0f};
+        if(0)
+        {
+const m::vec<fix32, 3> eye = {-5.0f, 5.0f, -5.0f};
         l_ren.camera_set_view(
             l_camera.m_camera,
             m::look_at(eye, l_transform.m_local_position, {0, 1, 0}));
+        }
+        
+        l_ren.camera_set_view(
+            l_camera.m_camera,
+            m::look_at(l_transform.m_local_position, {0,0,0}, {0, 1, 0}));
       }
     }
   };

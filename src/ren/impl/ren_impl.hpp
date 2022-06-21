@@ -107,9 +107,8 @@ struct ren_impl {
     camera *l_camera;
     m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
     l_camera->m_projection = m::perspective(
-        p_far, fix32(l_camera->m_width) / l_camera->m_height, p_near, p_far);
+        p_fov, fix32(l_camera->m_width) / l_camera->m_height, p_near, p_far);
   };
-
 
   void camera_set_view(camera_handle p_camera, m::mat<fix32, 4, 4> p_view) {
     camera *l_camera;
