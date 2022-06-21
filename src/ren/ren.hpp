@@ -15,8 +15,6 @@ template <typename Private> struct ren_api {
 
   FORCE_INLINE void free() { thiz.free(); };
 
-#if 1
-
   FORCE_INLINE camera_handle camera_create() { return thiz.camera_create(); };
   FORCE_INLINE void camera_set_width_height(camera_handle p_camera,
                                             ui32 p_width, ui32 p_height) {
@@ -40,8 +38,6 @@ template <typename Private> struct ren_api {
                                     m::mat<fix32, 4, 4> p_view) {
     thiz.camera_set_view(p_camera, p_view);
   };
-  
-#endif
 
   template <typename Rasterizer>
   FORCE_INLINE void camera_destroy(camera_handle p_camera,

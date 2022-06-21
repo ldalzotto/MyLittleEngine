@@ -64,13 +64,8 @@ f 5/6/6 1/12/6 8/11/6
   api_decltype(ren::ren_api, l_ren, l_engine.renderer());
   api_decltype(rast_api, l_rast, l_engine.rasterizer());
 
-  /*
-    ren::camera l_camera = {
-         m::perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar)
-    };
-  */
+  // TODO -> we can't test this for now ?
 
-  // l_ren.create_camera(const camera &p_camera, rast_api<Rasterizer> p_rast);
   assets::mesh l_mesh = assets::obj_mesh_loader().compile(
       container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
