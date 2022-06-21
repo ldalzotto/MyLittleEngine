@@ -136,22 +136,6 @@ struct ren_impl {
     return mesh_handle{.m_idx = l_index};
   };
 
-  mesh_handle create_mesh_v2() {
-    uimax l_index = m_heap.m_mesh_table.push_back(
-        ren::mesh{}, bgfx::VertexBufferHandle{}, bgfx::IndexBufferHandle{});
-    return mesh_handle{.m_idx = l_index};
-  };
-
-  template <typename Rasterizer>
-  void mesh_set_mesh(mesh_handle p_mesh, const assets::mesh &p_mesh_asset,
-                     rast_api<Rasterizer> p_rast) {
-    bgfx::VertexBufferHandle *l_vertex_buffer;
-    bgfx::IndexBufferHandle *l_index_buffer;
-    m_heap.m_mesh_table.at(p_mesh.m_idx, &l_vertex_buffer, &l_index_buffer);
-    algorithm::upload_mesh_to_gpu(p_rast, p_mesh, l_vertex_buffer,
-                                  l_index_buffer);
-  };
-
   template <typename Rasterizer>
   void destroy_mesh(mesh_handle p_mesh, rast_api<Rasterizer> p_rast) {
     bgfx::VertexBufferHandle *l_vertex_buffer;
@@ -189,39 +173,6 @@ struct ren_impl {
     uimax l_index = m_heap.m_shader_table.push_back(ren::shader{}, l_program);
 
     return shader_handle{.m_idx = l_index};
-  };
-
-  shader_handle create_shader_v2() {
-    uimax l_index =
-        m_heap.m_shader_table.push_back(ren::shader{}, bgfx::ProgramHandle{});
-    return shader_handle{.m_idx = l_index};
-  };
-
-  template <typename Rasterizer>
-  void shader_set_program(
-      shader_handle p_shader,
-      const container::range<rast::shader_vertex_output_parameter>
-          &p_vertex_output,
-      rast::shader_vertex_function p_vertex,
-      rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
-    uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(1);
-    const bgfx::Memory *l_vertex_shader_memory =
-        p_rast.alloc(l_vertex_shader_size);
-    rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(
-        p_vertex_output, p_vertex);
-
-    const bgfx::Memory *l_fragment_shader_memory =
-        p_rast.alloc(rast::shader_fragment_bytes::byte_size());
-    rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
-        p_fragment);
-
-    bgfx::ShaderHandle l_vertex = p_rast.createShader(l_vertex_shader_memory);
-    bgfx::ShaderHandle l_fragment =
-        p_rast.createShader(l_fragment_shader_memory);
-
-    bgfx::ProgramHandle *l_program;
-    m_heap.m_shader_table.at(p_shader.m_idx, &l_program);
-    *l_program = p_rast.createProgram(l_vertex, l_fragment);
   };
 
   void draw(camera_handle p_camera, shader_handle p_shader,

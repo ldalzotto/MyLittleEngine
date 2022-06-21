@@ -45,20 +45,10 @@ template <typename Private> struct ren_api {
     thiz.camera_destroy(p_camera, p_rast);
   };
 
-  // TODO -> remove
   template <typename Rasterizer>
   FORCE_INLINE mesh_handle create_mesh(const assets::mesh &p_mesh,
                                        rast_api<Rasterizer> p_rast) {
     return thiz.create_mesh(p_mesh, p_rast);
-  };
-
-  FORCE_INLINE mesh_handle create_mesh_v2() { return thiz.create_mesh_v2(); };
-
-  template <typename Rasterizer>
-  FORCE_INLINE void mesh_set_mesh(mesh_handle p_mesh,
-                                  const assets::mesh &p_mesh_asset,
-                                  rast_api<Rasterizer> p_rast) {
-    thiz.mesh_set_mesh(p_mesh, p_mesh_asset, p_rast);
   };
 
   template <typename Rasterizer>
@@ -66,7 +56,6 @@ template <typename Private> struct ren_api {
     thiz.destroy_mesh(p_mesh, p_rast);
   };
 
-  // TODO -> remove this
   template <typename Rasterizer>
   FORCE_INLINE shader_handle create_shader(
       const container::range<rast::shader_vertex_output_parameter>
@@ -74,23 +63,6 @@ template <typename Private> struct ren_api {
       rast::shader_vertex_function p_vertex,
       rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
     return thiz.create_shader(p_vertex_output, p_vertex, p_fragment, p_rast);
-  };
-
-  FORCE_INLINE shader_handle create_shader_v2() {
-    return thiz.create_shader_v2();
-  };
-
-  // TODO -> having a version with shader assets ?
-  // Yes, with a shader cache I guess ?
-  template <typename Rasterizer>
-  FORCE_INLINE void shader_set_program(
-      shader_handle p_shader,
-      const container::range<rast::shader_vertex_output_parameter>
-          &p_vertex_output,
-      rast::shader_vertex_function p_vertex,
-      rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
-    thiz.shader_set_program(p_shader, p_vertex_output, p_vertex, p_fragment,
-                            p_rast);
   };
 
   template <typename Rasterizer>
