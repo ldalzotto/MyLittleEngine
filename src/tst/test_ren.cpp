@@ -74,6 +74,8 @@ f 5/6/6 1/12/6 8/11/6
   assets::mesh l_mesh = assets::obj_mesh_loader().compile(
       container::range<ui8>::make((ui8 *)l_obj_str, std::strlen(l_obj_str)));
 
+  l_mesh.free();
+
   l_engine.allocate(32, 32);
   l_engine.free();
 };
