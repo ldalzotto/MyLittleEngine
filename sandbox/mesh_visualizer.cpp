@@ -8,44 +8,16 @@
 #include <rast/impl/rast_impl.hpp>
 #include <ren/impl/ren_impl.hpp>
 
-template <typename EngineImpl> struct mesh_visualizer {
-
-  using scene_t = eng::scene<EngineImpl>;
-  scene_t m_scene;
-
-  bgfx::ProgramHandle m_frame_program;
-
-  eng::object_handle m_camera;
-
+struct mesh_visualizer_assets {
   ren::mesh_handle m_mesh_0;
   ren::mesh_handle m_mesh_1;
 
-  eng::object_handle m_mesh_renderer;
-
   ren::shader_handle m_shader;
 
-private:
-  inline static ui16 m_width = 128;
-  inline static ui16 m_height = 128;
-
-public:
-  void allocate(eng::engine_api<EngineImpl> p_engine) {
+  template <typename Engine> void allocate(eng::engine_api<Engine> p_engine) {
 
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
-
-    m_scene.m_engine = &p_engine.thiz;
-    m_scene.allocate();
-
-    m_camera = m_scene.camera_create();
-    {
-      eng::camera_view<scene_t> l_camera_view = m_scene.camera(m_camera);
-      l_camera_view.set_width_height(m_width, m_height);
-      l_camera_view.set_render_width_height(m_width, m_height);
-      l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
-                                    fix32(100.0f));
-      l_camera_view.set_local_position({5, 5, 5});
-    }
 
     {
       auto l_obj_str = R""""(
@@ -136,65 +108,18 @@ f 7/7 4/4 8/8
       l_mesh.free();
     }
 
-    m_mesh_renderer = m_scene.mesh_renderer_create();
-
     m_shader =
         l_ren.create_shader(ColorInterpolationShader::s_vertex_output.range(),
                             &ColorInterpolationShader::vertex,
                             &ColorInterpolationShader::fragment, l_rast);
-
-    eng::mesh_renderer_view<scene_t> l_mesh_renderer =
-        m_scene.mesh_renderer(m_mesh_renderer);
-    l_mesh_renderer.set_mesh(m_mesh_0);
-    l_mesh_renderer.set_program(m_shader);
-    l_mesh_renderer.set_local_position({0, 0, 0});
   };
 
-  void free(eng::engine_api<EngineImpl> p_engine) {
-
+  template <typename Engine> void free(eng::engine_api<Engine> p_engine) {
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
-
-    m_scene.camera_destroy(m_camera);
-    m_scene.mesh_renderer_destroy(m_mesh_renderer);
-    l_ren.destroy(m_shader, l_rast);
     l_ren.destroy(m_mesh_0, l_rast);
     l_ren.destroy(m_mesh_1, l_rast);
-  };
-
-  i32 m_counter = 0;
-  fix32 m_delta = 0.1f;
-
-  void frame(eng::engine_api<EngineImpl> p_engine) {
-
-    {
-      eng::input::State *l_state;
-      p_engine.input().m_heap.m_state_table.at(
-          (uimax)eng::input::Key::ARROW_LEFT, &l_state);
-      if (*l_state == eng::input::State::JUST_PRESSED) {
-        m_scene.mesh_renderer(m_mesh_renderer).set_mesh(m_mesh_0);
-        m_scene.camera(m_camera).set_local_position({5, 5, 5});
-      }
-    }
-
-    {
-      eng::input::State *l_state;
-      p_engine.input().m_heap.m_state_table.at(
-          (uimax)eng::input::Key::ARROW_RIGHT, &l_state);
-      if (*l_state == eng::input::State::JUST_PRESSED) {
-        m_scene.mesh_renderer(m_mesh_renderer).set_mesh(m_mesh_1);
-        m_scene.camera(m_camera).set_local_position({10, 10, 10});
-      }
-    }
-
-    rotation_t l_rotation = m::rotate_around(m_delta * m_counter, {0, 1, 0});
-    eng::mesh_renderer_view<scene_t> l_mesh_renderer =
-        m_scene.mesh_renderer(m_mesh_renderer);
-    l_mesh_renderer.set_local_rotation(l_rotation);
-
-    m_scene.update();
-
-    m_counter += 1;
+    l_ren.destroy(m_shader, l_rast);
   };
 
 private:
@@ -226,6 +151,97 @@ private:
   };
 };
 
+template <typename EngineImpl> struct mesh_visualizer {
+
+  using scene_t = eng::scene<EngineImpl>;
+  scene_t m_scene;
+
+  mesh_visualizer_assets m_assets;
+
+  eng::object_handle m_camera;
+  eng::object_handle m_mesh_renderer;
+
+private:
+  inline static ui16 m_width = 128;
+  inline static ui16 m_height = 128;
+
+public:
+  void allocate(eng::engine_api<EngineImpl> p_engine) {
+
+    m_assets.allocate(p_engine);
+
+    api_decltype(ren::ren_api, l_ren, p_engine.renderer());
+    api_decltype(rast_api, l_rast, p_engine.rasterizer());
+
+    m_scene.m_engine = &p_engine.thiz;
+    m_scene.allocate();
+
+    m_camera = m_scene.camera_create();
+    {
+      eng::camera_view<scene_t> l_camera_view = m_scene.camera(m_camera);
+      l_camera_view.set_width_height(m_width, m_height);
+      l_camera_view.set_render_width_height(m_width, m_height);
+      l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
+                                    fix32(100.0f));
+      l_camera_view.set_local_position({5, 5, 5});
+    }
+
+    m_mesh_renderer = m_scene.mesh_renderer_create();
+
+    eng::mesh_renderer_view<scene_t> l_mesh_renderer =
+        m_scene.mesh_renderer(m_mesh_renderer);
+    l_mesh_renderer.set_mesh(m_assets.m_mesh_0);
+    l_mesh_renderer.set_program(m_assets.m_shader);
+    l_mesh_renderer.set_local_position({0, 0, 0});
+  };
+
+  void free(eng::engine_api<EngineImpl> p_engine) {
+
+    m_assets.free(p_engine);
+
+    api_decltype(ren::ren_api, l_ren, p_engine.renderer());
+    api_decltype(rast_api, l_rast, p_engine.rasterizer());
+
+    m_scene.camera_destroy(m_camera);
+    m_scene.mesh_renderer_destroy(m_mesh_renderer);
+  };
+
+  i32 m_counter = 0;
+  fix32 m_delta = 0.1f;
+
+  void frame(eng::engine_api<EngineImpl> p_engine) {
+
+    {
+      eng::input::State *l_state;
+      p_engine.input().m_heap.m_state_table.at(
+          (uimax)eng::input::Key::ARROW_LEFT, &l_state);
+      if (*l_state == eng::input::State::JUST_PRESSED) {
+        m_scene.mesh_renderer(m_mesh_renderer).set_mesh(m_assets.m_mesh_0);
+        m_scene.camera(m_camera).set_local_position({5, 5, 5});
+      }
+    }
+
+    {
+      eng::input::State *l_state;
+      p_engine.input().m_heap.m_state_table.at(
+          (uimax)eng::input::Key::ARROW_RIGHT, &l_state);
+      if (*l_state == eng::input::State::JUST_PRESSED) {
+        m_scene.mesh_renderer(m_mesh_renderer).set_mesh(m_assets.m_mesh_1);
+        m_scene.camera(m_camera).set_local_position({10, 10, 10});
+      }
+    }
+
+    rotation_t l_rotation = m::rotate_around(m_delta * m_counter, {0, 1, 0});
+    eng::mesh_renderer_view<scene_t> l_mesh_renderer =
+        m_scene.mesh_renderer(m_mesh_renderer);
+    l_mesh_renderer.set_local_rotation(l_rotation);
+
+    m_scene.update();
+
+    m_counter += 1;
+  };
+};
+
 // TODO -> move to another header
 
 #if PLATFORM_WEBASSEMBLY_PREPROCESS
@@ -252,8 +268,8 @@ void initialize() {
   s_mesh_visualizer.allocate(s_engine);
 };
 EMSCRIPTEN_KEEPALIVE
-unsigned char main_loop() {
-  return s_engine.update([&]() { s_mesh_visualizer.frame(s_engine); });
+void main_loop() {
+  s_engine.update([&]() { s_mesh_visualizer.frame(s_engine); });
 };
 EMSCRIPTEN_KEEPALIVE
 void terminate() {
@@ -265,8 +281,9 @@ void terminate() {
 #if !PLATFORM_WEBASSEMBLY_PREPROCESS
 int main() {
   initialize();
-  while (main_loop()) {
-  };
+  while (1) {
+    main_loop();
+  }
   terminate();
 };
 #endif

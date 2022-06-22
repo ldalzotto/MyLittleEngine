@@ -245,8 +245,10 @@ template <typename Engine> struct scene {
       }
     }
 
-    if (m_allocated_cameras.count() > 0) {
-      struct camera &l_main_camera = m_cameras.at(m_allocated_cameras.at(0));
+    for (auto l_camera_index = 0; l_camera_index < m_allocated_cameras.count();
+         ++l_camera_index) {
+      struct camera &l_main_camera =
+          m_cameras.at(m_allocated_cameras.at(l_camera_index));
       for (auto i = 0; i < m_allocated_mesh_renderers.count(); ++i) {
         struct mesh_renderer &l_mesh_renderer =
             m_mesh_renderers.at(m_allocated_mesh_renderers.at(i));

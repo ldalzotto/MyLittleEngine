@@ -16,8 +16,8 @@ template <typename EngineImpl> struct engine_api {
   };
   FORCE_INLINE void free() { thiz.free(); };
   template <typename UpdateCallback>
-  FORCE_INLINE ui8 update(const UpdateCallback &p_update) {
-    return thiz.update(p_update);
+  FORCE_INLINE void update(const UpdateCallback &p_update) {
+    thiz.update(p_update);
   };
   FORCE_INLINE typename EngineImpl::ren_impl_t &renderer() {
     return thiz.m_renderer;
@@ -71,24 +71,19 @@ template <typename RenImpl, typename RastImpl> struct engine {
   };
 
   template <typename UpdateCallback>
-  ui8 update(const UpdateCallback &p_update) {
-    if (m_window_system.fetch_events()) {
+  void update(const UpdateCallback &p_update) {
+    api_decltype(ren::ren_api, l_renderer, m_renderer);
+    api_decltype(rast_api, l_rast, m_rasterizer);
 
-      api_decltype(ren::ren_api, l_renderer, m_renderer);
-      api_decltype(rast_api, l_rast, m_rasterizer);
+    m_window_system.fetch_events();
+    m_input_system.update(m_window_system.input_system_events());
 
-      m_input_system.update(m_window_system.input_system_events());
+    p_update();
 
-      p_update();
-
-      l_renderer.frame(l_rast);
-      l_rast.frame();
-      m_window_system.draw_window(
-          0, m_renderer.frame_view(ren::camera_handle{.m_idx = 0}, l_rast));
-      return 1;
-    }
-
-    return 0;
+    l_renderer.frame(l_rast);
+    l_rast.frame();
+    m_window_system.draw_window(
+        0, m_renderer.frame_view(ren::camera_handle{.m_idx = 0}, l_rast));
   };
 };
 }; // namespace details
