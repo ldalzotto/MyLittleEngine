@@ -171,8 +171,7 @@ template <typename T>
 quat<T> rotate_around(T p_angle, const vec<T, 3> &p_axis) {
   T a = p_angle;
   T s = m::sin(a * T(0.5f));
-  // TODO
-  // return  qua<T, Q>(glm::cos(a * static_cast<T>(0.5)), v * s);
+  return quat<T>::make_w_xyz(m::cos(a * T(0.5)), p_axis * s);
 };
 
 template <typename T>

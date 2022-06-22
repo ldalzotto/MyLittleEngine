@@ -16,7 +16,7 @@ struct transform {
   ui8 m_changed;
 
   position_t m_local_position;
-  m::quat<fix32> m_local_rotation;
+  rotation_t m_local_rotation;
   m::vec<fix32, 3> m_local_scale;
 
   m::mat<fix32, 4, 4> m_local_to_world;
@@ -24,7 +24,7 @@ struct transform {
   static transform make_default() {
     return transform{.m_changed = 1,
                      .m_local_position = position_t::getZero(),
-                     .m_local_rotation = m::quat<fix32>::getIdentity(),
+                     .m_local_rotation = rotation_t::getIdentity(),
                      .m_local_scale = position_t::getZero(),
                      .m_local_to_world = m::mat<fix32, 4, 4>::getZero()};
   };
@@ -55,6 +55,19 @@ template <typename Scene> struct object_view {
       l_transform.m_changed = 1;
     }
     l_transform.m_local_position = p_local_position;
+  };
+
+  void set_local_rotation(const rotation_t &p_local_rotation) {
+    struct transform &l_transform = transform();
+    if (l_transform.m_local_rotation != p_local_rotation) {
+      l_transform.m_changed = 1;
+    }
+    l_transform.m_local_rotation = p_local_rotation;
+  };
+
+  rotation_t &get_local_rotation() {
+    struct transform &l_transform = transform();
+    return l_transform.m_local_rotation;
   };
 
   struct transform &transform() {

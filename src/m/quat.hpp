@@ -1,5 +1,8 @@
 #pragma once
 
+#include <cor/types.hpp>
+#include <m/vec.hpp>
+
 namespace m {
 
 template <typename T> struct quat {
@@ -22,6 +25,26 @@ template <typename T> struct quat {
     l_quat.w() = 1;
     return l_quat;
   };
+
+  static quat make_w_xyz(T p_w, const vec<T, 3> &p_xyz) {
+    quat l_quat;
+    l_quat.w() = p_w;
+    l_quat.x() = p_xyz.x();
+    l_quat.y() = p_xyz.y();
+    l_quat.z() = p_xyz.z();
+    return l_quat;
+  };
+};
+
+template <typename T>
+ui8 operator==(const quat<T> &p_left, const quat<T> &p_right) {
+  return (p_left.x() == p_right.x()) && (p_left.y() == p_right.y()) &&
+         (p_left.z() == p_right.z()) && (p_left.w() == p_right.w());
+};
+
+template <typename T>
+ui8 operator!=(const quat<T> &p_left, const quat<T> &p_right) {
+  return !(p_left == p_right);
 };
 
 template <typename T>
