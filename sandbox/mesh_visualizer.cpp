@@ -20,7 +20,6 @@ template <typename EngineImpl> struct mesh_visualizer {
   ren::mesh_handle m_mesh_0;
   ren::mesh_handle m_mesh_1;
 
-  // ren::mesh_handle *m_current_mesh;
   eng::object_handle m_mesh_renderer;
 
   ren::shader_handle m_shader;

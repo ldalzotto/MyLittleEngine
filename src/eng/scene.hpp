@@ -5,8 +5,6 @@
 
 namespace eng {
 
-static constexpr uimax s_invalid_index = -1;
-
 struct transform_handle {
   uimax m_idx;
 };
@@ -133,28 +131,6 @@ template <typename Scene> struct mesh_renderer_view : object_view<Scene> {
     l_mesh_renderer.m_mesh = p_mesh;
   };
 
-  /*
-    void set_program(const
-    container::range<rast::shader_vertex_output_parameter> &p_vertex_output,
-                     rast::shader_vertex_function p_vertex,
-                     rast::shader_fragment_function p_fragment) {
-      api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
-      api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-      api_decltype(rast_api, l_rast, l_engine.rasterizer());
-      mesh_renderer &l_mesh_renderer = get_mesh_renderer();
-
-      l_ren.shader_set_program(l_mesh_renderer.m_shader, p_vertex_output,
-                               p_vertex, p_fragment, l_rast);
-    };
-
-    void set_mesh(assets::mesh &p_mesh_asset) {
-      api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
-      api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-      api_decltype(rast_api, l_rast, l_engine.rasterizer());
-      mesh_renderer &l_mesh_renderer = get_mesh_renderer();
-      l_ren.mesh_set_mesh(l_mesh_renderer.m_mesh, p_mesh_asset, l_rast);
-    };
-  */
 private:
   mesh_renderer &get_mesh_renderer() {
     return base::m_scene->m_mesh_renderers.at(m_handle.m_idx);
@@ -226,12 +202,8 @@ template <typename Engine> struct scene {
 
   object_handle mesh_renderer_create() {
     struct mesh_renderer l_mesh_renderer;
-    // api_decltype(engine_api, l_engine, *m_engine);
-    // api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-    // l_mesh_renderer.m_mesh = l_ren.create_mesh_v2();
     l_mesh_renderer.m_transform = {
         m_transforms.push_back(transform::make_default())};
-    // l_mesh_renderer.m_shader = l_ren.create_shader_v2();
     object_handle l_mesh_renderer_handle = {
         m_mesh_renderers.push_back(l_mesh_renderer)};
     m_allocated_mesh_renderers.push_back(l_mesh_renderer_handle.m_idx);
@@ -241,15 +213,9 @@ template <typename Engine> struct scene {
   void mesh_renderer_destroy(object_handle p_mesh_renderer) {
     for (auto i = 0; i < m_allocated_mesh_renderers.count(); ++i) {
       if (m_allocated_mesh_renderers.at(i) == p_mesh_renderer.m_idx) {
-
-        // api_decltype(eng::engine_api, l_engine, *m_engine);
-        // api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-
         m_allocated_mesh_renderers.remove_at(i);
         struct mesh_renderer &l_mesh_renderer =
             m_mesh_renderers.at(p_mesh_renderer.m_idx);
-        // l_ren.destroy(l_mesh_renderer.m_shader);
-        // l_ren.destroy(l_mesh_renderer.m_mesh);
         m_mesh_renderers.remove_at(p_mesh_renderer.m_idx);
         m_transforms.remove_at(l_mesh_renderer.m_transform.m_idx);
         return;
