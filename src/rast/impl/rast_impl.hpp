@@ -1,6 +1,7 @@
 #pragma once
 
 #include <m/color.hpp>
+#include <m/geom.hpp>
 #include <rast/impl/algorithm.hpp>
 #include <rast/model.hpp>
 
@@ -156,9 +157,7 @@ struct rast_impl_software {
     orm::table_pool_v2<VertexBuffer> vertexbuffer_table;
     orm::table_pool_v2<IndexBuffer> indexbuffer_table;
     orm::table_vector_v2<RenderPass> renderpass_table;
-
-    using per_shader_count_t = uimax;
-    orm::table_pool_v2<Shader, per_shader_count_t> shader_table;
+    orm::table_pool_v2<Shader> shader_table;
 
     orm::table_pool_v2<Program> program_table;
 
@@ -357,43 +356,16 @@ struct rast_impl_software {
     };
 
     void free_shader(bgfx::ShaderHandle p_handle) {
-      block_debug([&]() {
-        per_shader_count_t *l_count;
-        shader_table.at(p_handle.idx, none(), &l_count);
-        assert_debug(*l_count == 0);
-      });
       shader_table.remove_at(p_handle.idx);
     };
 
     bgfx::ProgramHandle allocate_program(const Program &p_program) {
-
-      per_shader_count_t *l_shader_count;
-      shader_table.at(p_program.fragment.idx, none(), &l_shader_count);
-      *l_shader_count += 1;
-      shader_table.at(p_program.vertex.idx, none(), &l_shader_count);
-      *l_shader_count += 1;
-
       bgfx::ProgramHandle l_handle;
       l_handle.idx = program_table.push_back(p_program);
       return l_handle;
     };
 
     void free_program(bgfx::ProgramHandle p_handle) {
-      Program *l_program;
-      program_table.at(p_handle.idx, &l_program);
-
-      per_shader_count_t *l_shader_count;
-      shader_table.at(l_program->fragment.idx, none(), &l_shader_count);
-      *l_shader_count -= 1;
-      if (*l_shader_count == 0) {
-        free_shader(l_program->fragment);
-      }
-      shader_table.at(l_program->vertex.idx, none(), &l_shader_count);
-      *l_shader_count -= 1;
-      if (*l_shader_count == 0) {
-        free_shader(l_program->vertex);
-      }
-
       program_table.remove_at(p_handle.idx);
     };
 

@@ -3,10 +3,9 @@
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
-#include <m/mat.hpp>
 #include <m/polygon.hpp>
 #include <m/rect.hpp>
-#include <m/vec.hpp>
+#include <m/geom.hpp>
 #include <rast/model.hpp>
 #include <shared/types.hpp>
 

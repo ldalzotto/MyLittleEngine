@@ -12,10 +12,10 @@ template <typename T, int N> struct vec;
 template <typename T> struct vec<T, 2> {
   T m_data[2];
 
-  T &x() { return m_data[0]; };
-  T &y() { return m_data[1]; };
-  const T &x() const { return m_data[0]; };
-  const T &y() const { return m_data[1]; };
+  FORCE_INLINE T &x() { return m_data[0]; };
+  FORCE_INLINE T &y() { return m_data[1]; };
+  FORCE_INLINE const T &x() const { return m_data[0]; };
+  FORCE_INLINE const T &y() const { return m_data[1]; };
 
   T &at(ui8 p_index) { return m_data[p_index]; };
 
@@ -129,12 +129,12 @@ template <typename T> struct vec<T, 2> {
 template <typename T> struct vec<T, 3> {
   T m_data[3];
 
-  T &x() { return m_data[0]; };
-  T &y() { return m_data[1]; };
-  T &z() { return m_data[2]; };
-  const T &x() const { return m_data[0]; };
-  const T &y() const { return m_data[1]; };
-  const T &z() const { return m_data[2]; };
+  FORCE_INLINE T &x() { return m_data[0]; };
+  FORCE_INLINE T &y() { return m_data[1]; };
+  FORCE_INLINE T &z() { return m_data[2]; };
+  FORCE_INLINE const T &x() const { return m_data[0]; };
+  FORCE_INLINE const T &y() const { return m_data[1]; };
+  FORCE_INLINE const T &z() const { return m_data[2]; };
 
   static vec make(const vec<T, 4> &p_other) {
     vec l_return;
@@ -252,15 +252,15 @@ template <typename T> struct vec<T, 3> {
 template <typename T> struct vec<T, 4> {
   T m_data[4];
 
-  T &x() { return m_data[0]; };
-  T &y() { return m_data[1]; };
-  T &z() { return m_data[2]; };
-  T &w() { return m_data[3]; };
+  FORCE_INLINE T &x() { return m_data[0]; };
+  FORCE_INLINE T &y() { return m_data[1]; };
+  FORCE_INLINE T &z() { return m_data[2]; };
+  FORCE_INLINE T &w() { return m_data[3]; };
 
-  const T &x() const { return m_data[0]; };
-  const T &y() const { return m_data[1]; };
-  const T &z() const { return m_data[2]; };
-  const T &w() const { return m_data[3]; };
+  FORCE_INLINE const T &x() const { return m_data[0]; };
+  FORCE_INLINE const T &y() const { return m_data[1]; };
+  FORCE_INLINE const T &z() const { return m_data[2]; };
+  FORCE_INLINE const T &w() const { return m_data[3]; };
 
   T &at(ui8 p_index) { return m_data[p_index]; };
 
@@ -359,43 +359,5 @@ template <typename T> struct vec<T, 4> {
   };
 };
 
-template <typename T>
-T cross(const vec<T, 2> &p_left, const vec<T, 2> &p_right) {
-  return p_left.x() * p_right.y() - p_left.y() * p_right.x();
-};
-
-template <typename T>
-vec<T, 3> cross(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
-  return vec<T, 3>{p_left.y() * p_right.z() - p_left.z() * p_right.y(),
-                   p_left.z() * p_right.x() - p_left.x() * p_right.z(),
-                   p_left.x() * p_right.y() - p_left.y() * p_right.x()};
-};
-
-template <typename T> T dot(const vec<T, 2> &p_left, const vec<T, 2> &p_right) {
-  return (p_left.x() * p_right.x()) + (p_left.y() * p_right.y());
-};
-
-template <typename T> T dot(const vec<T, 3> &p_left, const vec<T, 3> &p_right) {
-  return (p_left.x() * p_right.x()) + (p_left.y() * p_right.y()) +
-         (p_left.z() * p_right.z());
-};
-
-template <typename T> fix32 magnitude(const vec<T, 3> &thiz) {
-  return m::sqrt(dot(thiz, thiz));
-};
-
-template <typename T> vec<T, 3> normalize(const vec<T, 3> &thiz) {
-  return thiz / magnitude(thiz);
-};
-
-template <typename T> ui8 is_normalized(const vec<T, 3> &thiz) {
-  auto l_magnitude = magnitude(thiz);
-  return l_magnitude >= 0.99 && l_magnitude <= 1.01;
-};
-
-template <typename T>
-T perp_dot(const vec<T, 2> &p_left, const vec<T, 2> &p_right) {
-  return (p_left.x() * p_right.y()) - (p_left.y() * p_right.x());
-};
 
 }; // namespace m

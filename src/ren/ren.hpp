@@ -56,7 +56,6 @@ template <typename Private> struct ren_api {
     thiz.destroy_mesh(p_mesh, p_rast);
   };
 
-  // TODO -> having a version with shader assets ?
   template <typename Rasterizer>
   FORCE_INLINE shader_handle create_shader(
       const container::range<rast::shader_vertex_output_parameter>
