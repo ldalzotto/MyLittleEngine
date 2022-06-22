@@ -188,18 +188,10 @@ f 7/7 4/4 8/8
       }
     }
 
-    rotation_t l_rotation_delta = m::rotate_around(m_delta, {0, 1, 0});
+    rotation_t l_rotation = m::rotate_around(m_delta * m_counter, {0, 1, 0});
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
-    l_mesh_renderer.set_local_rotation(l_mesh_renderer.get_local_rotation() *
-                                       l_rotation_delta);
-
-// TODO
-#if 0
-    m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
-    l_transform =
-        m::rotate_around(l_transform, fix32(m_counter) * m_delta, {0, 1, 0});
-#endif
+    l_mesh_renderer.set_local_rotation(l_rotation);
 
     m_scene.update();
 
