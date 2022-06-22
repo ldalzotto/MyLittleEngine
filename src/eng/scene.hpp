@@ -16,6 +16,7 @@ struct transform {
   ui8 m_changed;
 
   position_t m_local_position;
+  m::quat<fix32> m_local_rotation;
   m::vec<fix32, 3> m_local_scale;
 
   m::mat<fix32, 4, 4> m_local_to_world;
@@ -23,6 +24,7 @@ struct transform {
   static transform make_default() {
     return transform{.m_changed = 1,
                      .m_local_position = position_t::getZero(),
+                     .m_local_rotation = m::quat<fix32>::getIdentity(),
                      .m_local_scale = position_t::getZero(),
                      .m_local_to_world = m::mat<fix32, 4, 4>::getZero()};
   };
@@ -287,7 +289,8 @@ template <typename Engine> struct scene {
 private:
   void __update_transform(transform &p_transform) {
     assert_debug(p_transform.m_changed);
-    p_transform.m_local_to_world = m::translate(p_transform.m_local_position);
+    p_transform.m_local_to_world = m::translate(p_transform.m_local_position) *
+                                   m::rotation(p_transform.m_local_rotation);
     p_transform.m_changed = 0;
   };
 };

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <m/geom.hpp>
 #include <rast/model.hpp>
 #include <ren/impl/algorithm.hpp>
 #include <ren/model.hpp>

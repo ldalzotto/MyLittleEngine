@@ -1,6 +1,7 @@
 #pragma once
 
 #include <m/color.hpp>
+#include <m/geom.hpp>
 #include <rast/impl/algorithm.hpp>
 #include <rast/model.hpp>
 
