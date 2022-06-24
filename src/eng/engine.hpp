@@ -43,6 +43,14 @@ template <typename RenImpl, typename RastImpl> struct engine {
 
   window_handle m_window;
 
+  FORCE_INLINE ren::ren_api<ren_impl_t> renderer_api() {
+    return ren::ren_api<ren_impl_t>{m_renderer};
+  };
+
+  FORCE_INLINE rast_api<rast_impl_t> rasterizer_api() {
+    return rast_api<rast_impl_t>{m_rasterizer};
+  };
+
   void allocate(ui16 p_window_width, ui16 p_window_height) {
     m_window_system.allocate();
     m_input_system.allocate();

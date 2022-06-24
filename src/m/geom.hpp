@@ -74,9 +74,42 @@ template <typename T> mat<T, 4, 4> rotation(const quat<T> &p_quat) {
   return mat<T, 4, 4>::make(rotation_3(p_quat));
 };
 
+#if 0
+template <typename T>
+static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_left,
+                            const vec<T, 3> &p_up, const vec<T, 3> &p_forward){
+
+                            
+
+    // Create a 4x4 orientation matrix from the right, up, and forward vectors
+    // This is transposed which is equivalent to performing an inverse 
+    // if the matrix is orthonormalized (in this case, it is).
+    mat4 orientation = {
+       vec4( xaxis.x, yaxis.x, zaxis.x, 0 ),
+       vec4( xaxis.y, yaxis.y, zaxis.y, 0 ),
+       vec4( xaxis.z, yaxis.z, zaxis.z, 0 ),
+       vec4(   0,       0,       0,     1 )
+    };
+    
+    // Create a 4x4 translation matrix.
+    // The eye position is negated which is equivalent
+    // to the inverse of the translation matrix. 
+    // T(v)^-1 == T(-v)
+    mat4 translation = {
+        vec4(   1,      0,      0,   0 ),
+        vec4(   0,      1,      0,   0 ), 
+        vec4(   0,      0,      1,   0 ),
+        vec4(-eye.x, -eye.y, -eye.z, 1 )
+    };
+
+
+};
+#endif
+
 template <typename T>
 static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
                             const vec<T, 3> &p_up) {
+  assert_debug(p_eye != p_center);
   const vec<T, 3> f = normalize(p_center - p_eye);
   const vec<T, 3> s = normalize(cross(f, p_up));
   const vec<T, 3> u = cross(s, f);
@@ -126,6 +159,32 @@ static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
   l_result.at(3, 0) = 0;
   l_result.at(3, 1) = 0;
   l_result.at(3, 3) = 0;
+  return l_result;
+};
+
+template <typename T>
+static mat<T, 4, 4> orthographic(T p_left, T p_right, T p_bottom, T p_top,
+                                 T p_zNear, T p_zFar) {
+  mat<T, 4, 4> l_result;
+  l_result.at(0, 0) = T(2) / (p_right - p_left);
+  l_result.at(0, 1) = 0;
+  l_result.at(0, 2) = 0;
+  l_result.at(0, 3) = 0;
+
+  l_result.at(1, 0) = 0;
+  l_result.at(1, 1) = T(2) / (p_top - p_bottom);
+  l_result.at(1, 2) = 0;
+  l_result.at(1, 3) = 0;
+
+  l_result.at(2, 0) = 0;
+  l_result.at(2, 1) = 0;
+  l_result.at(2, 2) = -T(2) / (p_zFar - p_zNear);
+  l_result.at(2, 3) = 0;
+
+  l_result.at(3, 0) = -(p_right + p_left) / (p_right - p_left);
+  l_result.at(3, 1) = -(p_top + p_bottom) / (p_top - p_bottom);
+  l_result.at(3, 2) = -(p_zFar + p_zNear) / (p_zFar - p_zNear);
+  l_result.at(3, 3) = 1;
   return l_result;
 };
 

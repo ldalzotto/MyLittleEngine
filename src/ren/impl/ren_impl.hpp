@@ -43,6 +43,20 @@ struct ren_impl {
     };
   };
 
+  struct camera {
+
+    ui32 m_rendertexture_width;
+    ui32 m_rendertexture_height;
+
+    ui32 m_width;
+    ui32 m_height;
+
+    m::mat<fix32, 4, 4> m_view;
+    m::mat<fix32, 4, 4> m_projection;
+
+    camera() = default;
+  };
+
   struct heap {
 
     orm::table_pool_v2<camera, bgfx::FrameBufferHandle> m_camera_table;
@@ -105,13 +119,32 @@ struct ren_impl {
 
   void camera_set_perspective(camera_handle p_camera, fix32 p_fov, fix32 p_near,
                               fix32 p_far) {
+
     camera *l_camera;
     m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
     l_camera->m_projection = m::perspective(
         p_fov, fix32(l_camera->m_width) / l_camera->m_height, p_near, p_far);
   };
 
-  void camera_set_view(camera_handle p_camera, m::mat<fix32, 4, 4> p_view) {
+  void camera_set_orthographic(camera_handle p_camera, fix32 p_near,
+                               fix32 p_far) {
+    camera *l_camera;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
+    l_camera->m_projection = m::orthographic<fix32>(
+        fix32(l_camera->m_width) / -2, fix32(l_camera->m_width) / 2,
+        fix32(l_camera->m_height) / -2, fix32(l_camera->m_height) / 2, p_near,
+        p_far);
+  };
+
+  void camera_set_projection(camera_handle p_camera,
+                             const m::mat<fix32, 4, 4> &p_projection) {
+    camera *l_camera;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
+    l_camera->m_projection = p_projection;
+  };
+
+  void camera_set_view(camera_handle p_camera,
+                       const m::mat<fix32, 4, 4> &p_view) {
     camera *l_camera;
     m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
     l_camera->m_view = p_view;
@@ -155,7 +188,7 @@ struct ren_impl {
                 rast::shader_vertex_function p_vertex,
                 rast::shader_fragment_function p_fragment,
                 rast_api<Rasterizer> p_rast) {
-    uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(1);
+    uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(p_vertex_output.count());
     const bgfx::Memory *l_vertex_shader_memory =
         p_rast.alloc(l_vertex_shader_size);
     rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(

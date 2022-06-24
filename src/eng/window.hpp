@@ -63,6 +63,18 @@ public:
               l_image_buffer->m_width, l_image_buffer->m_height);
   };
 
+  container::range<ui8> get_window_buffer(window_handle p_window) {
+    for (auto i = 0; i < m_window_table.count(); ++i) {
+      window_handle *l_handle;
+      window_image_buffer *l_image_buffer;
+      m_window_table.at(i, &l_handle, &l_image_buffer, none());
+      if (l_handle->m_idx == p_window.m_idx) {
+        return l_image_buffer->m_data.range();
+      }
+    }
+    return {0};
+  };
+
   ui8 fetch_events() { return __fetch_events(); };
   container::range<eng::input::Event> input_system_events() {
     return m_input_system_events.range();
