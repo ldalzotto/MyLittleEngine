@@ -48,7 +48,7 @@ public:
       l_camera_view.set_local_rotation(
           m::quat_lookat(m::normalize(position_t{0, 0, 0} -
                                       l_camera_view.get_local_position()),
-                         {0, 1, 0}));
+                        position_t::up));
     }
 
     {
@@ -192,7 +192,7 @@ f 7/7 4/4 8/8
       }
     }
 
-    rotation_t l_rotation = m::rotate_around(m_delta * m_counter, {0, 1, 0});
+    rotation_t l_rotation = m::rotate_around(m_delta * m_counter, position_t::up);
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
     l_mesh_renderer.set_local_rotation(l_rotation);

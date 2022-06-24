@@ -129,6 +129,10 @@ template <typename T> struct vec<T, 2> {
 template <typename T> struct vec<T, 3> {
   T m_data[3];
 
+  inline static const vec left = {1, 0, 0};
+  inline static const vec up = {0, 1, 0};
+  inline static const vec forward = {0, 0, 1};
+
   FORCE_INLINE T &x() { return m_data[0]; };
   FORCE_INLINE T &y() { return m_data[1]; };
   FORCE_INLINE T &z() { return m_data[2]; };

@@ -248,7 +248,7 @@ template <typename Engine> struct scene {
             l_camera.m_camera,
             m::look_at(l_transform.m_local_position +
                            l_transform.m_local_to_world.forward().xyz(),
-                       l_transform.m_local_position, {0, 1, 0}));
+                       l_transform.m_local_position, position_t::up));
       }
     }
 
