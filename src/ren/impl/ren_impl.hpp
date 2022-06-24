@@ -14,6 +14,25 @@ static constexpr bgfx::TextureFormat::Enum s_camera_rgb_format =
 static constexpr bgfx::TextureFormat::Enum s_camera_depth_format =
     bgfx::TextureFormat::D32F;
 
+inline uint64_t shader_meta_get_state(const shader_meta &p_shader_meta) {
+  uint64_t l_state = 0;
+  if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::clockwise) {
+    l_state = l_state | BGFX_STATE_CULL_CW;
+  } else if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::clockwise) {
+    l_state = l_state | BGFX_STATE_CULL_CCW;
+  }
+
+  if (p_shader_meta.m_write_depth) {
+    l_state = l_state | BGFX_STATE_WRITE_Z;
+  }
+
+  if (p_shader_meta.m_depth_test == shader_meta::depth_test::less) {
+    l_state = l_state | BGFX_STATE_DEPTH_TEST_LESS;
+  }
+
+  return l_state;
+};
+
 struct ren_impl {
 
   // TODO -> this should evolve in the future.
@@ -46,7 +65,7 @@ struct ren_impl {
   struct heap {
 
     orm::table_pool_v2<camera, bgfx::FrameBufferHandle> m_camera_table;
-    orm::table_pool_v2<shader, bgfx::ProgramHandle> m_shader_table;
+    orm::table_pool_v2<shader_meta, bgfx::ProgramHandle> m_shader_table;
     orm::table_pool_v2<mesh, bgfx::VertexBufferHandle, bgfx::IndexBufferHandle>
         m_mesh_table;
 
@@ -150,7 +169,8 @@ struct ren_impl {
 
   template <typename Rasterizer>
   shader_handle
-  create_shader(const container::range<rast::shader_vertex_output_parameter>
+  create_shader(const ren::shader_meta &p_shader_meta,
+                const container::range<rast::shader_vertex_output_parameter>
                     &p_vertex_output,
                 rast::shader_vertex_function p_vertex,
                 rast::shader_fragment_function p_fragment,
@@ -171,7 +191,7 @@ struct ren_impl {
         p_rast.createShader(l_fragment_shader_memory);
 
     bgfx::ProgramHandle l_program = p_rast.createProgram(l_vertex, l_fragment);
-    uimax l_index = m_heap.m_shader_table.push_back(ren::shader{}, l_program);
+    uimax l_index = m_heap.m_shader_table.push_back(p_shader_meta, l_program);
 
     return shader_handle{.m_idx = l_index};
   };
@@ -206,7 +226,11 @@ struct ren_impl {
                               l_camera->m_projection.m_data);
       p_rast.setViewFrameBuffer(0, *l_frame_buffer);
 
-      // p_render_pass.m_shader;
+      shader_meta *l_shader_parameter;
+      bgfx::ProgramHandle *l_program_handle;
+      m_heap.m_shader_table.at(p_render_pass.m_shader.m_idx,
+                               &l_shader_parameter, &l_program_handle);
+      auto l_state = shader_meta_get_state(*l_shader_parameter);
       for (auto l_mesh_it = 0; l_mesh_it < p_render_pass.m_meshes.count();
            ++l_mesh_it) {
         bgfx::VertexBufferHandle *l_vertex_buffer;
@@ -221,13 +245,9 @@ struct ren_impl {
 
         p_rast.setIndexBuffer(*l_index_buffer);
         p_rast.setVertexBuffer(0, *l_vertex_buffer);
-        p_rast.setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z |
-                        BGFX_STATE_CULL_CW);
+        p_rast.setState(l_state);
       }
 
-      bgfx::ProgramHandle *l_program_handle;
-      m_heap.m_shader_table.at(p_render_pass.m_shader.m_idx, none(),
-                               &l_program_handle);
       p_rast.submit(0, *l_program_handle);
     });
   };

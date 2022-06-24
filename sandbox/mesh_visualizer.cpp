@@ -139,7 +139,9 @@ f 7/7 4/4 8/8
     m_mesh_renderer = m_scene.mesh_renderer_create();
 
     m_shader =
-        l_ren.create_shader(ColorInterpolationShader::s_vertex_output.range(),
+        l_ren.create_shader(
+          ren::shader_meta::get_default(),
+          ColorInterpolationShader::s_vertex_output.range(),
                             &ColorInterpolationShader::vertex,
                             &ColorInterpolationShader::fragment, l_rast);
 

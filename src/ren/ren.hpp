@@ -58,11 +58,13 @@ template <typename Private> struct ren_api {
 
   template <typename Rasterizer>
   FORCE_INLINE shader_handle create_shader(
+      const ren::shader_meta &p_shader_meta,
       const container::range<rast::shader_vertex_output_parameter>
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
       rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
-    return thiz.create_shader(p_vertex_output, p_vertex, p_fragment, p_rast);
+    return thiz.create_shader(p_shader_meta, p_vertex_output, p_vertex,
+                              p_fragment, p_rast);
   };
 
   template <typename Rasterizer>
