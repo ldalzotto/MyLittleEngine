@@ -188,7 +188,8 @@ struct ren_impl {
                 rast::shader_vertex_function p_vertex,
                 rast::shader_fragment_function p_fragment,
                 rast_api<Rasterizer> p_rast) {
-    uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(p_vertex_output.count());
+    uimax l_vertex_shader_size =
+        rast::shader_vertex_bytes::byte_size(p_vertex_output.count());
     const bgfx::Memory *l_vertex_shader_memory =
         p_rast.alloc(l_vertex_shader_size);
     rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(
@@ -254,6 +255,7 @@ struct ren_impl {
 
         p_rast.setIndexBuffer(*l_index_buffer);
         p_rast.setVertexBuffer(0, *l_vertex_buffer);
+        // TODO -> those parameters must be defined by the shader itself.
         p_rast.setState(BGFX_STATE_DEPTH_TEST_LESS | BGFX_STATE_WRITE_Z |
                         BGFX_STATE_CULL_CW);
       }
