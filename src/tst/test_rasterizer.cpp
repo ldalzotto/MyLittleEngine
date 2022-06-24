@@ -5,7 +5,7 @@
 #include <rast/rast.hpp>
 #include <tst/test_rasterizer_assets.hpp>
 
-#define WRITE_OUTPUT 0
+#define WRITE_OUTPUT 1
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_write.h>
@@ -32,9 +32,9 @@ inline static void assert_frame_equals(
 
 #if WRITE_OUTPUT
     stbi_write_png(
-        p_save_path, l_frame_texture->info.width, l_frame_texture->info.height,
-        3, l_frame_texture->range().m_begin,
-        l_frame_texture->info.bitsPerPixel * l_frame_texture->info.width);
+        p_save_path, p_frame_buffer_view.m_width, p_frame_buffer_view.m_height,
+        3, l_frame_texture.m_begin,
+        p_frame_buffer_view.m_bits_per_pixel * p_frame_buffer_view.m_width);
 #endif
 
     i32 l_length;

@@ -4,17 +4,41 @@
 #include <eng/engine.hpp>
 #include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
+#include <tst/test_rasterizer_assets.hpp>
 
-#define WRITE_OUTPUT 0
+#define WRITE_OUTPUT 1
+
+#define STB_IMAGE_WRITE_IMPLEMENTATION
+#include <stb_write.h>
 
 namespace RasterizerTestToolbox {
 
-template <typename Rasterizer>
-inline static container::range<rgb_t>
-getFrameBuffer(bgfx::FrameBufferHandle p_frame_buffer,
-               rast_api<Rasterizer> p_rast) {
-  return p_rast.fetchTextureSync(p_rast.getTexture(p_frame_buffer))
-      .template cast_to<rgb_t>();
+template <typename ExpectedFrameType, typename Engine>
+inline static void
+assert_frame_equals(const i8 *p_save_path, eng::engine_api<Engine> p_engine,
+                    ui16 p_width, ui16 p_height,
+                    const ExpectedFrameType &p_expected_frame) {
+  container::range<ui8> l_png_frame;
+  {
+
+    container::range<ui8> p_frame_buffer =
+        p_engine.thiz.m_window_system.get_window_buffer(p_engine.thiz.m_window);
+
+#if WRITE_OUTPUT
+    stbi_write_png(p_save_path, p_width, p_height, 3, p_frame_buffer.m_begin,
+                   3 * p_width);
+#endif
+
+    i32 l_length;
+    l_png_frame.m_begin = stbi_write_png_to_mem(
+        p_frame_buffer.data(), 3 * p_width, p_width, p_height, 3, &l_length);
+    l_png_frame.m_count = l_length;
+  }
+
+  REQUIRE(l_png_frame.count() == p_expected_frame.count());
+  REQUIRE(l_png_frame.is_contained_by(p_expected_frame.range()));
+
+  STBIW_FREE(l_png_frame.m_begin);
 };
 
 template <typename Engine>
@@ -143,11 +167,12 @@ TEST_CASE("rastV2.single_triangle.visibility") {
 # www.blender.org
 mtllib cube.mtl
 o Cube
-v 0.0, 0.0, 0.0
-v 1.0, 0.0, 0.0
-v 0.0, 1.0, 0.0
+v 0.0 0.0 0.0
+v 1.0 0.0 0.0
+v 0.0 1.0 0.0
 f 1 2 3
   )""""};
+
   auto l_mesh = assets::obj_mesh_loader{}.compile(l_mesh_raw.range());
   ren::mesh_handle l_mesh_handle =
       l_engine.renderer_api().create_mesh(l_mesh, l_engine.rasterizer_api());
@@ -164,16 +189,11 @@ f 1 2 3
 
   l_engine.update([&]() { l_scene.update(); });
 
-  auto l_window_buffer =
-      l_engine.m_window_system.get_window_buffer(l_engine.m_window);
-
-  /*
-    RasterizerTestToolbox::assert_frame_equals(
+  RasterizerTestToolbox::assert_frame_equals(
       "/media/loic/SSD/SoftwareProjects/glm/"
       "rast.single_triangle.visibility.png",
-      l_frame_buffer, l_frame_buffer_view,
-      frame_expected::rast_single_triangle_visibility(), l_rast);
-  */
+      eng::engine_api<engine_t>{l_engine}, l_width, l_height,
+      frame_expected::rast_single_triangle_visibility());
 
   l_engine.renderer_api().destroy(l_mesh_handle, l_engine.rasterizer_api());
   l_engine.renderer_api().destroy(l_shader_handle, l_engine.rasterizer_api());
