@@ -255,9 +255,11 @@ private:
       TT p_value,
       traits::enable_if_t<get_number_type<TT>() == NumberType::Fixed, void *> =
           0) const {
+    ui8 l_round_sign = m_value > 0;
     fixed l_fixed = 0;
     l_fixed.m_value =
-        (((((long long)m_value) * scale) + (scale >> 1))) / p_value.m_value;
+        (((((long long)m_value) * scale) + ((l_round_sign) * (scale >> 1)))) /
+        p_value.m_value;
     return l_fixed;
   };
 

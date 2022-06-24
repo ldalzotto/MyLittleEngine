@@ -14,6 +14,18 @@ TEST_CASE("math.fixed") {
 
   fix32 l_value_negative = ui32(-3);
   REQUIRE(l_value_negative == ui32(-3));
+
+  // roundings
+
+  REQUIRE((fix32(1) / fix32(1)) == fix32(1));
+  REQUIRE((fix32(1) / fix32(-1)) == fix32(-1));
+  REQUIRE((fix32(-1) / fix32(1)) == fix32(-1));
+  REQUIRE((fix32(-1) / fix32(-1)) == fix32(1));
+
+  REQUIRE((fix32(1) * fix32(1)) == fix32(1));
+  REQUIRE((fix32(1) * fix32(-1)) == fix32(-1));
+  REQUIRE((fix32(-1) * fix32(1)) == fix32(-1));
+  REQUIRE((fix32(-1) * fix32(-1)) == fix32(1));
 };
 
 struct trigo_test_accumulator {
@@ -168,7 +180,7 @@ TEST_CASE("math.fixed.exp") {
     l_acc.m_errors.at(i) = m::abs(l_exp - l_real_exp);
   }
   fix32 l_exp_error = l_acc.get_accumulated();
-  REQUIRE(l_exp_error.m_value == 955);
+  REQUIRE(l_exp_error.m_value == 924);
   l_acc.free();
   l_exp_input.free();
 };
@@ -218,7 +230,7 @@ TEST_CASE("math.fixed.pow") {
   }
   fix32 l_ln_error = l_acc.get_accumulated();
   REQUIRE(l_ln_error.m_value ==
-          2916); // TODO -> check from where the error come from ?
+          3021); // TODO -> check from where the error come from ?
   l_acc.free();
   l_pow_input.free();
 };
