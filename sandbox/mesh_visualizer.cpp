@@ -45,6 +45,10 @@ public:
       l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
                                     fix32(100.0f));
       l_camera_view.set_local_position({5, 5, 5});
+      l_camera_view.set_local_rotation(
+          m::quat_lookat(m::normalize(position_t{0, 0, 0} -
+                                      l_camera_view.get_local_position()),
+                         {0, 1, 0}));
     }
 
     {
@@ -139,9 +143,8 @@ f 7/7 4/4 8/8
     m_mesh_renderer = m_scene.mesh_renderer_create();
 
     m_shader =
-        l_ren.create_shader(
-          ren::shader_meta::get_default(),
-          ColorInterpolationShader::s_vertex_output.range(),
+        l_ren.create_shader(ren::shader_meta::get_default(),
+                            ColorInterpolationShader::s_vertex_output.range(),
                             &ColorInterpolationShader::vertex,
                             &ColorInterpolationShader::fragment, l_rast);
 

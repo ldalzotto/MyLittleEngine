@@ -34,6 +34,9 @@ template <typename T> struct mat<T, 4, 4> {
   const vec<T, 4> &col2() const { return m_data[2]; }
   const vec<T, 4> &col3() const { return m_data[3]; }
 
+  vec<T, 4> &forward() { return col2(); };
+  const vec<T, 4> &forward() const { return col2(); };
+
   static mat<T, 4, 4> make(const mat<T, 3, 3> &p_input) {
     mat<T, 4, 4> l_return;
     l_return.at(0, 0) = p_input.at(0, 0);
@@ -75,12 +78,12 @@ template <typename T> struct mat<T, 3, 3> {
   };
   static mat getZero() { return {0}; };
 
-  vec<T, 4> &col0() { return m_data[0]; }
-  vec<T, 4> &col1() { return m_data[1]; }
-  vec<T, 4> &col2() { return m_data[2]; }
-  const vec<T, 4> &col0() const { return m_data[0]; }
-  const vec<T, 4> &col1() const { return m_data[1]; }
-  const vec<T, 4> &col2() const { return m_data[2]; }
+  vec<T, 3> &col0() { return m_data[0]; }
+  vec<T, 3> &col1() { return m_data[1]; }
+  vec<T, 3> &col2() { return m_data[2]; }
+  const vec<T, 3> &col0() const { return m_data[0]; }
+  const vec<T, 3> &col1() const { return m_data[1]; }
+  const vec<T, 3> &col2() const { return m_data[2]; }
 };
 
 #define col_row(c, r)                                                          \
