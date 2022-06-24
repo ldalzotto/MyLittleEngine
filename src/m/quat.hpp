@@ -26,6 +26,15 @@ template <typename T> struct quat {
     return l_quat;
   };
 
+  static quat make_wxyz(T w, T x, T y, T z) {
+    quat l_quat;
+    l_quat.w() = w;
+    l_quat.x() = x;
+    l_quat.y() = y;
+    l_quat.z() = z;
+    return l_quat;
+  };
+
   static quat make_w_xyz(T p_w, const vec<T, 3> &p_xyz) {
     quat l_quat;
     l_quat.w() = p_w;

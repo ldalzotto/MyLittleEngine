@@ -916,7 +916,7 @@ TEST_CASE("rast.3Dcube") {
 
     // Set view and projection matrix for view 0.
     {
-      l_view = m::look_at(eye, at, {0, 1, 0});
+      l_view = m::look_at(eye, at, position_t::up);
       l_proj =
           m::perspective(fix32(60.0f) * m::deg_to_rad,
                          fix32(l_width) / l_height, fix32(0.1f), fix32(100.0f));

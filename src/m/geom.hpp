@@ -75,6 +75,63 @@ template <typename T> mat<T, 4, 4> rotation(const quat<T> &p_quat) {
 };
 
 template <typename T>
+quat<T> quat_from_rotationmatrix(const mat<T, 3, 3> &p_matrix) {
+
+  T fourXSquaredMinus1 =
+      p_matrix.at(0, 0) - p_matrix.at(1, 1) - p_matrix.at(2, 2);
+  T fourYSquaredMinus1 =
+      p_matrix.at(1, 1) - p_matrix.at(0, 0) - p_matrix.at(2, 2);
+  T fourZSquaredMinus1 =
+      p_matrix.at(2, 2) - p_matrix.at(0, 0) - p_matrix.at(1, 1);
+  T fourWSquaredMinus1 =
+      p_matrix.at(0, 0) + p_matrix.at(1, 1) + p_matrix.at(2, 2);
+
+  int biggestIndex = 0;
+  T fourBiggestSquaredMinus1 = fourWSquaredMinus1;
+  if (fourXSquaredMinus1 > fourBiggestSquaredMinus1) {
+    fourBiggestSquaredMinus1 = fourXSquaredMinus1;
+    biggestIndex = 1;
+  }
+  if (fourYSquaredMinus1 > fourBiggestSquaredMinus1) {
+    fourBiggestSquaredMinus1 = fourYSquaredMinus1;
+    biggestIndex = 2;
+  }
+  if (fourZSquaredMinus1 > fourBiggestSquaredMinus1) {
+    fourBiggestSquaredMinus1 = fourZSquaredMinus1;
+    biggestIndex = 3;
+  }
+
+  T biggestVal = m::sqrt(fourBiggestSquaredMinus1 + T(1)) * T(0.5);
+  T mult = T(0.25) / biggestVal;
+
+  switch (biggestIndex) {
+  case 0:
+    return quat<T>::make_wxyz(biggestVal,
+                              (p_matrix.at(1, 2) - p_matrix.at(2, 1)) * mult,
+                              (p_matrix.at(2, 0) - p_matrix.at(0, 2)) * mult,
+                              (p_matrix.at(0, 1) - p_matrix.at(1, 0)) * mult);
+  case 1:
+    return quat<T>::make_wxyz((p_matrix.at(1, 2) - p_matrix.at(2, 1)) * mult,
+                              biggestVal,
+                              (p_matrix.at(0, 1) + p_matrix.at(1, 0)) * mult,
+                              (p_matrix.at(2, 0) + p_matrix.at(0, 2)) * mult);
+  case 2:
+    return quat<T>::make_wxyz((p_matrix.at(2, 0) - p_matrix.at(0, 2)) * mult,
+                              (p_matrix.at(0, 1) + p_matrix.at(1, 0)) * mult,
+                              biggestVal,
+                              (p_matrix.at(1, 2) + p_matrix.at(2, 1)) * mult);
+  case 3:
+    return quat<T>::make_wxyz((p_matrix.at(0, 1) - p_matrix.at(1, 0)) * mult,
+                              (p_matrix.at(2, 0) + p_matrix.at(0, 2)) * mult,
+                              (p_matrix.at(1, 2) + p_matrix.at(2, 1)) * mult,
+                              biggestVal);
+  default:
+    assert_debug(false);
+    return quat<T>::make_wxyz(1, 0, 0, 0);
+  }
+};
+
+template <typename T>
 static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
                             const vec<T, 3> &p_up) {
   const vec<T, 3> f = normalize(p_center - p_eye);
@@ -101,6 +158,20 @@ static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
 
   return l_result;
 };
+
+template <typename T>
+quat<T> quat_lookat(const vec<T, 3> &p_direction, const vec<T, 3> &p_up) {
+  assert_debug(is_normalized(p_direction));
+  assert_debug(is_normalized(p_up));
+  mat<T, 3, 3> l_return;
+
+  l_return.col2() = p_direction * -1;
+  vec<T, 3> l_right = cross(p_up, l_return.col2());
+  l_return.col0() = l_right * (T(1) / m::sqrt(dot(l_right, l_right)));
+  l_return.col1() = cross(l_return.col2(), l_return.col0());
+
+  return quat_from_rotationmatrix(l_return);
+}
 
 template <typename T>
 static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {

@@ -129,6 +129,10 @@ template <typename T> struct vec<T, 2> {
 template <typename T> struct vec<T, 3> {
   T m_data[3];
 
+  inline static const vec left = {1, 0, 0};
+  inline static const vec up = {0, 1, 0};
+  inline static const vec forward = {0, 0, 1};
+
   FORCE_INLINE T &x() { return m_data[0]; };
   FORCE_INLINE T &y() { return m_data[1]; };
   FORCE_INLINE T &z() { return m_data[2]; };
@@ -256,11 +260,15 @@ template <typename T> struct vec<T, 4> {
   FORCE_INLINE T &y() { return m_data[1]; };
   FORCE_INLINE T &z() { return m_data[2]; };
   FORCE_INLINE T &w() { return m_data[3]; };
+  FORCE_INLINE vec<T, 3> &xyz() { return *(vec<T, 3> *)m_data; };
 
   FORCE_INLINE const T &x() const { return m_data[0]; };
   FORCE_INLINE const T &y() const { return m_data[1]; };
   FORCE_INLINE const T &z() const { return m_data[2]; };
   FORCE_INLINE const T &w() const { return m_data[3]; };
+  FORCE_INLINE const vec<T, 3> &xyz() const {
+    return *(const vec<T, 3> *)m_data;
+  };
 
   T &at(ui8 p_index) { return m_data[p_index]; };
 
@@ -358,6 +366,5 @@ template <typename T> struct vec<T, 4> {
     return {p_xyz.x(), p_xyz.y(), p_xyz.z(), p_w};
   };
 };
-
 
 }; // namespace m
