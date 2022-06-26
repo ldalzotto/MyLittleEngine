@@ -201,14 +201,15 @@ struct ren_impl {
                 rast::shader_vertex_function p_vertex,
                 rast::shader_fragment_function p_fragment,
                 rast_api<Rasterizer> p_rast) {
-    uimax l_vertex_shader_size = rast::shader_vertex_bytes::byte_size(1);
+    uimax l_vertex_shader_size =
+        rast::shader_vertex_bytes::byte_size(p_vertex_output.count());
     const bgfx::Memory *l_vertex_shader_memory =
-        p_rast.alloc(l_vertex_shader_size);
+        p_rast.alloc(l_vertex_shader_size, 8);
     rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(
         p_vertex_output, p_vertex);
 
     const bgfx::Memory *l_fragment_shader_memory =
-        p_rast.alloc(rast::shader_fragment_bytes::byte_size());
+        p_rast.alloc(rast::shader_fragment_bytes::byte_size(), 8);
     rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
         p_fragment);
 

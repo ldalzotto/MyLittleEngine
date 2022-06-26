@@ -223,6 +223,27 @@ struct rast_impl_software {
       return l_bgfx_memory;
     };
 
+    bgfx::Memory *allocate_buffer(uimax p_size, uimax p_alignment) {
+      auto l_buffer_index = buffer_memory_table.push_back(p_size, p_alignment);
+
+      bgfx::Memory l_buffer{};
+      ui8 *l_data;
+      l_buffer.size = buffer_memory_table.at(l_buffer_index, &l_data);
+      l_buffer.data = l_data;
+
+      uimax l_index = buffers_table.push_back(1);
+      bgfx::Memory *l_bgfx_memory;
+      MemoryReference *l_memory_refence;
+      uimax l_memory_count =
+          buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
+      assert_debug(l_memory_count == 1);
+      *l_bgfx_memory = l_buffer;
+      *l_memory_refence = MemoryReference(l_buffer_index);
+
+      buffers_ptr_mapping_table.push_back(l_bgfx_memory, l_index);
+      return l_bgfx_memory;
+    };
+
     bgfx::Memory *allocate_ref(const void *p_ptr, ui32 p_size) {
       bgfx::Memory l_buffer{};
       l_buffer.data = (ui8 *)p_ptr;
@@ -719,6 +740,11 @@ FORCE_INLINE void rast_api_shutdown(rast_impl_software *thiz) {
 FORCE_INLINE const bgfx::Memory *rast_api_alloc(rast_impl_software *thiz,
                                                 uint32_t _size) {
   return thiz->heap.allocate_buffer(_size);
+};
+
+FORCE_INLINE const bgfx::Memory *
+rast_api_alloc(rast_impl_software *thiz, uint32_t _size, uint32_t _alignment) {
+  return thiz->heap.allocate_buffer(_size, _alignment);
 };
 
 FORCE_INLINE const bgfx::Memory *

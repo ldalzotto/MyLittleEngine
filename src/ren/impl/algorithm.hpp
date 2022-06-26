@@ -30,14 +30,15 @@ inline void upload_mesh_to_gpu(rast_api<Rasterizer> p_rast,
   }
   l_vertex_layout.end();
 
-  const bgfx::Memory *l_vertex_index = p_rast.alloc(p_mesh.m_indices.size_of());
+  const bgfx::Memory *l_vertex_index =
+      p_rast.alloc(p_mesh.m_indices.size_of(), sizeof(vindex_t));
   container::range<ui8>::make(l_vertex_index->data, l_vertex_index->size)
       .copy_from(p_mesh.m_indices.range());
 
   auto l_mesh_view = p_mesh.view();
 
-  const bgfx::Memory *l_vertex_buffer =
-      p_rast.alloc(l_vertex_layout.getSize(l_mesh_view.m_positions.count()));
+  const bgfx::Memory *l_vertex_buffer = p_rast.alloc(
+      l_vertex_layout.getSize(l_mesh_view.m_positions.count()), sizeof(fix32));
   container::range<ui8> l_vertex_buffer_range =
       container::range<ui8>::make(l_vertex_buffer->data, l_vertex_buffer->size);
 

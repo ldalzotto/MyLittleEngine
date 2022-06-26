@@ -23,6 +23,10 @@ template <typename Private> struct rast_api {
     return rast_api_alloc(&thiz, _size);
   };
 
+  FORCE_INLINE const bgfx::Memory *alloc(uint32_t _size, uint32_t _alignment) {
+    return rast_api_alloc(&thiz, _size, _alignment);
+  };
+
   FORCE_INLINE const bgfx::Memory *makeRef(const void *_data, uint32_t _size,
                                            bgfx::ReleaseFn _releaseFn = NULL,
                                            void *_userData = NULL) {
