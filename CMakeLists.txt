@@ -70,7 +70,10 @@ target_link_libraries(ENGINE INTERFACE WIN)
 target_link_libraries(ENGINE INTERFACE STB)
 target_link_libraries(ENGINE INTERFACE BGFX_API)
 
-add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_assets.cpp ./src/tst/test_ren.cpp ./src/tst/test_numbers.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
+add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_assets.cpp ./src/tst/test_ren.cpp ./src/tst/test_numbers.cpp ./src/tst/test_rasterizer_assets.cpp 
+# ./src/tst/test_rasterizer.cpp 
+./src/tst/test_rasterizer_v2.cpp 
+./src/tst/test_window.cpp)
 target_link_libraries(TESTS PUBLIC ENGINE)
 target_link_libraries(TESTS PUBLIC DOCTEST)
 
