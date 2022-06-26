@@ -68,10 +68,16 @@ public:
               l_image_buffer->m_width, l_image_buffer->m_height);
   };
 
-  window_native_ptr TEST_ONLY_window_get_native_ptr(window_handle p_window){
-    window_native_ptr* l_native_ptr;
+  window_native_ptr window_get_native_ptr(window_handle p_window) {
+    window_native_ptr *l_native_ptr;
     m_window_table.at(p_window.m_idx, &l_native_ptr);
     return *l_native_ptr;
+  };
+
+  window_image_buffer &window_get_image_buffer(window_handle p_window) {
+    window_image_buffer *l_image_buffer;
+    m_window_table.at(p_window.m_idx, none(), &l_image_buffer);
+    return *l_image_buffer;
   };
 
   ui8 fetch_events() { return __fetch_events(); };
