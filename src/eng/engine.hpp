@@ -84,7 +84,8 @@ template <typename RenImpl, typename RastImpl> struct engine {
       l_renderer.frame(l_rast);
       l_rast.frame();
       m_window_system.draw_window(
-          0, m_renderer.frame_view(ren::camera_handle{.m_idx = 0}, l_rast));
+          m_window,
+          m_renderer.frame_view(ren::camera_handle{.m_idx = 0}, l_rast));
       return 1;
     }
 

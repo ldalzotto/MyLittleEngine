@@ -9,7 +9,11 @@
 namespace eng {
 
 struct window_handle {
-  void *m_idx;
+  uimax m_idx;
+};
+
+struct window_native_ptr {
+  void *m_ptr;
 };
 
 struct window_image_buffer {
@@ -18,13 +22,13 @@ struct window_image_buffer {
   ui16 m_height;
   void *m_native;
 
-  void allocate(window_handle p_window, ui16 p_width, ui16 p_height) {
+  void allocate(window_native_ptr p_window, ui16 p_width, ui16 p_height) {
     m_data.allocate(p_width * p_height * (sizeof(ui8) * 4));
     m_data.range().memset(255);
     m_width = p_width;
     m_height = p_height;
     m_native =
-        win::allocate_image(p_window.m_idx, m_data.data(), p_width, p_height);
+        win::allocate_image(p_window.m_ptr, m_data.data(), p_width, p_height);
   };
 
   void free() {
@@ -50,17 +54,24 @@ public:
 
   void open_window(window_handle p_window) { __open_window(p_window); };
   void close_window(window_handle p_window) { __close_window(p_window); };
-  void draw_window(ui8 p_window_index, const rast::image_view &p_image) {
-    window_handle *l_handle;
+  void draw_window(window_handle p_window, const rast::image_view &p_image) {
+    window_native_ptr *l_native_ptr;
     window_image_buffer *l_image_buffer;
     win::events *l_events;
-    m_window_table.at(p_window_index, &l_handle, &l_image_buffer, &l_events);
+    m_window_table.at(p_window.m_idx, &l_native_ptr, &l_image_buffer,
+                      &l_events);
     rast::image_copy_stretch((rgb_t *)p_image.m_buffer.m_begin, p_image.m_width,
                              p_image.m_height,
                              (rgba_t *)l_image_buffer->m_data.m_data,
                              l_image_buffer->m_width, l_image_buffer->m_height);
-    win::draw(l_handle->m_idx, l_image_buffer->m_native,
+    win::draw(l_native_ptr->m_ptr, l_image_buffer->m_native,
               l_image_buffer->m_width, l_image_buffer->m_height);
+  };
+
+  window_native_ptr TEST_ONLY_window_get_native_ptr(window_handle p_window){
+    window_native_ptr* l_native_ptr;
+    m_window_table.at(p_window.m_idx, &l_native_ptr);
+    return *l_native_ptr;
   };
 
   ui8 fetch_events() { return __fetch_events(); };
@@ -70,7 +81,7 @@ public:
 
 private:
   using window_table =
-      orm::table_vector_v2<window_handle, window_image_buffer, win::events>;
+      orm::table_pool_v2<window_native_ptr, window_image_buffer, win::events>;
 
   window_table m_window_table;
 
@@ -88,52 +99,51 @@ private:
   };
 
   window_handle __create_window(ui16 p_width, ui16 p_height) {
-    window_handle l_handle;
+    window_native_ptr l_native_ptr;
     window_image_buffer l_image_buffer;
     win::events l_events;
-    l_handle = {win::create_window(p_width, p_height)};
-    l_image_buffer.allocate(l_handle, p_width, p_height);
-    l_events.m_window = l_handle.m_idx;
+    l_native_ptr = {win::create_window(p_width, p_height)};
+    l_image_buffer.allocate(l_native_ptr, p_width, p_height);
+    l_events.m_window = l_native_ptr.m_ptr;
     l_events.allocate();
 
-    m_window_table.push_back(l_handle, l_image_buffer, l_events);
-
-    return l_handle;
+    uimax l_index =
+        m_window_table.push_back(l_native_ptr, l_image_buffer, l_events);
+    return {l_index};
   };
 
   void __open_window(window_handle p_window) {
-    win::show_window(p_window.m_idx);
+    window_native_ptr *l_native_ptr;
+    m_window_table.at(p_window.m_idx, &l_native_ptr);
+    win::show_window(l_native_ptr->m_ptr);
   };
 
   void __close_window(window_handle p_window) {
-    window_handle *l_handle;
+    window_native_ptr *l_native_ptr;
     window_image_buffer *l_image_buffer;
     win::events *l_events;
-    for (auto i = 0; i < m_window_table.count(); ++i) {
-      m_window_table.at(i, &l_handle, &l_image_buffer, &l_events);
-      if (l_handle->m_idx == p_window.m_idx) {
-        win::close_window(l_handle->m_idx);
-        l_image_buffer->free();
-        l_events->free();
-        m_window_table.remove_at(i);
-        return;
-      }
-    }
-    assert_debug(0);
+    m_window_table.at(p_window.m_idx, &l_native_ptr, &l_image_buffer,
+                      &l_events);
+    win::close_window(l_native_ptr->m_ptr);
+    l_image_buffer->free();
+    l_events->free();
+    m_window_table.remove_at(p_window.m_idx);
+    return;
   };
 
   ui8 __fetch_events() {
     m_input_system_events.clear();
 
-    ui8 l_window_index = 0;
-    window_handle *l_handle;
+    window_handle l_handle = {0};
+    window_native_ptr *l_native_ptr;
     window_image_buffer *l_image_buffer;
     win::events *l_events;
-    m_window_table.at(l_window_index, &l_handle, &l_image_buffer, &l_events);
+    m_window_table.at(l_handle.m_idx, &l_native_ptr, &l_image_buffer,
+                      &l_events);
 
     {
-      auto l_events_for_fetch = container::range<win::events>::make(
-          m_window_table.m_cols.m_col_2, m_window_table.count());
+      auto l_events_for_fetch =
+          container::range<win::events>::make(l_events, 1);
       win::fetch_events(l_events_for_fetch);
     }
 
@@ -153,18 +163,14 @@ private:
         if (l_event.m_draw.m_width != l_image_buffer->m_width &&
             l_event.m_draw.m_height != l_image_buffer->m_height) {
           l_image_buffer->free();
-          l_image_buffer->allocate(*l_handle, l_event.m_draw.m_width,
+          l_image_buffer->allocate(*l_native_ptr, l_event.m_draw.m_width,
                                    l_event.m_draw.m_height);
         }
       } else if (l_event.m_type == win::event::type::Close) {
-        __close_window(*l_handle);
+        __close_window(l_handle);
       }
     }
     l_events->m_events.clear();
-
-    if (m_window_table.count() == 0) {
-      return 0;
-    }
 
     return 1;
   };
