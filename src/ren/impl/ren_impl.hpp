@@ -14,6 +14,25 @@ static constexpr bgfx::TextureFormat::Enum s_camera_rgb_format =
 static constexpr bgfx::TextureFormat::Enum s_camera_depth_format =
     bgfx::TextureFormat::D32F;
 
+struct camera {
+  ui32 m_rendertexture_width;
+  ui32 m_rendertexture_height;
+
+  ui32 m_width;
+  ui32 m_height;
+
+  m::mat<fix32, 4, 4> m_view;
+  m::mat<fix32, 4, 4> m_projection;
+
+  camera() = default;
+};
+
+struct shader_rasterizer_handles {
+  bgfx::ProgramHandle m_program;
+  bgfx::ShaderHandle m_vertex;
+  bgfx::ShaderHandle m_fragment;
+};
+
 inline uint64_t shader_meta_get_state(const shader_meta &p_shader_meta) {
   uint64_t l_state = 0;
   if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::clockwise) {
@@ -65,7 +84,7 @@ struct ren_impl {
   struct heap {
 
     orm::table_pool_v2<camera, bgfx::FrameBufferHandle> m_camera_table;
-    orm::table_pool_v2<shader_meta, bgfx::ProgramHandle> m_shader_table;
+    orm::table_pool_v2<shader_meta, shader_rasterizer_handles> m_shader_table;
     orm::table_pool_v2<mesh, bgfx::VertexBufferHandle, bgfx::IndexBufferHandle>
         m_mesh_table;
 
@@ -130,6 +149,13 @@ struct ren_impl {
         p_fov, fix32(l_camera->m_width) / l_camera->m_height, p_near, p_far);
   };
 
+  void camera_set_projection(camera_handle p_camera,
+                             const m::mat<fix32, 4, 4> &p_projection) {
+    camera *l_camera;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
+    l_camera->m_projection = p_projection;
+  };
+
   void camera_set_view(camera_handle p_camera, m::mat<fix32, 4, 4> p_view) {
     camera *l_camera;
     m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
@@ -186,12 +212,16 @@ struct ren_impl {
     rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
         p_fragment);
 
-    bgfx::ShaderHandle l_vertex = p_rast.createShader(l_vertex_shader_memory);
-    bgfx::ShaderHandle l_fragment =
+    shader_rasterizer_handles l_shader_rast_handles;
+    l_shader_rast_handles.m_vertex =
+        p_rast.createShader(l_vertex_shader_memory);
+    l_shader_rast_handles.m_fragment =
         p_rast.createShader(l_fragment_shader_memory);
 
-    bgfx::ProgramHandle l_program = p_rast.createProgram(l_vertex, l_fragment);
-    uimax l_index = m_heap.m_shader_table.push_back(p_shader_meta, l_program);
+    l_shader_rast_handles.m_program = p_rast.createProgram(
+        l_shader_rast_handles.m_vertex, l_shader_rast_handles.m_fragment);
+    uimax l_index =
+        m_heap.m_shader_table.push_back(p_shader_meta, l_shader_rast_handles);
 
     return shader_handle{.m_idx = l_index};
   };
@@ -206,9 +236,12 @@ struct ren_impl {
 
   template <typename Rasterizer>
   void destroy_shader(shader_handle p_shader, rast_api<Rasterizer> p_rast) {
-    bgfx::ProgramHandle *l_program;
-    m_heap.m_shader_table.at(p_shader.m_idx, none(), &l_program);
-    p_rast.destroy(*l_program);
+    shader_rasterizer_handles *l_shader_rast_handles;
+    m_heap.m_shader_table.at(p_shader.m_idx, none(), &l_shader_rast_handles);
+
+    p_rast.destroy(l_shader_rast_handles->m_program);
+    p_rast.destroy(l_shader_rast_handles->m_vertex);
+    p_rast.destroy(l_shader_rast_handles->m_fragment);
     m_heap.m_shader_table.remove_at(p_shader.m_idx);
   };
 
@@ -227,9 +260,9 @@ struct ren_impl {
       p_rast.setViewFrameBuffer(0, *l_frame_buffer);
 
       shader_meta *l_shader_parameter;
-      bgfx::ProgramHandle *l_program_handle;
+      shader_rasterizer_handles *l_shader_rast_handles;
       m_heap.m_shader_table.at(p_render_pass.m_shader.m_idx,
-                               &l_shader_parameter, &l_program_handle);
+                               &l_shader_parameter, &l_shader_rast_handles);
       auto l_state = shader_meta_get_state(*l_shader_parameter);
       for (auto l_mesh_it = 0; l_mesh_it < p_render_pass.m_meshes.count();
            ++l_mesh_it) {
@@ -248,7 +281,7 @@ struct ren_impl {
         p_rast.setState(l_state);
       }
 
-      p_rast.submit(0, *l_program_handle);
+      p_rast.submit(0, l_shader_rast_handles->m_program);
     });
   };
 

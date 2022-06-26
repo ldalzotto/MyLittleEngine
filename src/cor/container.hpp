@@ -130,6 +130,16 @@ template <typename T, int N> struct arr {
   };
 };
 
+template <typename OutputType, typename InputType, uimax Size>
+static constexpr container::arr<OutputType, Size - 1>
+arr_literal(const InputType (&arr)[Size]) {
+  container::arr<OutputType, Size - 1> l_value = {0};
+  for (auto i = 0; i < Size - 1; ++i) {
+    l_value.m_data[i] = arr[i];
+  }
+  return l_value;
+};
+
 template <typename T> struct span {
 
   using element_type = T;
