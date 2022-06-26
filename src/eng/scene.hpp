@@ -277,9 +277,9 @@ template <typename Engine> struct scene {
       if (l_transform_meta->m_updated_this_frame) {
         l_ren.camera_set_view(
             l_camera.m_camera,
-            m::look_at(l_transform->m_local_position +
-                           l_transform->m_local_to_world.forward().xyz(),
-                       l_transform->m_local_position, position_t::up));
+            m::look_at(l_transform->m_local_position,
+                       l_transform->m_local_position +
+                           l_transform->m_local_to_world.forward().xyz(), position_t::up));
       }
     }
 

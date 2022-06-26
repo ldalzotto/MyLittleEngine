@@ -5,8 +5,9 @@
 #include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
 #include <tst/test_rasterizer_assets.hpp>
+#include <m/const.hpp>
 
-#define WRITE_OUTPUT 0
+#define WRITE_OUTPUT 1
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include <stb_write.h>
@@ -647,7 +648,7 @@ TEST_CASE("rast.3Dcube") {
   eng::camera_view<scene_t> l_camera_view = l_scene.camera(l_camera);
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
-  l_camera_view.set_perspective(60, 0.1, 100);
+  l_camera_view.set_perspective(60.0f * m::deg_to_rad, 0.1, 100);
   l_camera_view.set_local_position({0.0f, 0.0f, -35.0f});
 
   auto l_cube_mesh_obj = container::arr_literal<ui8>(R""""(
@@ -692,7 +693,7 @@ f 7/7 4/4 8/8
 
   ren::shader_handle l_shader_c =
       RasterizerTestToolbox::load_shader<ColorInterpolationShader>(
-          l_engine, s_cclockwise_write_less_shader_meta);
+          l_engine, s_clockwise_write_less_shader_meta);
 
   container::vector<eng::object_handle> l_mesh_renderers;
   l_mesh_renderers.allocate(0);
