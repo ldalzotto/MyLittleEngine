@@ -146,7 +146,7 @@ static constexpr ren::shader_meta s_clockwise_write_less_shader_meta = {
     .m_write_depth = 1,
     .m_depth_test = ren::shader_meta::depth_test::less};
 
-TEST_CASE("rastV2.single_triangle.visibility") {
+TEST_CASE("rast.single_triangle.visibility") {
 
   constexpr ui16 l_width = 8, l_height = 8;
 
@@ -209,7 +209,7 @@ f 1 2 3
   __engine.free();
 }
 
-TEST_CASE("rastV2.single_triangle.vertex_color_interpolation") {
+TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   constexpr ui16 l_width = 8, l_height = 8;
   using engine_t =
       eng::details::engine<ren::details::ren_impl, rast_impl_software>;
@@ -273,7 +273,7 @@ f 1/1 2/2 3/3
   __engine.free();
 }
 
-TEST_CASE("rastV2.cull.clockwise.counterclockwise") {
+TEST_CASE("rast.cull.clockwise.counterclockwise") {
 
   constexpr ui16 l_width = 8, l_height = 8;
   using engine_t =
@@ -353,7 +353,7 @@ f 4 5 6
   __engine.free();
 }
 
-TEST_CASE("rastV2.depth.comparison") {
+TEST_CASE("rast.depth.comparison") {
 
   constexpr ui16 l_width = 8, l_height = 8;
   using engine_t =
@@ -647,7 +647,6 @@ TEST_CASE("rast.3Dcube") {
   eng::camera_view<scene_t> l_camera_view = l_scene.camera(l_camera);
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
-  // l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
   l_camera_view.set_perspective(60, 0.1, 100);
   l_camera_view.set_local_position({0.0f, 0.0f, -35.0f});
 
@@ -693,18 +692,13 @@ f 7/7 4/4 8/8
 
   ren::shader_handle l_shader_c =
       RasterizerTestToolbox::load_shader<ColorInterpolationShader>(
-          l_engine, s_clockwise_write_less_shader_meta);
+          l_engine, s_cclockwise_write_less_shader_meta);
 
   container::vector<eng::object_handle> l_mesh_renderers;
   l_mesh_renderers.allocate(0);
   // 11x11 cubes.
   for (uint32_t yy = 0; yy < 11; ++yy) {
     for (uint32_t xx = 0; xx < 11; ++xx) {
-      m::mat<fix32, 4, 4> l_transform = m::mat<fix32, 4, 4>::getIdentity();
-      l_transform.at(3, 0) = -15.0f + xx * 3.0f;
-      l_transform.at(3, 1) = -15.0f + yy * 3.0f;
-      l_transform.at(3, 2) = 0.0f;
-
       eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
       l_scene.mesh_renderer(l_mesh_renderer).set_mesh(l_mesh_handle);
       l_scene.mesh_renderer(l_mesh_renderer).set_program(l_shader_c);
