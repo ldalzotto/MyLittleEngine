@@ -15,7 +15,9 @@ TEST_CASE("window_system.input") {
     win::event l_debug_input_event;
     l_debug_input_event.m_type = win::event::type::InputPress;
     l_debug_input_event.m_input.m_key = eng::input::Key::ARROW_UP;
-    win::debug_simulate_event(l_window.m_idx, l_debug_input_event);
+    win::debug_simulate_event(
+        l_window_system.window_get_native_ptr(l_window).m_ptr,
+        l_debug_input_event);
 
     REQUIRE(l_window_system.fetch_events());
     REQUIRE(l_window_system.input_system_events().count() == 1);
@@ -31,7 +33,9 @@ TEST_CASE("window_system.input") {
     win::event l_debug_input_event;
     l_debug_input_event.m_type = win::event::type::InputRelease;
     l_debug_input_event.m_input.m_key = eng::input::Key::ARROW_DOWN;
-    win::debug_simulate_event(l_window.m_idx, l_debug_input_event);
+    win::debug_simulate_event(
+        l_window_system.window_get_native_ptr(l_window).m_ptr,
+        l_debug_input_event);
 
     REQUIRE(l_window_system.fetch_events());
     REQUIRE(l_window_system.input_system_events().count() == 1);
