@@ -184,6 +184,7 @@ struct shader_vertex_bytes {
   };
 
   static uimax byte_size(uimax p_output_parameter_count) {
+  constexpr auto zd = sizeof(shader_vertex_output_parameter);
     return sizeof(table) + sizeof(uimax) +
            (sizeof(shader_vertex_output_parameter) * p_output_parameter_count) +
            sizeof(shader_vertex_function);

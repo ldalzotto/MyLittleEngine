@@ -614,6 +614,18 @@ template <typename... Types> struct table_heap_paged_v2 {
     return m_meta.push_found_chunk(p_size, l_page_index, l_chunk_index);
   };
 
+  uimax push_back(uimax p_size, uimax p_alignment) {
+    uimax l_page_index, l_chunk_index;
+    m_meta.find_next_chunk(p_size, p_alignment, &l_page_index, &l_chunk_index);
+    if (m_meta.m_state ==
+        container::heap_paged_intrusive::state::NewPagePushed) {
+      m_meta.clear_state();
+      table_heap_paged_push_new_page<0>{}(*this, l_page_index);
+    }
+
+    return m_meta.push_found_chunk(p_size, l_page_index, l_chunk_index);
+  };
+
   void remove_at(uimax p_chunk_index) { m_meta.remove_chunk(p_chunk_index); };
 
 private:
