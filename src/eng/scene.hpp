@@ -9,10 +9,12 @@ struct transform_handle {
   uimax m_idx;
 };
 
-struct transform {
-
-  // TODO -> we can move this to transform metadata
+struct transform_meta {
+  ui8 m_updated_this_frame;
   ui8 m_changed;
+};
+
+struct transform {
 
   position_t m_local_position;
   rotation_t m_local_rotation;
@@ -21,8 +23,7 @@ struct transform {
   m::mat<fix32, 4, 4> m_local_to_world;
 
   static transform make_default() {
-    return transform{.m_changed = 1,
-                     .m_local_position = position_t::getZero(),
+    return transform{.m_local_position = position_t::getZero(),
                      .m_local_rotation = rotation_t::getIdentity(),
                      .m_local_scale = position_t::getZero(),
                      .m_local_to_world = m::mat<fix32, 4, 4>::getZero()};
@@ -49,36 +50,39 @@ template <typename Scene> struct object_view {
   transform_handle m_transform;
 
   void set_local_position(const position_t p_local_position) {
-    struct transform &l_transform = transform();
-    if (l_transform.m_local_position != p_local_position) {
-      l_transform.m_changed = 1;
+    struct transform *l_transform;
+    transform_meta *l_transform_meta;
+    transform_with_meta(&l_transform, &l_transform_meta);
+    if (l_transform->m_local_position != p_local_position) {
+      l_transform_meta->m_changed = 1;
     }
-    l_transform.m_local_position = p_local_position;
+    l_transform->m_local_position = p_local_position;
   };
 
   void set_local_rotation(const rotation_t &p_local_rotation) {
-    struct transform &l_transform = transform();
-    if (l_transform.m_local_rotation != p_local_rotation) {
-      l_transform.m_changed = 1;
+    struct transform *l_transform;
+    transform_meta *l_transform_meta;
+    transform_with_meta(&l_transform, &l_transform_meta);
+    if (l_transform->m_local_rotation != p_local_rotation) {
+      l_transform_meta->m_changed = 1;
     }
-    l_transform.m_local_rotation = p_local_rotation;
+    l_transform->m_local_rotation = p_local_rotation;
   };
 
-  position_t &get_local_position() {
-    struct transform &l_transform = transform();
-    return l_transform.m_local_position;
-  };
+  position_t &get_local_position() { return transform().m_local_position; };
 
-  rotation_t &get_local_rotation() {
-    struct transform &l_transform = transform();
-    return l_transform.m_local_rotation;
-  };
+  rotation_t &get_local_rotation() { return transform().m_local_rotation; };
 
 protected:
   struct transform &transform() {
     struct transform *l_transform;
     m_scene->m_transforms.at(m_transform.m_idx, &l_transform);
     return *l_transform;
+  };
+
+  void transform_with_meta(struct transform **p_transform,
+                           transform_meta **p_meta) {
+    m_scene->m_transforms.at(m_transform.m_idx, p_transform, p_meta);
   };
 };
 
@@ -150,9 +154,7 @@ template <typename Engine> struct scene {
 
   Engine *m_engine;
 
-  using transform_updated_this_frame_t = ui8;
-  // container::pool<transform> m_transforms;
-  orm::table_pool_v2<transform, transform_updated_this_frame_t> m_transforms;
+  orm::table_pool_v2<transform, transform_meta> m_transforms;
   container::vector<transform_handle> m_allocated_transform;
 
   container::pool<camera> m_cameras;
@@ -164,6 +166,7 @@ template <typename Engine> struct scene {
 
   void allocate() {
     m_transforms.allocate(0);
+    m_allocated_transform.allocate(0);
     m_cameras.allocate(0);
     m_allocated_cameras.allocate(0);
     m_mesh_renderers.allocate(0);
@@ -172,6 +175,7 @@ template <typename Engine> struct scene {
 
   void free() {
     m_transforms.free();
+    m_allocated_transform.free();
     m_cameras.free();
     m_allocated_cameras.free();
     m_mesh_renderers.free();
@@ -183,7 +187,7 @@ template <typename Engine> struct scene {
     api_decltype(engine_api, l_engine, *m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
     l_scene_camera.m_camera = l_ren.camera_create();
-    l_scene_camera.m_transform = __push_transform(transform::make_default(), 1);
+    l_scene_camera.m_transform = __push_transform(transform::make_default());
     uimax l_camera_index = m_cameras.push_back(l_scene_camera);
     m_allocated_cameras.push_back(l_camera_index);
     return {l_camera_index};
@@ -213,8 +217,7 @@ template <typename Engine> struct scene {
 
   object_handle mesh_renderer_create() {
     struct mesh_renderer l_mesh_renderer;
-    l_mesh_renderer.m_transform =
-        __push_transform(transform::make_default(), 1);
+    l_mesh_renderer.m_transform = __push_transform(transform::make_default());
     object_handle l_mesh_renderer_handle = {
         m_mesh_renderers.push_back(l_mesh_renderer)};
     m_allocated_mesh_renderers.push_back(l_mesh_renderer_handle.m_idx);
@@ -246,14 +249,14 @@ template <typename Engine> struct scene {
 
     for (auto i = 0; i < m_allocated_transform.count(); ++i) {
       transform *l_transform;
-      transform_updated_this_frame_t *l_transform_updated_this_frame;
+      transform_meta *l_transform_meta;
       m_transforms.at(m_allocated_transform.at(i).m_idx, &l_transform,
-                      &l_transform_updated_this_frame);
-      if (l_transform->m_changed) {
-        __update_transform(*l_transform);
-        *l_transform_updated_this_frame = 1;
+                      &l_transform_meta);
+      if (l_transform_meta->m_changed) {
+        __update_transform(*l_transform, *l_transform_meta);
+        l_transform_meta->m_updated_this_frame = 1;
       } else {
-        *l_transform_updated_this_frame = 0;
+        l_transform_meta->m_updated_this_frame = 0;
       }
     }
 
@@ -261,10 +264,10 @@ template <typename Engine> struct scene {
       struct camera &l_camera = m_cameras.at(m_allocated_cameras.at(i));
 
       transform *l_transform;
-      transform_updated_this_frame_t *l_transform_updated_this_frame;
+      transform_meta *l_transform_meta;
       m_transforms.at(l_camera.m_transform.m_idx, &l_transform,
-                      &l_transform_updated_this_frame);
-      if (*l_transform_updated_this_frame) {
+                      &l_transform_meta);
+      if (l_transform_meta->m_updated_this_frame) {
         l_ren.camera_set_view(
             l_camera.m_camera,
             m::look_at(l_transform->m_local_position +
@@ -292,18 +295,19 @@ template <typename Engine> struct scene {
   };
 
 private:
-  void __update_transform(transform &p_transform) {
-    assert_debug(p_transform.m_changed);
+  void __update_transform(transform &p_transform,
+                          transform_meta &p_transform_meta) {
+    assert_debug(p_transform_meta.m_changed);
     p_transform.m_local_to_world = m::translate(p_transform.m_local_position) *
                                    m::rotation(p_transform.m_local_rotation);
-    p_transform.m_changed = 0;
+    p_transform_meta.m_changed = 0;
   };
 
-  transform_handle
-  __push_transform(const transform &p_transform,
-                   transform_updated_this_frame_t p_updated_this_frame) {
+  transform_handle __push_transform(const transform &p_transform) {
+    transform_meta l_transform_meta = {.m_updated_this_frame = 0,
+                                       .m_changed = 1};
     transform_handle l_handle = {
-        m_transforms.push_back(p_transform, p_updated_this_frame)};
+        m_transforms.push_back(p_transform, l_transform_meta)};
     m_allocated_transform.push_back(l_handle);
     return l_handle;
   };
