@@ -43,11 +43,16 @@ public:
       l_camera_view.set_render_width_height(m_width, m_height);
       l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
                                     fix32(100.0f));
-      l_camera_view.set_local_position({5, 5, 5});
+
+      l_camera_view.set_local_position({0, 0, 5});
+      auto l_rot = m::rotate_around(m::pi<fix32>(), position_t::up);
       l_camera_view.set_local_rotation(
-          m::quat_lookat(m::normalize(position_t{0, 0, 0} -
-                                      l_camera_view.get_local_position()),
-                         position_t::up));
+          m::quat_lookat({0, 0, -1}, position_t::up));
+// OK case
+#if 0
+      l_camera_view.set_local_position({0,5, 5});
+      l_camera_view.set_local_rotation(m::rotate_around(m::pi<fix32>(), position_t::up) * m::rotate_around(m::pi_4<fix32>(), position_t::left));
+#endif
     }
 
     {

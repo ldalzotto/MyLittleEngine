@@ -3,9 +3,9 @@
 #include <assets/loader/mesh_obj.hpp>
 #include <eng/engine.hpp>
 #include <eng/scene.hpp>
+#include <m/const.hpp>
 #include <rast/impl/rast_impl.hpp>
 #include <tst/test_rasterizer_assets.hpp>
-#include <m/const.hpp>
 
 #define WRITE_OUTPUT 1
 
@@ -166,6 +166,9 @@ TEST_CASE("rast.single_triangle.visibility") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
+  l_camera_view.set_local_position({0, 0, 1});
+  l_camera_view.set_local_rotation(
+      m::rotate_around(m::pi<fix32>(), position_t::up));
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -227,6 +230,9 @@ TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
+  l_camera_view.set_local_position({0, 0, 1});
+  l_camera_view.set_local_rotation(
+      m::rotate_around(m::pi<fix32>(), position_t::up));
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -292,6 +298,9 @@ TEST_CASE("rast.cull.clockwise.counterclockwise") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
+  l_camera_view.set_local_position({0, 0, 1});
+  l_camera_view.set_local_rotation(
+      m::rotate_around(m::pi<fix32>(), position_t::up));
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -372,6 +381,9 @@ TEST_CASE("rast.depth.comparison") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
+  l_camera_view.set_local_position({0, 0, 1});
+  l_camera_view.set_local_rotation(
+      m::rotate_around(m::pi<fix32>(), position_t::up));
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -440,6 +452,9 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
+  l_camera_view.set_local_position({0, 0, 1});
+  l_camera_view.set_local_rotation(
+      m::rotate_around(m::pi<fix32>(), position_t::up));
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -510,6 +525,9 @@ TEST_CASE("rast.depth.comparison.readonly") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
+  l_camera_view.set_local_position({0, 0, 1});
+  l_camera_view.set_local_rotation(
+      m::rotate_around(m::pi<fix32>(), position_t::up));
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -580,6 +598,9 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
+  l_camera_view.set_local_position({0, 0, 1});
+  l_camera_view.set_local_rotation(
+      m::rotate_around(m::pi<fix32>(), position_t::up));
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -715,7 +736,7 @@ f 7/7 4/4 8/8
       "/media/loic/SSD/SoftwareProjects/glm/"
       "rast.3Dcube.png",
       l_engine, l_width, l_height,
-      frame_expected::rast_depth_comparison_outofbounds());
+      frame_expected::rast_3Dcube());
 
   for (auto l_mesh_renderer_it = 0;
        l_mesh_renderer_it < l_mesh_renderers.count(); ++l_mesh_renderer_it) {
