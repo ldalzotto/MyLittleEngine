@@ -379,7 +379,7 @@ TEST_CASE("rast.depth.comparison") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
-  l_camera_view.set_local_position({0, 0, -1});
+  l_camera_view.set_local_position({0, 0, -0.5});
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -448,7 +448,7 @@ TEST_CASE("rast.depth.comparison.large_framebuffer") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
-  l_camera_view.set_local_position({0, 0, -1});
+  l_camera_view.set_local_position({0, 0, -0.5});
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -519,7 +519,7 @@ TEST_CASE("rast.depth.comparison.readonly") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
-  l_camera_view.set_local_position({0, 0, -1});
+  l_camera_view.set_local_position({0, 0, -0.5});
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
@@ -590,7 +590,7 @@ TEST_CASE("rast.depth.comparison.outofbounds") {
   l_camera_view.set_width_height(l_width, l_height);
   l_camera_view.set_render_width_height(l_width, l_height);
   l_camera_view.set_projection(m::mat<fix32, 4, 4>::getIdentity());
-  l_camera_view.set_local_position({0, 0, -1});
+  l_camera_view.set_local_position({0, 0, -0.5});
 
   auto l_mesh_raw = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
