@@ -8,14 +8,14 @@ namespace m {
 template <typename T> struct quat {
   T m_data[4];
 
-  T &x() { return m_data[0]; };
-  T &y() { return m_data[1]; };
-  T &z() { return m_data[2]; };
-  T &w() { return m_data[3]; };
-  const T &x() const { return m_data[0]; };
-  const T &y() const { return m_data[1]; };
-  const T &z() const { return m_data[2]; };
-  const T &w() const { return m_data[3]; };
+  T &w() { return m_data[0]; };
+  T &x() { return m_data[1]; };
+  T &y() { return m_data[2]; };
+  T &z() { return m_data[3]; };
+  const T &w() const { return m_data[0]; };
+  const T &x() const { return m_data[1]; };
+  const T &y() const { return m_data[2]; };
+  const T &z() const { return m_data[3]; };
 
   static quat getIdentity() {
     quat l_quat;
