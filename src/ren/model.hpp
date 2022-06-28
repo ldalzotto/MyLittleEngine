@@ -19,7 +19,7 @@ struct shader_handle {
 struct shader_meta {
   enum class cull_mode { clockwise, cclockwise } m_cull_mode;
   ui8 m_write_depth;
-  enum class depth_test { less } m_depth_test;
+  enum class depth_test { none, less } m_depth_test;
 
   inline static shader_meta get_default() {
     return {.m_cull_mode = cull_mode::clockwise,
