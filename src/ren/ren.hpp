@@ -34,6 +34,11 @@ template <typename Private> struct ren_api {
     thiz.camera_set_perspective(p_camera, p_fov, p_near, p_far);
   };
 
+  FORCE_INLINE void camera_set_orthographic(camera_handle p_camera,
+                                            fix32 p_near, fix32 p_far) {
+    thiz.camera_set_orthographic(p_camera, p_near, p_far);
+  };
+
   FORCE_INLINE void
   camera_set_projection(camera_handle p_camera,
                         const m::mat<fix32, 4, 4> &p_projection) {

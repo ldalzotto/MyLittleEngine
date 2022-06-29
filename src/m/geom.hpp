@@ -200,6 +200,19 @@ static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
   return l_result;
 };
 
+template <typename T>
+static mat<T, 4, 4> orthographic(T left, T right, T bottom, T top, T zNear,
+                                 T zFar) {
+  mat<T, 4, 4> l_result = l_result.getIdentity();
+  l_result.at(0, 0) = T(2) / (right - left);
+  l_result.at(1, 1) = T(2) / (top - bottom);
+  l_result.at(2, 2) = T(-2) / (zFar - zNear);
+  l_result.at(3, 0) = T(-1) * (right + left) / (right - left);
+  l_result.at(3, 1) = T(-1) *(top + bottom) / (top - bottom);
+  l_result.at(3, 2) = T(-1) *(zFar + zNear) / (zFar - zNear);
+  return l_result;
+};
+
 template <typename T, typename AngleT>
 static mat<T, 4, 4> rotate_around(const mat<T, 4, 4> &thiz, AngleT p_angle_rad,
                                   const vec<T, 3> &p_axis) {

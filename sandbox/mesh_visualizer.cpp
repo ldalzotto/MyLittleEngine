@@ -63,6 +63,42 @@ public:
 # www.blender.org
 mtllib cube.mtl
 o Cube
+v -1.0 1.0 1.0
+v 1.0 1.0 1.0
+v -1.0 -1.0 1.0
+v 1.0 -1.0 1.0
+v -1.0 1.0 -1.0
+v 1.0 1.0 -1.0
+v -1.0 -1.0 -1.0
+v 1.0 -1.0 -1.0
+vc 0 0 0
+vc 0 0 255
+vc 0 255 0
+vc 0 255 255
+vc 255 0 0
+vc 255 0 255
+vc 255 255 0
+vc 255 255 255
+f 1/1 2/2 3/3
+f 2/2 4/4 3/3
+f 5/5 7/7 6/6
+f 6/6 7/7 8/8
+f 1/1 3/3 5/5
+f 5/5 3/3 7/7
+f 2/2 6/6 4/4
+f 6/6 8/8 4/4
+f 1/1 5/5 2/2
+f 5/5 6/6 2/2
+f 3/3 4/4 7/7
+f 7/7 4/4 8/8
+  )"""");
+
+  #if 0
+        auto l_obj_str = container::arr_literal<ui8>(R""""(
+# Blender v2.76 (sub 0) OBJ File: ''
+# www.blender.org
+mtllib cube.mtl
+o Cube
 v -1.000000 1.000000 1.000000
 v 1.000000 1.000000 1.000000
 v -1.000000 -1.000000 1.000000
@@ -93,6 +129,8 @@ f 5/5 6/6 2/2
 f 3/3 4/4 7/7
 f 7/7 4/4 8/8
   )"""");
+
+  #endif
 
       assets::mesh l_mesh =
           assets::obj_mesh_loader().compile(l_obj_str.range());
@@ -157,6 +195,21 @@ f 7/7 4/4 8/8
     l_mesh_renderer.set_mesh(m_mesh_0);
     l_mesh_renderer.set_program(m_shader);
     l_mesh_renderer.set_local_position({0, 0, 0});
+
+    {
+      auto l_second_mesh_renderer = m_scene.mesh_renderer_create();
+      m_scene.mesh_renderer(l_second_mesh_renderer).set_mesh(m_mesh_0);
+      m_scene.mesh_renderer(l_second_mesh_renderer).set_program(m_shader);
+      m_scene.mesh_renderer(l_second_mesh_renderer)
+          .set_local_position({0, 0, 1});
+    }
+    {
+      auto l_second_mesh_renderer = m_scene.mesh_renderer_create();
+      m_scene.mesh_renderer(l_second_mesh_renderer).set_mesh(m_mesh_0);
+      m_scene.mesh_renderer(l_second_mesh_renderer).set_program(m_shader);
+      m_scene.mesh_renderer(l_second_mesh_renderer)
+          .set_local_position({1.5, 1, 0});
+    }
   };
 
   void free(eng::engine_api<EngineImpl> p_engine) {
@@ -197,7 +250,7 @@ f 7/7 4/4 8/8
     }
 
     rotation_t l_rotation =
-        m::rotate_around(m_delta * m_counter, position_t::up);
+        m::rotate_around(m_delta * m_counter, {1,0,0});
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
     l_mesh_renderer.set_local_rotation(l_rotation);

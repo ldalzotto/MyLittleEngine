@@ -3,9 +3,9 @@
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
+#include <m/geom.hpp>
 #include <m/polygon.hpp>
 #include <m/rect.hpp>
-#include <m/geom.hpp>
 #include <rast/model.hpp>
 #include <shared/types.hpp>
 
@@ -431,6 +431,8 @@ private:
                         m_heap.m_vertex_output_send_to_vertex_shader.m_data);
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
+      l_vertex_shader_out.z() = (l_vertex_shader_out.z() + 1) * 0.5;
+      l_vertex_shader_out.z() = fix32(1) - l_vertex_shader_out.z();
 
 #if TODO_NEAR_FAR_CLIPPING
       if (l_vertex_shader_out.z() > 1.0f || l_vertex_shader_out.z() < 0.0f) {
@@ -439,8 +441,13 @@ private:
 
       uv_t l_pixel_coordinates_fix32 = uv_t::make(l_vertex_shader_out);
 
-      l_pixel_coordinates_fix32 = (l_pixel_coordinates_fix32 + 1) * 0.5;
+      // (-1, 1) -> (0, 1)
+      l_pixel_coordinates_fix32 =
+          (l_pixel_coordinates_fix32 + 1) * 0.5; // range is (0, 1)
+      l_pixel_coordinates_fix32.x() = fix32(1) - l_pixel_coordinates_fix32.x();
       l_pixel_coordinates_fix32.y() = fix32(1) - l_pixel_coordinates_fix32.y();
+      // l_pixel_coordinates_fix32.x() = fix32(1) -
+      // l_pixel_coordinates_fix32.x();
       l_pixel_coordinates_fix32 *= (m_input.m_rect.extend() - 1);
 
       m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_fix32.cast<i16>();
@@ -493,13 +500,13 @@ private:
           (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
           (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
 
-      if constexpr (CullModeValue == CullMode::CounterClockwise) {
+      if constexpr (CullModeValue == CullMode::Clockwise) {
         if (*l_area <= 0) {
           i -= 1;
           m_polygon_count -= 1;
           goto next;
         }
-      } else if constexpr (CullModeValue == CullMode::Clockwise) {
+      } else if constexpr (CullModeValue == CullMode::CounterClockwise) {
         if (*l_area >= 0) {
           i -= 1;
           m_polygon_count -= 1;

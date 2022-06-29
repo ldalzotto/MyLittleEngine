@@ -280,3 +280,4 @@ template <typename T, ui8 ScaleFactor> struct is_fixed<fixed<T, ScaleFactor>> {
 }; // namespace m
 
 using fix32 = m::fixed<i32, 10>;
+// using fix32 = f32;
