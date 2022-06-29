@@ -3,9 +3,9 @@
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
+#include <m/geom.hpp>
 #include <m/polygon.hpp>
 #include <m/rect.hpp>
-#include <m/geom.hpp>
 #include <rast/model.hpp>
 #include <shared/types.hpp>
 
@@ -437,10 +437,14 @@ private:
       }
 #endif
 
+      // l_vertex_shader_out = (l_vertex_shader_out + 1) * 0.5;
+      l_vertex_shader_out.z() = fix32(1) - (l_vertex_shader_out.z() - 1);
+
       uv_t l_pixel_coordinates_fix32 = uv_t::make(l_vertex_shader_out);
 
       l_pixel_coordinates_fix32 = (l_pixel_coordinates_fix32 + 1) * 0.5;
-      l_pixel_coordinates_fix32.y() = fix32(1) - l_pixel_coordinates_fix32.y();
+      // l_pixel_coordinates_fix32.y() = fix32(1) -
+      // l_pixel_coordinates_fix32.y();
       l_pixel_coordinates_fix32 *= (m_input.m_rect.extend() - 1);
 
       auto l_pixel_coordinate_i16 = l_pixel_coordinates_fix32.cast<i16>();

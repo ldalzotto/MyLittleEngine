@@ -6,16 +6,38 @@
 #include <ren/impl/ren_impl.hpp>
 #include <tst/test_common.hpp>
 
-#define WRITE_OUTPUT 1
+#define WRITE_OUTPUT_TO_TMP 0
+#define WRITE_OUTPUT_TO_RESULT 0
+
+inline static constexpr auto TEST_REN_RELATIVE_FOLDER =
+    container::arr_literal<ui8>(TEST_RESOURCE_PATH_RAW "ren/");
+
+inline static constexpr auto TEST_REN_TMP_FOLDER =
+    container::arr_literal<ui8>("/media/loic/SSD/SoftwareProjects/glm/");
+
+inline static container::span<ui8>
+test_file_path_null_terminated(const container::range<ui8> &p_left,
+                               const container::range<ui8> &p_relative_path) {
+  container::span<ui8> l_tmp_path_null_terminated;
+  l_tmp_path_null_terminated.allocate(p_left.count() + p_relative_path.count() +
+                                      1);
+  l_tmp_path_null_terminated.range().copy_from(p_left);
+  l_tmp_path_null_terminated.range()
+      .slide(p_left.size_of())
+      .copy_from(p_relative_path);
+  l_tmp_path_null_terminated.at(l_tmp_path_null_terminated.count() - 1) = '\0';
+  return l_tmp_path_null_terminated;
+};
 
 namespace RasterizerTestToolbox {
 
-template <typename ExpectedFrameType, typename Engine>
+template <typename Engine>
 inline static void
-assert_frame_equals(const i8 *p_save_path, eng::engine_api<Engine> p_engine,
-                    ui16 p_width, ui16 p_height,
-                    const ExpectedFrameType &p_expected_frame) {
+assert_frame_equals(const container::range<ui8> &p_relative_path,
+                    eng::engine_api<Engine> p_engine, ui16 p_width,
+                    ui16 p_height) {
   container::range<ui8> l_png_frame;
+  container::span<rgb_t> l_frame_buffer_rgb;
   {
 
     container::range<rgba_t> p_frame_buffer_rgba =
@@ -24,28 +46,58 @@ assert_frame_equals(const i8 *p_save_path, eng::engine_api<Engine> p_engine,
             .m_data.range()
             .template cast_to<rgba_t>();
 
-    container::span<rgb_t> l_frame_buffer_rgb;
     l_frame_buffer_rgb.allocate(p_frame_buffer_rgba.count());
     for (auto i = 0; i < p_frame_buffer_rgba.count(); ++i) {
       l_frame_buffer_rgb.at(i) = p_frame_buffer_rgba.at(i).xyz();
     }
 
-#if WRITE_OUTPUT
-    TestUtils::write_png((const ui8 *)p_save_path, p_width, p_height, 3,
-                         (ui8 *)l_frame_buffer_rgb.data(), 3 * p_width);
-#endif
+    if (WRITE_OUTPUT_TO_TMP) {
+      container::span<ui8> l_tmp_path_null_terminated =
+          test_file_path_null_terminated(TEST_REN_TMP_FOLDER.range(),
+                                         p_relative_path);
+      TestUtils::write_png((const ui8 *)l_tmp_path_null_terminated.data(),
+                           p_width, p_height, 3,
+                           (ui8 *)l_frame_buffer_rgb.data(), 3 * p_width);
+      l_tmp_path_null_terminated.free();
+    }
+
+    if (WRITE_OUTPUT_TO_RESULT) {
+      container::span<ui8> l_tmp_path_null_terminated =
+          test_file_path_null_terminated(TEST_REN_RELATIVE_FOLDER.range(),
+                                         p_relative_path);
+      TestUtils::write_png((const ui8 *)l_tmp_path_null_terminated.data(),
+                           p_width, p_height, 3,
+                           (ui8 *)l_frame_buffer_rgb.data(), 3 * p_width);
+      l_tmp_path_null_terminated.free();
+    }
 
     l_png_frame =
         TestUtils::write_png_to_mem((const ui8 *)l_frame_buffer_rgb.data(),
                                     3 * p_width, p_width, p_height, 3);
-
-    l_frame_buffer_rgb.free();
   }
 
-#if !WRITE_OUTPUT
-  REQUIRE(l_png_frame.count() == p_expected_frame.count());
-#endif
+  if (!WRITE_OUTPUT_TO_TMP) {
+
+    container::span<ui8> l_expected_path_null_terminated =
+        test_file_path_null_terminated(TEST_REN_RELATIVE_FOLDER.range(),
+                                       p_relative_path);
+    i32 l_width, l_height, l_channel;
+    container::range<ui8> l_expected_frame;
+    l_expected_frame.m_begin =
+        TestUtils::read_png((const ui8 *)l_expected_path_null_terminated.data(),
+                            &l_width, &l_height, &l_channel, 0);
+    l_expected_frame.m_count = l_width * l_height * l_channel;
+    l_expected_path_null_terminated.free();
+
+    // REQUIRE(l_png_frame.count() == l_expected_frame.count());
+    REQUIRE(l_expected_frame.is_contained_by(
+        l_frame_buffer_rgb.range().cast_to<ui8>()));
+
+    TestUtils::read_free(l_expected_frame.m_begin);
+  }
   TestUtils::write_free(l_png_frame.m_begin);
+
+  l_frame_buffer_rgb.free();
 };
 
 template <typename Engine>
@@ -131,110 +183,181 @@ f 3/3 4/4 7/7
 f 7/7 4/4 8/8
   )"""");
 
-TEST_CASE("ren.cube.faces") {
-  constexpr ui16 l_width = 64, l_height = 64;
+struct BaseRenCubeTest {
 
   using engine_t =
       eng::details::engine<ren::details::ren_impl, rast_impl_software>;
-  engine_t __engine;
-  __engine.allocate(l_width, l_height);
-  eng::engine_api<engine_t> l_engine = {__engine};
-
   using scene_t = eng::scene<engine_t>;
-  scene_t l_scene{&__engine};
-  l_scene.allocate();
+  engine_t __engine;
+  scene_t l_scene;
 
-  eng::object_handle l_camera = l_scene.camera_create();
-  eng::camera_view<scene_t> l_camera_view = l_scene.camera(l_camera);
-  l_camera_view.set_width_height(l_width, l_height);
-  l_camera_view.set_render_width_height(l_width, l_height);
-  l_camera_view.set_perspective(60.0f * m::deg_to_rad, 0.1, 50);
+  ui16 m_width;
+  ui16 m_height;
 
-  auto l_cube_mesh = assets::obj_mesh_loader{}.compile(l_cube_mesh_obj.range());
-  ren::mesh_handle l_mesh_handle = l_engine.renderer_api().create_mesh(
-      l_cube_mesh, l_engine.rasterizer_api());
-  l_cube_mesh.free();
+  ren::mesh_handle m_mesh_handle;
+  ren::shader_handle m_shader;
 
-  ren::shader_handle l_shader_c =
-      RasterizerTestToolbox::load_shader<ColorInterpolationShader>(
-          l_engine, ren::shader_meta::get_default());
+  BaseRenCubeTest(ui16 p_width, ui16 p_height) {
+    __engine.allocate(p_width, p_height);
+    api_decltype(eng::engine_api, l_engine, __engine);
+    l_scene = {&__engine};
+    l_scene.allocate();
+    m_width = p_width;
+    m_height = p_height;
 
-  eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
-  l_scene.mesh_renderer(l_mesh_renderer).set_mesh(l_mesh_handle);
-  l_scene.mesh_renderer(l_mesh_renderer).set_program(l_shader_c);
+    auto l_cube_mesh =
+        assets::obj_mesh_loader{}.compile(l_cube_mesh_obj.range());
+    m_mesh_handle = l_engine.renderer_api().create_mesh(
+        l_cube_mesh, l_engine.rasterizer_api());
+    l_cube_mesh.free();
 
-  // look at front face (camera look at -z)
-  l_scene.camera(l_camera).set_local_position({0, 0, 10});
-  l_scene.camera(l_camera).set_local_rotation(
+    ren::shader_meta l_meta = {
+        .m_cull_mode = ren::shader_meta::cull_mode::cclockwise,
+        .m_write_depth = 1,
+        .m_depth_test = ren::shader_meta::depth_test::less};
+
+    m_shader = RasterizerTestToolbox::load_shader<ColorInterpolationShader>(
+        l_engine, ren::shader_meta::get_default());
+  }
+
+  ~BaseRenCubeTest(){
+
+  };
+
+  void update() {
+    api_decltype(eng::engine_api, l_engine, __engine);
+    l_engine.update([&]() { l_scene.update(); });
+  };
+
+  eng::object_handle create_perspective_camera() {
+    eng::object_handle l_camera = l_scene.camera_create();
+    eng::camera_view<scene_t> l_camera_view = l_scene.camera(l_camera);
+    l_camera_view.set_width_height(m_width, m_height);
+    l_camera_view.set_render_width_height(m_width, m_height);
+    l_camera_view.set_perspective(60.0f * m::deg_to_rad, 0.1, 50);
+    return l_camera;
+  };
+
+  eng::object_handle create_mesh_renderer() {
+    eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
+    l_scene.mesh_renderer(l_mesh_renderer).set_mesh(m_mesh_handle);
+    l_scene.mesh_renderer(l_mesh_renderer).set_program(m_shader);
+    return l_mesh_renderer;
+  };
+};
+
+// look at back face (camera forward is +z)
+TEST_CASE("ren.cube.face.back") {
+  constexpr ui16 l_width = 64, l_height = 64;
+
+  BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
+  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
+
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, -10});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::quat<fix32>::getIdentity());
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.back.png");
+  RasterizerTestToolbox::assert_frame_equals(
+      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+}
+
+// look at front face (camera forward is -z)
+TEST_CASE("ren.cube.face.front") {
+  constexpr ui16 l_width = 64, l_height = 64;
+
+  BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
+  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
+
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, 10});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
       m::rotate_around(m::pi<fix32>(), position_t::up));
 
-  __engine.update([&]() { l_scene.update(); });
+  l_test.update();
 
+  auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.front.png");
   RasterizerTestToolbox::assert_frame_equals(
-      "/media/loic/SSD/SoftwareProjects/glm/"
-      "ren.cube.faces.front.png",
-      l_engine, l_width, l_height, container::range<ui8>::make(0, 0));
+      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+}
 
-  // look at back face (camera look at z)
-  l_scene.camera(l_camera).set_local_position({0, 0, -10});
-  l_scene.camera(l_camera).set_local_rotation(m::quat<fix32>::getIdentity());
+// look at right face (camera forward is +x)
+TEST_CASE("ren.cube.face.right") {
+  constexpr ui16 l_width = 64, l_height = 64;
 
-  __engine.update([&]() { l_scene.update(); });
+  BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
+  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
-  RasterizerTestToolbox::assert_frame_equals(
-      "/media/loic/SSD/SoftwareProjects/glm/"
-      "ren.cube.faces.back.png",
-      l_engine, l_width, l_height, container::range<ui8>::make(0, 0));
-
-  // look at left face (camera look at -x)
-  l_scene.camera(l_camera).set_local_position({10, 0, 0});
-  l_scene.camera(l_camera).set_local_rotation(
-      m::rotate_around(-m::pi_2<fix32>(), position_t::up));
-
-  __engine.update([&]() { l_scene.update(); });
-
-  RasterizerTestToolbox::assert_frame_equals(
-      "/media/loic/SSD/SoftwareProjects/glm/"
-      "ren.cube.faces.left.png",
-      l_engine, l_width, l_height, container::range<ui8>::make(0, 0));
-
-  // look at right face (camera look at +x)
-  l_scene.camera(l_camera).set_local_position({-10, 0, 0});
-  l_scene.camera(l_camera).set_local_rotation(
+  l_test.l_scene.camera(l_camera).set_local_position({-10, 0, 0});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
       m::rotate_around(m::pi_2<fix32>(), position_t::up));
 
-  __engine.update([&]() { l_scene.update(); });
+  l_test.update();
 
+  auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.right.png");
   RasterizerTestToolbox::assert_frame_equals(
-      "/media/loic/SSD/SoftwareProjects/glm/"
-      "ren.cube.faces.right.png",
-      l_engine, l_width, l_height, container::range<ui8>::make(0, 0));
+      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+}
 
-  // look at up face (camera look at -y)
-  l_scene.camera(l_camera).set_local_position({0, 10, 0});
-  l_scene.camera(l_camera).set_local_rotation(
-      m::rotate_around(m::pi_2<fix32>(), position_t::left));
+// look at left face (camera forward is -x)
+TEST_CASE("ren.cube.face.left") {
+  constexpr ui16 l_width = 64, l_height = 64;
 
-  __engine.update([&]() { l_scene.update(); });
+  BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
+  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
+  l_test.l_scene.camera(l_camera).set_local_position({10, 0, 0});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::rotate_around(-m::pi_2<fix32>(), position_t::up));
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.left.png");
   RasterizerTestToolbox::assert_frame_equals(
-      "/media/loic/SSD/SoftwareProjects/glm/"
-      "ren.cube.faces.up.png",
-      l_engine, l_width, l_height, container::range<ui8>::make(0, 0));
+      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+}
 
-  // look at bottom face (camera look at +y)
-  l_scene.camera(l_camera).set_local_position({0, -10, 0});
-  l_scene.camera(l_camera).set_local_rotation(
+// look at down face (camera forward is +y)
+TEST_CASE("ren.cube.face.down") {
+  constexpr ui16 l_width = 64, l_height = 64;
+
+  BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
+  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
+
+  l_test.l_scene.camera(l_camera).set_local_position({0, -10, 0});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
       m::rotate_around(-m::pi_2<fix32>(), position_t::left));
 
-  __engine.update([&]() { l_scene.update(); });
+  l_test.update();
 
+  auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.down.png");
   RasterizerTestToolbox::assert_frame_equals(
-      "/media/loic/SSD/SoftwareProjects/glm/"
-      "ren.cube.faces.bottom.png",
-      l_engine, l_width, l_height, container::range<ui8>::make(0, 0));
+      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+}
 
-  // l_camera_view.set_local_position({0.0f, 5.0f, 35.0f});
+// look at up face (camera forward is -y)
+TEST_CASE("ren.cube.face.up") {
+  constexpr ui16 l_width = 64, l_height = 64;
+
+  BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
+  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
+
+  l_test.l_scene.camera(l_camera).set_local_position({0, 10, 0});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::rotate_around(m::pi_2<fix32>(), position_t::left));
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.up.png");
+  RasterizerTestToolbox::assert_frame_equals(
+      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
 }
 
 #include <sys/sys_impl.hpp>
