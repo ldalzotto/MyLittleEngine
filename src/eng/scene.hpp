@@ -275,11 +275,8 @@ template <typename Engine> struct scene {
       m_transforms.at(l_camera.m_transform.m_idx, &l_transform,
                       &l_transform_meta);
       if (l_transform_meta->m_updated_this_frame) {
-        l_ren.camera_set_view(
-            l_camera.m_camera,
-            m::look_at(l_transform->m_local_position +
-                           l_transform->m_local_to_world.forward().xyz(),
-                       l_transform->m_local_position, position_t::up));
+        l_ren.camera_set_view(l_camera.m_camera,
+                              m::inverse(l_transform->m_local_to_world));
       }
     }
 
