@@ -279,9 +279,9 @@ struct ren_impl {
         p_rast.setIndexBuffer(*l_index_buffer);
         p_rast.setVertexBuffer(0, *l_vertex_buffer);
         p_rast.setState(l_state);
-      }
 
-      p_rast.submit(0, l_shader_rast_handles->m_program);
+        p_rast.submit(0, l_shader_rast_handles->m_program);
+      }
     });
   };
 

@@ -443,7 +443,8 @@ private:
       l_pixel_coordinates_fix32.y() = fix32(1) - l_pixel_coordinates_fix32.y();
       l_pixel_coordinates_fix32 *= (m_input.m_rect.extend() - 1);
 
-      m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_fix32.cast<i16>();
+      auto l_pixel_coordinate_i16 = l_pixel_coordinates_fix32.cast<i16>();
+      m_heap.get_pixel_coordinates(i) = l_pixel_coordinate_i16;
 
       if (m_state.m_depth_read) {
         m_heap.m_per_vertices.set(
