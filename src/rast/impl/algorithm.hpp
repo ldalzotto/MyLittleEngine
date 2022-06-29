@@ -438,7 +438,7 @@ private:
 #endif
 
       // l_vertex_shader_out = (l_vertex_shader_out + 1) * 0.5;
-      l_vertex_shader_out.z() = fix32(1) - (l_vertex_shader_out.z() - 1);
+      // l_vertex_shader_out.z() = fix32(1) - (l_vertex_shader_out.z() - 1);
 
       uv_t l_pixel_coordinates_fix32 = uv_t::make(l_vertex_shader_out);
 

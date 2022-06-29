@@ -6,7 +6,7 @@
 #include <ren/impl/ren_impl.hpp>
 #include <tst/test_common.hpp>
 
-#define WRITE_OUTPUT_TO_TMP 0
+#define WRITE_OUTPUT_TO_TMP 1
 #define WRITE_OUTPUT_TO_RESULT 0
 
 inline static constexpr auto TEST_REN_RELATIVE_FOLDER =
@@ -217,7 +217,7 @@ struct BaseRenCubeTest {
         .m_depth_test = ren::shader_meta::depth_test::less};
 
     m_shader = RasterizerTestToolbox::load_shader<ColorInterpolationShader>(
-        l_engine, ren::shader_meta::get_default());
+        l_engine, l_meta);
   }
 
   ~BaseRenCubeTest(){
@@ -238,6 +238,16 @@ struct BaseRenCubeTest {
     return l_camera;
   };
 
+  eng::object_handle create_orthographic_camera() {
+    api_decltype(eng::engine_api, l_engine, __engine);
+    eng::object_handle l_camera = l_scene.camera_create();
+    eng::camera_view<scene_t> l_camera_view = l_scene.camera(l_camera);
+    l_camera_view.set_width_height(m_width, m_height);
+    l_camera_view.set_render_width_height(m_width, m_height);
+    l_camera_view.set_orthographic(5, 5, 0.1, 50);
+    return l_camera;
+  };
+
   eng::object_handle create_mesh_renderer() {
     eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
     l_scene.mesh_renderer(l_mesh_renderer).set_mesh(m_mesh_handle);
@@ -251,7 +261,7 @@ TEST_CASE("ren.cube.face.back") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -10});
@@ -270,7 +280,7 @@ TEST_CASE("ren.cube.face.front") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, 10});
@@ -289,7 +299,7 @@ TEST_CASE("ren.cube.face.right") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
   l_test.l_scene.camera(l_camera).set_local_position({-10, 0, 0});
@@ -308,7 +318,7 @@ TEST_CASE("ren.cube.face.left") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
   l_test.l_scene.camera(l_camera).set_local_position({10, 0, 0});
@@ -327,7 +337,7 @@ TEST_CASE("ren.cube.face.down") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
   l_test.l_scene.camera(l_camera).set_local_position({0, -10, 0});
@@ -346,7 +356,7 @@ TEST_CASE("ren.cube.face.up") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_perspective_camera();
+  eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
   l_test.l_scene.camera(l_camera).set_local_position({0, 10, 0});
@@ -356,6 +366,25 @@ TEST_CASE("ren.cube.face.up") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.up.png");
+  RasterizerTestToolbox::assert_frame_equals(
+      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+}
+
+// look at up face (camera forward is -y)
+TEST_CASE("ren.cube.corner.up") {
+  constexpr ui16 l_width = 64, l_height = 64;
+
+  BaseRenCubeTest l_test = BaseRenCubeTest(l_width, l_height);
+  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
+
+  l_test.l_scene.camera(l_camera).set_local_position({-5, -5, -5});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::quat_lookat(m::normalize(position_t{1, 1, 1}), position_t::up));
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.png");
   RasterizerTestToolbox::assert_frame_equals(
       l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
 }

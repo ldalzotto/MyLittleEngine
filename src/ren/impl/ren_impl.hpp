@@ -149,6 +149,14 @@ struct ren_impl {
         p_fov, fix32(l_camera->m_width) / l_camera->m_height, p_near, p_far);
   };
 
+  void camera_set_orthographic(camera_handle p_camera, fix32 p_width,
+                               fix32 p_height, fix32 p_near, fix32 p_far) {
+    camera *l_camera;
+    m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, none());
+    l_camera->m_projection = m::orthographic<fix32>(
+        -p_width, p_width, -p_height, p_height, p_near, p_far);
+  };
+
   void camera_set_projection(camera_handle p_camera,
                              const m::mat<fix32, 4, 4> &p_projection) {
     camera *l_camera;
