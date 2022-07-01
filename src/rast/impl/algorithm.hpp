@@ -432,11 +432,7 @@ private:
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
-
       l_vertex_shader_out = (l_vertex_shader_out + 1) * 0.5;
-
-      l_vertex_shader_out.z() = fix32(1.0f) - l_vertex_shader_out.z();
-      l_vertex_shader_out.x() = fix32(1.0f) - l_vertex_shader_out.x();
 
 #if TODO_NEAR_FAR_CLIPPING
       if (l_vertex_shader_out.z() > 1.0f || l_vertex_shader_out.z() < 0.0f) {

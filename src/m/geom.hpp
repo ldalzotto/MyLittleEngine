@@ -212,14 +212,13 @@ static mat<T, 4, 4> orthographic(T left, T right, T bottom, T top, T zNear,
   l_result.at(3, 1) = T(-1) * (top + bottom) / (top - bottom);
   l_result.at(3, 2) = ((zFar + zNear) / (zFar - zNear));
 
-  l_result.at(2, 2) = l_result.at(2, 2) * -1;
-  l_result.at(3, 2) = (l_result.at(3, 2) * -1) + 1;
+  l_result.at(0, 0) *= -1;
+  l_result.at(3, 0) *= -1;
 
-  // l_result.at(0, 0) = l_result.at(0, 0) * -1;
-  // l_result.at(3, 0) * l_result.at(3, 0) * -1;
+  l_result.at(1, 1) *= -1;
 
-  l_result.at(1, 1) = l_result.at(1, 1) * -1;
-  // l_result.at(3, 1) * l_result.at(3, 1) * -1;
+  l_result.at(3, 2) = l_result.at(3, 2) - 1;
+
 #endif
 
 #if 0
