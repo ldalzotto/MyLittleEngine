@@ -5,9 +5,6 @@
 
 #if !RUNTIME_CI_PREPROCESS
 
-#define TEST_RESOURCE_PATH_RAW_PREPROCESS                                      \
-  "/media/loic/SSD/SoftwareProjects/Once/test_data/"
-
 #define WRITE_OUTPUT_TO_TMP 0
 #define WRITE_OUTPUT_TO_RESULT 0
 

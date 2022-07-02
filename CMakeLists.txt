@@ -11,10 +11,10 @@ if(NOT DEFINED RUNTIME_CI)
     # set(PLATFORM_WEBASSEMBLY true)
 endif()
 
+add_compile_definitions(TEST_RESOURCE_PATH_RAW_PREPROCESS="${CMAKE_CURRENT_SOURCE_DIR}/test_data/")
 
 if(RUNTIME_CI)
     add_compile_definitions(RUNTIME_CI_PREPROCESS=1)
-    add_compile_definitions(TEST_RESOURCE_PATH_RAW_PREPROCESS="${CMAKE_CURRENT_SOURCE_DIR}/test_data/")
 endif()
 
 if(PLATFORM_WEBASSEMBLY)

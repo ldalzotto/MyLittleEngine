@@ -1,12 +1,4 @@
 
-#include <doctest.h>
-#include <m/const.hpp>
-#include <rast/impl/rast_impl.hpp>
-#include <rast/rast.hpp>
-#include <tst/test_rasterizer_assets.hpp>
-
-#define WRITE_OUTPUT 1
-
 #include <tst/test_common.hpp>
 
 namespace RasterizerTestToolbox {
@@ -153,6 +145,8 @@ struct ColorInterpolationShader {
                                                out_fragment);
   };
 };
+
+#if 0
 
 TEST_CASE("rast.single_triangle.visibility") {
 
@@ -968,5 +962,7 @@ TEST_CASE("rast.3Dcube") {
 }
 
 #undef WRITE_OUTPUT
+
+#endif
 
 #include <sys/sys_impl.hpp>
