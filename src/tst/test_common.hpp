@@ -5,7 +5,7 @@
 
 #if !RUNTIME_CI_PREPROCESS
 
-#define TEST_RESOURCE_PATH_RAW_PREPROCESS                                                 \
+#define TEST_RESOURCE_PATH_RAW_PREPROCESS                                      \
   "/media/loic/SSD/SoftwareProjects/Once/test_data/"
 
 #define WRITE_OUTPUT_TO_TMP 0
@@ -36,8 +36,8 @@ struct TestImageAssertionConfig {
         .m_tmp_folder = {.m_begin = (ui8 *)p_tmp_folder.m_begin,
                          .m_count = p_tmp_folder.m_count},
         .m_result_folder = {
-            .m_begin = (ui8 *)p_tmp_folder.m_begin,
-            .m_count = p_tmp_folder.m_count,
+            .m_begin = (ui8 *)p_result_folder.m_begin,
+            .m_count = p_result_folder.m_count,
         }};
   };
 };
