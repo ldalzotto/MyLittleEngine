@@ -15,11 +15,11 @@ template <typename T> struct range {
   T *m_begin;
   uimax m_count;
 
-  static range make(T *p_begin, uimax p_count) {
-    range l_range;
-    l_range.m_begin = p_begin;
-    l_range.m_count = p_count;
-    return l_range;
+  static constexpr range make(T *p_begin, uimax p_count) {
+    return {
+      .m_begin = p_begin,
+      .m_count = p_count
+    };
   };
 
   const T *data() const { return (const T *)m_begin; };
@@ -104,7 +104,7 @@ template <typename T> struct range {
 template <typename T, int N> struct arr {
   T m_data[N];
   container::range<T> range() { return container::range<T>::make(m_data, N); };
-  container::range<T> range() const {
+  constexpr container::range<T> range() const {
     return container::range<T>::make((T *)m_data, N);
   };
   T *data() { return m_data; };
@@ -128,6 +128,16 @@ template <typename T, int N> struct arr {
     }
     return 1;
   };
+};
+
+template <typename OutputType, typename InputType, uimax Size>
+static constexpr container::arr<OutputType, Size - 1>
+arr_literal(const InputType (&arr)[Size]) {
+  container::arr<OutputType, Size - 1> l_value = {0};
+  for (auto i = 0; i < Size - 1; ++i) {
+    l_value.m_data[i] = arr[i];
+  }
+  return l_value;
 };
 
 template <typename T> struct span {
@@ -445,12 +455,20 @@ struct heap_paged_chunk {
 
 namespace heap_chunks {
 static inline ui8 find_next_block(const range<heap_chunk> &p_chunks,
-                                  uimax p_size, uimax *out_chunk_index) {
+                                  uimax p_size, uimax p_alignment,
+                                  uimax *out_chunk_index,
+                                  uimax *out_chunk_alignment_offset) {
   assert_debug(p_size > 0);
+  assert_debug(p_alignment > 0);
   for (auto l_chunk_it = 0; l_chunk_it < p_chunks.count(); ++l_chunk_it) {
     const heap_chunk &l_chunk = p_chunks.at(l_chunk_it);
-    if (l_chunk.m_size >= p_size) {
+    uimax l_chunk_alignment_offset = 0;
+    while ((l_chunk.m_begin + l_chunk_alignment_offset) % p_alignment != 0) {
+      l_chunk_alignment_offset += 1;
+    }
+    if (l_chunk.m_size + l_chunk_alignment_offset >= p_size) {
       *out_chunk_index = l_chunk_it;
+      *out_chunk_alignment_offset = l_chunk_alignment_offset;
       return 1;
     }
   }
@@ -516,20 +534,51 @@ struct heap_intrusive {
 
   uimax find_next_chunk(uimax p_size) {
     uimax l_chunk_index = -1;
-    if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
-                                      &l_chunk_index)) {
+    uimax l_alignment_offset = -1;
+    if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size, 1,
+                                      &l_chunk_index, &l_alignment_offset)) {
       heap_chunks::defragment(m_free_chunks);
-      if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
-                                        &l_chunk_index)) {
+      if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size, 1,
+                                        &l_chunk_index, &l_alignment_offset)) {
         // TODO -> pushing a chunk by multiplying capacity by 2 like vector ?
         __push_new_chunk(p_size);
+
         m_state = state::NewChunkPushed;
         m_last_pushed_chunk_size = p_size;
-        heap_chunks::find_next_block(m_free_chunks.range(), p_size,
-                                     &l_chunk_index);
+        heap_chunks::find_next_block(m_free_chunks.range(), p_size, 1,
+                                     &l_chunk_index, &l_alignment_offset);
       }
     }
     assert_debug(l_chunk_index != -1);
+    return l_chunk_index;
+  };
+
+  uimax find_next_chunk(uimax p_size, uimax p_alignment) {
+    uimax l_chunk_index = -1;
+    uimax l_alignment_offset = -1;
+    if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
+                                      p_alignment, &l_chunk_index,
+                                      &l_alignment_offset)) {
+      heap_chunks::defragment(m_free_chunks);
+      if (!heap_chunks::find_next_block(m_free_chunks.range(), p_size,
+                                        p_alignment, &l_chunk_index,
+                                        &l_alignment_offset)) {
+        // TODO -> pushing a chunk by multiplying capacity by 2 like vector ?
+        __push_new_chunk(p_size);
+
+        m_state = state::NewChunkPushed;
+        m_last_pushed_chunk_size = p_size;
+        heap_chunks::find_next_block(m_free_chunks.range(), p_size, p_alignment,
+                                     &l_chunk_index, &l_alignment_offset);
+      }
+    }
+    assert_debug(l_chunk_index != -1);
+
+    if (l_alignment_offset != -1) {
+      __split_free_chunk(l_chunk_index, l_alignment_offset);
+      l_chunk_index += 1;
+    }
+
     return l_chunk_index;
   };
 
@@ -566,12 +615,29 @@ struct heap_intrusive {
   };
 
 private:
+  void __push_new_chunk_with_offset(uimax p_desired_size,
+                                    uimax p_alignment_offset) {
+    assert_debug(p_alignment_offset > 0);
+    __push_new_chunk(p_alignment_offset);
+    __push_new_chunk(p_desired_size);
+  };
+
   void __push_new_chunk(uimax p_desired_size) {
     heap_chunk l_chunk;
     l_chunk.m_begin = m_element_count;
     l_chunk.m_size = p_desired_size;
     m_free_chunks.push_back(l_chunk);
     m_element_count += l_chunk.m_size;
+  };
+
+  void __split_free_chunk(uimax p_chunk_index, uimax p_relative_begin) {
+    heap_chunk &l_chunk_to_split = m_free_chunks.at(p_chunk_index);
+    heap_chunk l_chunk_end = l_chunk_to_split;
+    l_chunk_end.m_begin += p_relative_begin;
+    l_chunk_end.m_size -= p_relative_begin;
+
+    l_chunk_to_split.m_size = p_relative_begin;
+    m_free_chunks.push_back(l_chunk_end);
   };
 };
 
@@ -616,15 +682,60 @@ struct heap_paged_intrusive {
 
     uimax l_page_index = -1;
     uimax l_chunk_index = -1;
+    uimax l_alignment_offset = -1;
+
+    for (auto l_page_idx = 0; l_page_idx < m_pages_intrusive.m_count;
+         ++l_page_idx) {
+      auto &l_free_chunks = m_free_chunks_by_page[l_page_idx];
+      if (!heap_chunks::find_next_block(l_free_chunks.range(), p_size, 1,
+                                        &l_chunk_index, &l_alignment_offset)) {
+        heap_chunks::defragment(l_free_chunks);
+        if (!heap_chunks::find_next_block(l_free_chunks.range(), p_size, 1,
+                                          &l_chunk_index,
+                                          &l_alignment_offset)) {
+          continue;
+        }
+      }
+      l_page_index = l_page_idx;
+      break;
+    }
+
+    if (l_page_index == -1) {
+      __push_new_page();
+      auto &l_free_chunks =
+          m_free_chunks_by_page[m_pages_intrusive.m_count - 1];
+      if (heap_chunks::find_next_block(l_free_chunks.range(), p_size, 1,
+                                       &l_chunk_index, &l_alignment_offset)) {
+        l_page_index = m_pages_intrusive.m_count - 1;
+      }
+    }
+
+    assert_debug(l_page_index != -1);
+    assert_debug(l_chunk_index != -1);
+
+    *out_page_index = l_page_index;
+    *out_chunk_index = l_chunk_index;
+  };
+
+  void find_next_chunk(uimax p_size, uimax p_alignment, uimax *out_page_index,
+                       uimax *out_chunk_index) {
+
+    assert_debug(p_size <= m_single_page_capacity);
+
+    uimax l_page_index = -1;
+    uimax l_chunk_index = -1;
+    uimax l_alignment_offset = -1;
 
     for (auto l_page_idx = 0; l_page_idx < m_pages_intrusive.m_count;
          ++l_page_idx) {
       auto &l_free_chunks = m_free_chunks_by_page[l_page_idx];
       if (!heap_chunks::find_next_block(l_free_chunks.range(), p_size,
-                                        &l_chunk_index)) {
+                                        p_alignment, &l_chunk_index,
+                                        &l_alignment_offset)) {
         heap_chunks::defragment(l_free_chunks);
         if (!heap_chunks::find_next_block(l_free_chunks.range(), p_size,
-                                          &l_chunk_index)) {
+                                          p_alignment, &l_chunk_index,
+                                          &l_alignment_offset)) {
           continue;
         }
       }
@@ -637,13 +748,19 @@ struct heap_paged_intrusive {
       auto &l_free_chunks =
           m_free_chunks_by_page[m_pages_intrusive.m_count - 1];
       if (heap_chunks::find_next_block(l_free_chunks.range(), p_size,
-                                       &l_chunk_index)) {
+                                       p_alignment, &l_chunk_index,
+                                       &l_alignment_offset)) {
         l_page_index = m_pages_intrusive.m_count - 1;
       }
     }
 
     assert_debug(l_page_index != -1);
     assert_debug(l_chunk_index != -1);
+
+    if (l_alignment_offset != -1) {
+      __split_free_chunk(l_page_index, l_chunk_index, l_alignment_offset);
+      l_chunk_index += 1;
+    }
 
     *out_page_index = l_page_index;
     *out_chunk_index = l_chunk_index;
@@ -695,6 +812,19 @@ private:
     l_page_chunks.push_back(l_chunk);
     m_state = state::NewPagePushed;
   };
+
+  void __split_free_chunk(uimax p_free_chunk_page, uimax p_free_chunk_index,
+                          uimax p_relative_begin) {
+    heap_chunk &l_chunk_to_split =
+        m_free_chunks_by_page[p_free_chunk_page].at(p_free_chunk_index);
+    heap_chunk l_chunk_end = l_chunk_to_split;
+    l_chunk_end.m_begin += p_relative_begin;
+    l_chunk_end.m_size -= p_relative_begin;
+
+    l_chunk_to_split.m_size = p_relative_begin;
+    m_free_chunks_by_page[p_free_chunk_page].push_back(l_chunk_end);
+  };
+
 }; // namespace container
 
 struct heap {

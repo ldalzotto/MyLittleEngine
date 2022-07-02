@@ -160,43 +160,15 @@ static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
 };
 
 template <typename T>
-quat<T> quat_lookat(const vec<T, 3> &p_direction, const vec<T, 3> &p_up) {
-  assert_debug(is_normalized(p_direction));
-  assert_debug(is_normalized(p_up));
-  mat<T, 3, 3> l_return;
-
-  l_return.col2() = p_direction * -1;
-  vec<T, 3> l_right = cross(p_up, l_return.col2());
-  l_return.col0() = l_right * (T(1) / m::sqrt(dot(l_right, l_right)));
-  l_return.col1() = cross(l_return.col2(), l_return.col0());
-
-  return quat_from_rotationmatrix(l_return);
-}
-
-template <typename T>
-static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
-  sys::sassert(m::abs(p_aspect - m::epsilon<T>::value()) > T(0));
-
-  T const tanHalfFovy = m::tan(p_fovy / T(2));
-
-  mat<T, 4, 4> l_result;
-  l_result.at(0, 0) = T(1) / (p_aspect * tanHalfFovy);
-  l_result.at(1, 1) = T(1) / (tanHalfFovy);
-  l_result.at(2, 2) = -(p_zFar + p_zNear) / (p_zFar - p_zNear);
-  l_result.at(2, 3) = -T(1);
-  l_result.at(3, 2) = -(T(2) * p_zFar * p_zNear) / (p_zFar - p_zNear);
-
-  l_result.at(0, 1) = 0;
-  l_result.at(0, 2) = 0;
-  l_result.at(0, 3) = 0;
-  l_result.at(1, 0) = 0;
-  l_result.at(1, 2) = 0;
-  l_result.at(1, 3) = 0;
-  l_result.at(2, 0) = 0;
-  l_result.at(2, 1) = 0;
-  l_result.at(3, 0) = 0;
-  l_result.at(3, 1) = 0;
-  l_result.at(3, 3) = 0;
+static mat<T, 4, 4> orthographic(T left, T right, T bottom, T top, T zNear,
+                                 T zFar) {
+  mat<T, 4, 4> l_result = l_result.getIdentity();
+  l_result.at(0, 0) = T(-2) / (right - left);
+  l_result.at(1, 1) = T(-2) / (top - bottom);
+  l_result.at(2, 2) = T(2) / (zFar - zNear);
+  l_result.at(3, 0) = T(1) * (right + left) / (right - left);
+  l_result.at(3, 1) = T(-1) * (top + bottom) / (top - bottom);
+  l_result.at(3, 2) = ((zFar + zNear) / (zFar - zNear)) - T(1);
   return l_result;
 };
 

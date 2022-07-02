@@ -116,11 +116,20 @@ template <typename Scene> struct camera_view : object_view<Scene> {
                                          p_rendertexture_height, l_rast);
   };
 
-  void set_perspective(fix32 p_fov, fix32 p_near, fix32 p_far) {
+  void set_orthographic(fix32 p_width, fix32 p_height, fix32 p_near,
+                        fix32 p_far) {
     camera &l_camera = get_camera();
     api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-    l_ren.camera_set_perspective(l_camera.m_camera, p_fov, p_near, p_far);
+    l_ren.camera_set_orthographic(l_camera.m_camera, p_width, p_height, p_near,
+                                  p_far);
+  };
+
+  void set_projection(const m::mat<fix32, 4, 4> &p_projection) {
+    camera &l_camera = get_camera();
+    api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
+    api_decltype(ren::ren_api, l_ren, l_engine.renderer());
+    l_ren.camera_set_projection(l_camera.m_camera, p_projection);
   };
 };
 
@@ -268,11 +277,8 @@ template <typename Engine> struct scene {
       m_transforms.at(l_camera.m_transform.m_idx, &l_transform,
                       &l_transform_meta);
       if (l_transform_meta->m_updated_this_frame) {
-        l_ren.camera_set_view(
-            l_camera.m_camera,
-            m::look_at(l_transform->m_local_position +
-                           l_transform->m_local_to_world.forward().xyz(),
-                       l_transform->m_local_position, position_t::up));
+        l_ren.camera_set_view(l_camera.m_camera,
+                              m::inverse(l_transform->m_local_to_world));
       }
     }
 

@@ -29,9 +29,16 @@ template <typename Private> struct ren_api {
                                         p_rendertexture_height, p_rast);
   };
 
-  FORCE_INLINE void camera_set_perspective(camera_handle p_camera, fix32 p_fov,
-                                           fix32 p_near, fix32 p_far) {
-    thiz.camera_set_perspective(p_camera, p_fov, p_near, p_far);
+  FORCE_INLINE void
+  camera_set_projection(camera_handle p_camera,
+                        const m::mat<fix32, 4, 4> &p_projection) {
+    thiz.camera_set_projection(p_camera, p_projection);
+  };
+
+  FORCE_INLINE void camera_set_orthographic(camera_handle p_camera,
+                                            fix32 p_width, fix32 p_height,
+                                            fix32 p_near, fix32 p_far) {
+    thiz.camera_set_orthographic(p_camera, p_width, p_height, p_near, p_far);
   };
 
   FORCE_INLINE void camera_set_view(camera_handle p_camera,

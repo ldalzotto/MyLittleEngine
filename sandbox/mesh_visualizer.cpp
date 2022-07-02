@@ -1,6 +1,5 @@
 
 #include <assets/loader/mesh_obj.hpp>
-#include <cstring>
 #include <eng/engine.hpp>
 #include <m/const.hpp>
 
@@ -42,17 +41,16 @@ public:
       eng::camera_view<scene_t> l_camera_view = m_scene.camera(m_camera);
       l_camera_view.set_width_height(m_width, m_height);
       l_camera_view.set_render_width_height(m_width, m_height);
-      l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
-                                    fix32(100.0f));
-      l_camera_view.set_local_position({5, 5, 5});
+      l_camera_view.set_orthographic(5, 5, 0.1, 50);
+      l_camera_view.set_local_position({5, 7.5, 5});
       l_camera_view.set_local_rotation(
-          m::quat_lookat(m::normalize(position_t{0, 0, 0} -
-                                      l_camera_view.get_local_position()),
-                        position_t::up));
+          m::rotate_around(-m::pi_2<fix32>() - m::pi_4<fix32>(),
+                           position_t::up) *
+          m::rotate_around(m::pi_4<fix32>(), position_t::left));
     }
 
     {
-      auto l_obj_str = R""""(
+      auto l_obj_str = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
 # www.blender.org
 mtllib cube.mtl
@@ -86,17 +84,16 @@ f 1/1 5/5 2/2
 f 5/5 6/6 2/2
 f 3/3 4/4 7/7
 f 7/7 4/4 8/8
-  )"""";
+  )"""");
 
       assets::mesh l_mesh =
-          assets::obj_mesh_loader().compile(container::range<ui8>::make(
-              (ui8 *)l_obj_str, std::strlen(l_obj_str)));
+          assets::obj_mesh_loader().compile(l_obj_str.range());
 
       m_mesh_0 = l_ren.create_mesh(l_mesh, l_rast);
       l_mesh.free();
     }
     {
-      auto l_obj_str = R""""(
+      auto l_obj_str = container::arr_literal<ui8>(R""""(
 # Blender v2.76 (sub 0) OBJ File: ''
 # www.blender.org
 mtllib cube.mtl
@@ -130,11 +127,10 @@ f 1/1 5/5 2/2
 f 5/5 6/6 2/2
 f 3/3 4/4 7/7
 f 7/7 4/4 8/8
-  )"""";
+  )"""");
 
       assets::mesh l_mesh =
-          assets::obj_mesh_loader().compile(container::range<ui8>::make(
-              (ui8 *)l_obj_str, std::strlen(l_obj_str)));
+          assets::obj_mesh_loader().compile(l_obj_str.range());
 
       m_mesh_1 = l_ren.create_mesh(l_mesh, l_rast);
       l_mesh.free();
@@ -192,7 +188,8 @@ f 7/7 4/4 8/8
       }
     }
 
-    rotation_t l_rotation = m::rotate_around(m_delta * m_counter, position_t::up);
+    rotation_t l_rotation =
+        m::rotate_around(m_delta * m_counter, position_t::up);
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
     l_mesh_renderer.set_local_rotation(l_rotation);

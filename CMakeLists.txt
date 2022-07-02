@@ -3,11 +3,19 @@ cmake_minimum_required(VERSION 3.16)
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
-# set(ENABLE_SAFETY_CHECKS true)
-# set(ENABLE_ADDRESS true)
-# set(ENABLE_UNDEFINED true)
-# set(WIN_HEADLESS true)
-# set(PLATFORM_WEBASSEMBLY true)
+if(NOT DEFINED RUNTIME_CI)
+    # set(ENABLE_SAFETY_CHECKS true)
+    # set(ENABLE_ADDRESS true)
+    # set(ENABLE_UNDEFINED true)
+    # set(WIN_HEADLESS true)
+    # set(PLATFORM_WEBASSEMBLY true)
+endif()
+
+
+if(RUNTIME_CI)
+    add_compile_definitions(RUNTIME_CI_PREPROCESS=1)
+    add_compile_definitions(TEST_RESOURCE_PATH_RAW_PREPROCESS="${CMAKE_CURRENT_SOURCE_DIR}/test_data/")
+endif()
 
 if(PLATFORM_WEBASSEMBLY)
     set(CMAKE_C_COMPILER "emcc")
@@ -70,7 +78,16 @@ target_link_libraries(ENGINE INTERFACE WIN)
 target_link_libraries(ENGINE INTERFACE STB)
 target_link_libraries(ENGINE INTERFACE BGFX_API)
 
-add_executable(TESTS ./src/tst/tests.cpp ./src/tst/test_assets.cpp ./src/tst/test_ren.cpp ./src/tst/test_numbers.cpp ./src/tst/test_rasterizer_assets.cpp ./src/tst/test_rasterizer.cpp ./src/tst/test_window.cpp)
+add_executable(TESTS 
+./src/tst/tests.cpp 
+./src/tst/test_common.cpp 
+./src/tst/test_assets.cpp 
+./src/tst/test_numbers.cpp 
+./src/tst/test_rasterizer_assets.cpp 
+./src/tst/test_ren_cube.cpp 
+./src/tst/test_window.cpp
+)
+
 target_link_libraries(TESTS PUBLIC ENGINE)
 target_link_libraries(TESTS PUBLIC DOCTEST)
 

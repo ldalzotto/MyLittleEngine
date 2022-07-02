@@ -7,8 +7,7 @@
 
 #define WRITE_OUTPUT 1
 
-#define STB_IMAGE_WRITE_IMPLEMENTATION
-#include <stb_write.h>
+#include <tst/test_common.hpp>
 
 namespace RasterizerTestToolbox {
 
@@ -31,25 +30,22 @@ inline static void assert_frame_equals(
         p_rast.fetchTextureSync(p_rast.getTexture(p_frame_buffer));
 
 #if WRITE_OUTPUT
-    stbi_write_png(p_save_path, p_frame_buffer_view.m_width,
-                   p_frame_buffer_view.m_height, 3, l_frame_texture.m_begin,
-                   p_frame_buffer_view.m_bits_per_pixel *
-                       p_frame_buffer_view.m_width);
+    TestUtils::write_png(
+        (const ui8 *)p_save_path, p_frame_buffer_view.m_width,
+        p_frame_buffer_view.m_height, 3, l_frame_texture.m_begin,
+        p_frame_buffer_view.m_bits_per_pixel * p_frame_buffer_view.m_width);
 #endif
 
-    i32 l_length;
-    l_png_frame.m_begin = stbi_write_png_to_mem(
+    l_png_frame = TestUtils::write_png_to_mem(
         l_frame_texture.data(),
         p_frame_buffer_view.m_bits_per_pixel * p_frame_buffer_view.m_width,
-        p_frame_buffer_view.m_width, p_frame_buffer_view.m_height, 3,
-        &l_length);
-    l_png_frame.m_count = l_length;
+        p_frame_buffer_view.m_width, p_frame_buffer_view.m_height, 3);
   }
 
   REQUIRE(l_png_frame.count() == p_expected_frame.count());
   REQUIRE(l_png_frame.is_contained_by(p_expected_frame.range()));
 
-  STBIW_FREE(l_png_frame.m_begin);
+  TestUtils::write_free(l_png_frame.m_begin);
 };
 
 template <typename Rasterizer>

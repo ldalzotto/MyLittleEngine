@@ -22,9 +22,18 @@ template <typename EngineImpl> struct engine_api {
   FORCE_INLINE typename EngineImpl::ren_impl_t &renderer() {
     return thiz.m_renderer;
   };
+  FORCE_INLINE typename ren::ren_api<typename EngineImpl::ren_impl_t>
+  renderer_api() {
+    return ren::ren_api<typename EngineImpl::ren_impl_t>{renderer()};
+  };
   FORCE_INLINE typename EngineImpl::rast_impl_t &rasterizer() {
     return thiz.m_rasterizer;
   };
+  FORCE_INLINE rast_api<typename EngineImpl::rast_impl_t>
+  rasterizer_api() {
+    return rast_api<typename EngineImpl::rast_impl_t>{rasterizer()};
+  };
+
   FORCE_INLINE input::system &input() { return thiz.m_input_system; };
   FORCE_INLINE window::system &window_system() { return thiz.m_window_system; };
 };

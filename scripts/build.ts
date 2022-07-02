@@ -57,6 +57,7 @@ let execute_command_with_output = async function (p_command: string[], p_working
 };
 
 class BuildConfig {
+    RUNTIME_CI: boolean = true;
     BUILD_TYPE: string = "Debug";
     ENABLE_SAFETY_CHECKS: boolean = false;
     ENABLE_ADDRESS: boolean = false;
@@ -70,6 +71,10 @@ class BuildConfig {
 
     buildTypeParam(): string {
         return `CMAKE_BUILD_TYPE=${this.BUILD_TYPE}`;
+    };
+
+    runtimeCi(): string {
+        return `RUNTIME_CI=${this.RUNTIME_CI}`;
     };
 
     enableSafetyChecksParam(): string {
@@ -90,7 +95,7 @@ class BuildConfig {
 };
 
 let build_cmake_project = async function (p_target: string, p_config: BuildConfig) {
-    await execute_command(["cmake", "-Bbuild_ninja", "-D", p_config.buildTypeParam(), "-D", "CMAKE_C_COMPILER=clang-10", "-D", "CMAKE_CXX_COMPILER=clang++-10", "-D", p_config.enableSafetyChecksParam(),
+    await execute_command(["cmake", "-Bbuild_ninja", "-D", p_config.buildTypeParam(), "-D", "CMAKE_C_COMPILER=clang-10", "-D", "CMAKE_CXX_COMPILER=clang++-10", "-D", p_config.runtimeCi(), "-D", p_config.enableSafetyChecksParam(),
         "-D", p_config.enableAddressParam(), "-D", p_config.enableUndefinedParam(), "-D", p_config.winHeadlessParam(), "-D", p_config.platformWebasseblyParam(), "-H.", "-GNinja"], root_path);
     await execute_command(["cmake", "--build", ".", "--target", p_target], build_path);
 };
@@ -163,7 +168,7 @@ else if (l_type == "BUILD_TESTS_RELEASE") {
 else if (l_type == "BUILD_EMSCRIPTEN") {
     fs.emptyDirSync(tmp_path);
     fs.emptyDirSync(build_path);
-    
+
     let l_last_commit_hash: string = await execute_command_with_output(["git", "rev-parse", "HEAD"], root_path);
     l_last_commit_hash = l_last_commit_hash.trim();
 

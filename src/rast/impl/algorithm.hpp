@@ -3,9 +3,9 @@
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
 #include <cor/orm.hpp>
+#include <m/geom.hpp>
 #include <m/polygon.hpp>
 #include <m/rect.hpp>
-#include <m/geom.hpp>
 #include <rast/model.hpp>
 #include <shared/types.hpp>
 
@@ -432,18 +432,19 @@ private:
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
+      // [-1, 1] to [0, 1] range
+      l_vertex_shader_out = (l_vertex_shader_out + 1) * 0.5;
+
 #if TODO_NEAR_FAR_CLIPPING
       if (l_vertex_shader_out.z() > 1.0f || l_vertex_shader_out.z() < 0.0f) {
       }
 #endif
 
       uv_t l_pixel_coordinates_fix32 = uv_t::make(l_vertex_shader_out);
-
-      l_pixel_coordinates_fix32 = (l_pixel_coordinates_fix32 + 1) * 0.5;
-      l_pixel_coordinates_fix32.y() = fix32(1) - l_pixel_coordinates_fix32.y();
       l_pixel_coordinates_fix32 *= (m_input.m_rect.extend() - 1);
 
-      m_heap.get_pixel_coordinates(i) = l_pixel_coordinates_fix32.cast<i16>();
+      auto l_pixel_coordinate_i16 = l_pixel_coordinates_fix32.cast<i16>();
+      m_heap.get_pixel_coordinates(i) = l_pixel_coordinate_i16;
 
       if (m_state.m_depth_read) {
         m_heap.m_per_vertices.set(
