@@ -15,11 +15,11 @@ template <typename T> struct range {
   T *m_begin;
   uimax m_count;
 
-  static range make(T *p_begin, uimax p_count) {
-    range l_range;
-    l_range.m_begin = p_begin;
-    l_range.m_count = p_count;
-    return l_range;
+  static constexpr range make(T *p_begin, uimax p_count) {
+    return {
+      .m_begin = p_begin,
+      .m_count = p_count
+    };
   };
 
   const T *data() const { return (const T *)m_begin; };
@@ -104,7 +104,7 @@ template <typename T> struct range {
 template <typename T, int N> struct arr {
   T m_data[N];
   container::range<T> range() { return container::range<T>::make(m_data, N); };
-  container::range<T> range() const {
+  constexpr container::range<T> range() const {
     return container::range<T>::make((T *)m_data, N);
   };
   T *data() { return m_data; };

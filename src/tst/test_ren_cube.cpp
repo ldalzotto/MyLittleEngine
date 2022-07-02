@@ -6,24 +6,15 @@
 #include <ren/impl/ren_impl.hpp>
 #include <tst/test_common.hpp>
 
-#define WRITE_OUTPUT_TO_TMP 0
-#define WRITE_OUTPUT_TO_RESULT 0
-
 inline static constexpr auto TEST_REN_RELATIVE_FOLDER =
     container::arr_literal<ui8>(TEST_RESOURCE_PATH_RAW "ren/");
 
 inline static constexpr auto TEST_REN_TMP_FOLDER =
     container::arr_literal<ui8>("/media/loic/SSD/SoftwareProjects/glm/");
 
-static constexpr TestImageAssertionConfig s_resource_config = {
-    .m_write_output_to_tmp = WRITE_OUTPUT_TO_TMP,
-    .m_write_output_to_result = WRITE_OUTPUT_TO_RESULT,
-    .m_tmp_folder = {.m_begin = (ui8 *)TEST_REN_TMP_FOLDER.m_data,
-                     .m_count = TEST_REN_TMP_FOLDER.count()},
-    .m_result_folder = {
-        .m_begin = (ui8 *)TEST_REN_RELATIVE_FOLDER.m_data,
-        .m_count = TEST_REN_RELATIVE_FOLDER.count(),
-    }};
+static constexpr TestImageAssertionConfig s_resource_config =
+    TestImageAssertionConfig::make(TEST_REN_TMP_FOLDER.range(),
+                                   TEST_REN_RELATIVE_FOLDER.range());
 
 namespace RasterizerTestToolbox {
 

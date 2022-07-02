@@ -11,11 +11,33 @@
 inline static constexpr auto TEST_RESOURCE_PATH =
     container::arr_literal<ui8>(TEST_RESOURCE_PATH_RAW);
 
+#ifndef WRITE_OUTPUT_TO_TMP
+#define WRITE_OUTPUT_TO_TMP 0
+#endif
+
+#ifndef WRITE_OUTPUT_TO_RESULT
+#define WRITE_OUTPUT_TO_RESULT 0
+#endif
+
 struct TestImageAssertionConfig {
   ui8 m_write_output_to_tmp;
   ui8 m_write_output_to_result;
   container::range<ui8> m_tmp_folder;
   container::range<ui8> m_result_folder;
+
+  inline static constexpr TestImageAssertionConfig
+  make(const container::range<ui8> &p_tmp_folder,
+       const container::range<ui8> &p_result_folder) {
+    return TestImageAssertionConfig{
+        .m_write_output_to_tmp = WRITE_OUTPUT_TO_TMP,
+        .m_write_output_to_result = WRITE_OUTPUT_TO_RESULT,
+        .m_tmp_folder = {.m_begin = (ui8 *)p_tmp_folder.m_begin,
+                         .m_count = p_tmp_folder.m_count},
+        .m_result_folder = {
+            .m_begin = (ui8 *)p_tmp_folder.m_begin,
+            .m_count = p_tmp_folder.m_count,
+        }};
+  };
 };
 
 struct TestUtils {
