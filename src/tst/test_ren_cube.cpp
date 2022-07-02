@@ -1,9 +1,3 @@
-#include <assets/loader/mesh_obj.hpp>
-#include <doctest.h>
-#include <eng/scene.hpp>
-#include <m/const.hpp>
-#include <rast/impl/rast_impl.hpp>
-#include <ren/impl/ren_impl.hpp>
 #include <tst/test_engine_common.hpp>
 
 inline static constexpr auto TEST_REN_RELATIVE_FOLDER =
@@ -16,35 +10,38 @@ static constexpr TestImageAssertionConfig s_resource_config =
     TestImageAssertionConfig::make(TEST_REN_TMP_FOLDER.range(),
                                    TEST_REN_RELATIVE_FOLDER.range());
 
+static constexpr fix32 s_camera_width = 10;
+static constexpr fix32 s_camera_height = 10;
+
 static constexpr auto l_cube_mesh_obj = container::arr_literal<ui8>(R""""(
 v -1.0 1.0 1.0
-v 1.0 1.0 1.0
 v -1.0 -1.0 1.0
-v 1.0 -1.0 1.0
 v -1.0 1.0 -1.0
-v 1.0 1.0 -1.0
 v -1.0 -1.0 -1.0
+v 1.0 1.0 1.0
+v 1.0 -1.0 1.0
+v 1.0 1.0 -1.0
 v 1.0 -1.0 -1.0
 vc 0 0 0
-vc 0 0 255
 vc 0 255 0
-vc 0 255 255
 vc 255 0 0
-vc 255 0 255
 vc 255 255 0
+vc 0 0 255
+vc 0 255 255
+vc 255 0 255
 vc 255 255 255
-f 1/1 2/2 3/3
-f 2/2 4/4 3/3
-f 5/5 7/7 6/6
-f 6/6 7/7 8/8
-f 1/1 3/3 5/5
-f 5/5 3/3 7/7
-f 2/2 6/6 4/4
-f 6/6 8/8 4/4
-f 1/1 5/5 2/2
-f 5/5 6/6 2/2
-f 3/3 4/4 7/7
-f 7/7 4/4 8/8
+f 5/5 3/3 1/1
+f 3/3 8/8 4/4
+f 7/7 6/6 8/8
+f 2/2 8/8 6/6
+f 1/1 4/4 2/2
+f 5/5 2/2 6/6
+f 5/5 7/7 3/3
+f 3/3 7/7 8/8
+f 7/7 5/5 6/6
+f 2/2 4/4 8/8
+f 1/1 3/3 4/4
+f 5/5 1/1 2/2
   )"""");
 
 // look at back face (camera forward is +z)
@@ -52,7 +49,8 @@ TEST_CASE("ren.cube.face.back") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -74,7 +72,8 @@ TEST_CASE("ren.cube.face.front") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -96,7 +95,8 @@ TEST_CASE("ren.cube.face.right") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -118,7 +118,8 @@ TEST_CASE("ren.cube.face.left") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -140,7 +141,8 @@ TEST_CASE("ren.cube.face.down") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -162,7 +164,8 @@ TEST_CASE("ren.cube.face.up") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -183,7 +186,8 @@ TEST_CASE("ren.cube.corner.up.0") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -205,7 +209,8 @@ TEST_CASE("ren.cube.corner.up.1") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -227,7 +232,8 @@ TEST_CASE("ren.cube.corner.up.2") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -249,7 +255,8 @@ TEST_CASE("ren.cube.corner.up.3") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -271,7 +278,8 @@ TEST_CASE("ren.cube.corner.down.0") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -293,7 +301,8 @@ TEST_CASE("ren.cube.corner.down.1") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -315,7 +324,8 @@ TEST_CASE("ren.cube.corner.down.2") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());
@@ -337,7 +347,8 @@ TEST_CASE("ren.cube.corner.down.3") {
   constexpr ui16 l_width = 64, l_height = 64;
 
   BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
-  eng::object_handle l_camera = l_test.create_orthographic_camera();
+  eng::object_handle l_camera =
+      l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
       l_test.create_shader<ColorInterpolationShader>());

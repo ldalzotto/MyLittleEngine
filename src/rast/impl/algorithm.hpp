@@ -494,19 +494,19 @@ private:
           (l_polygon->p2() - l_polygon->p0()).cast<screen_polygon_area>(),
           (l_polygon->p1() - l_polygon->p0()).cast<screen_polygon_area>());
 
-      if constexpr (CullModeValue == CullMode::CounterClockwise) {
-        if (*l_area <= 0) {
-          i -= 1;
-          m_polygon_count -= 1;
-          goto next;
-        }
-      } else if constexpr (CullModeValue == CullMode::Clockwise) {
+      if constexpr (CullModeValue == CullMode::Clockwise) {
         if (*l_area >= 0) {
           i -= 1;
           m_polygon_count -= 1;
           goto next;
         } else {
           utils::swap_polygon_winding(l_polygon, l_polygon_indices, l_area);
+        }
+      } else if constexpr (CullModeValue == CullMode::CounterClockwise) {
+        if (*l_area <= 0) {
+          i -= 1;
+          m_polygon_count -= 1;
+          goto next;
         }
       } else if constexpr (CullModeValue == CullMode::None) {
         if (*l_area < 0) {

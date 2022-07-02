@@ -113,13 +113,13 @@ struct BaseEngineTest {
     }
   };
 
-  eng::object_handle create_orthographic_camera() {
+  eng::object_handle create_orthographic_camera(fix32 p_width, fix32 p_height) {
     api_decltype(eng::engine_api, l_engine, __engine);
     eng::object_handle l_camera = l_scene.camera_create();
     eng::camera_view<scene_t> l_camera_view = l_scene.camera(l_camera);
     l_camera_view.set_width_height(m_width, m_height);
     l_camera_view.set_render_width_height(m_width, m_height);
-    l_camera_view.set_orthographic(5, 5, 0.1, 50);
+    l_camera_view.set_orthographic(p_width / 2, p_height / 2, 0.1, 50);
     m_cameras.push_back(l_camera);
     return l_camera;
   };
@@ -131,6 +131,16 @@ struct BaseEngineTest {
     l_scene.mesh_renderer(l_mesh_renderer).set_program(p_shader);
     m_mesh_renderers.push_back(l_mesh_renderer);
     return l_mesh_renderer;
+  };
+
+  void destroy_mesh_renderer(eng::object_handle p_mesh_renderer) {
+    l_scene.mesh_renderer_destroy(p_mesh_renderer);
+    for (auto i = 0; i < m_mesh_renderers.count(); ++i) {
+      if (m_mesh_renderers.at(i).m_idx == p_mesh_renderer.m_idx) {
+        m_mesh_renderers.remove_at(i);
+        break;
+      }
+    }
   };
 
 private:
@@ -155,6 +165,26 @@ private:
     ren::shader_meta l_meta = l_meta.get_default();
     return load_shader(p_engine, p_meta, Shader::s_vertex_output.range(),
                        Shader::vertex, Shader::fragment);
+  };
+};
+
+struct WhiteShader {
+
+  inline static container::arr<rast::shader_vertex_output_parameter, 0>
+      s_vertex_output = {};
+
+  static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
+                     const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
+                     ui8 **out_vertex) {
+    rast::shader_vertex l_shader = {p_ctx};
+    const auto &l_vertex_pos =
+        l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
+    out_screen_position =
+        p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
+  };
+
+  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
+    out_color = {1, 1, 1};
   };
 };
 
