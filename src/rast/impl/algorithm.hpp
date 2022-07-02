@@ -432,15 +432,13 @@ private:
 
       l_vertex_shader_out = l_vertex_shader_out / l_vertex_shader_out.w();
 
+      // [-1, 1] to [0, 1] range
       l_vertex_shader_out = (l_vertex_shader_out + 1) * 0.5;
 
 #if TODO_NEAR_FAR_CLIPPING
       if (l_vertex_shader_out.z() > 1.0f || l_vertex_shader_out.z() < 0.0f) {
       }
 #endif
-
-      // l_vertex_shader_out = (l_vertex_shader_out + 1) * 0.5;
-      // l_vertex_shader_out.z() = fix32(1) - (l_vertex_shader_out.z() - 1);
 
       uv_t l_pixel_coordinates_fix32 = uv_t::make(l_vertex_shader_out);
       l_pixel_coordinates_fix32 *= (m_input.m_rect.extend() - 1);

@@ -149,12 +149,6 @@ f 7/7 4/4 8/8
     l_mesh_renderer.set_mesh(m_mesh_0);
     l_mesh_renderer.set_program(m_shader);
     l_mesh_renderer.set_local_position({0, 0, 0});
-
-    auto l_another_mesh_renderer = m_scene.mesh_renderer_create();
-    m_scene.mesh_renderer(l_another_mesh_renderer).set_mesh(m_mesh_0);
-    m_scene.mesh_renderer(l_another_mesh_renderer).set_program(m_shader);
-    m_scene.mesh_renderer(l_another_mesh_renderer)
-        .set_local_position({-1, 0, 0});
   };
 
   void free(eng::engine_api<EngineImpl> p_engine) {
