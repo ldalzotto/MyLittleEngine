@@ -41,13 +41,12 @@ public:
       eng::camera_view<scene_t> l_camera_view = m_scene.camera(m_camera);
       l_camera_view.set_width_height(m_width, m_height);
       l_camera_view.set_render_width_height(m_width, m_height);
-      l_camera_view.set_perspective(fix32(60.0f) * m::deg_to_rad, fix32(0.1f),
-                                    fix32(100.0f));
-      l_camera_view.set_local_position({5, 5, 5});
+      l_camera_view.set_orthographic(5, 5, 0.1, 50);
+      l_camera_view.set_local_position({5, 7.5, 5});
       l_camera_view.set_local_rotation(
-          m::quat_lookat(m::normalize(position_t{0, 0, 0} -
-                                      l_camera_view.get_local_position()),
-                         position_t::up));
+          m::rotate_around(-m::pi_2<fix32>() - m::pi_4<fix32>(),
+                           position_t::up) *
+          m::rotate_around(m::pi_4<fix32>(), position_t::left));
     }
 
     {
@@ -150,6 +149,12 @@ f 7/7 4/4 8/8
     l_mesh_renderer.set_mesh(m_mesh_0);
     l_mesh_renderer.set_program(m_shader);
     l_mesh_renderer.set_local_position({0, 0, 0});
+
+    auto l_another_mesh_renderer = m_scene.mesh_renderer_create();
+    m_scene.mesh_renderer(l_another_mesh_renderer).set_mesh(m_mesh_0);
+    m_scene.mesh_renderer(l_another_mesh_renderer).set_program(m_shader);
+    m_scene.mesh_renderer(l_another_mesh_renderer)
+        .set_local_position({-1, 0, 0});
   };
 
   void free(eng::engine_api<EngineImpl> p_engine) {
