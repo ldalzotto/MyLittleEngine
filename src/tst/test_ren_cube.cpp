@@ -370,7 +370,7 @@ TEST_CASE("ren.cube.face.up") {
       l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
 }
 
-#if 0
+#if 1
 TEST_CASE("ren.cube.corner.up.0") {
   constexpr ui16 l_width = 64, l_height = 64;
 
@@ -378,10 +378,10 @@ TEST_CASE("ren.cube.corner.up.0") {
   eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
-  auto l_local_position = position_t{-5, 5, -5};
-  l_test.l_scene.camera(l_camera).set_local_position(l_local_position);
-  l_test.l_scene.camera(l_camera).set_local_rotation(m::quat_lookat(
-      m::normalize(l_local_position * fix32(-1)), position_t::up));
+  l_test.l_scene.camera(l_camera).set_local_position({-5, 7.5, -5});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::rotate_around(m::pi_4<fix32>(), position_t::up) *
+      m::rotate_around(m::pi_4<fix32>(), position_t::left));
 
   l_test.update();
 
@@ -397,10 +397,10 @@ TEST_CASE("ren.cube.corner.up.1") {
   eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
-  auto l_local_position = position_t{5, 5, -5};
-  l_test.l_scene.camera(l_camera).set_local_position(l_local_position);
-  l_test.l_scene.camera(l_camera).set_local_rotation(m::quat_lookat(
-      m::normalize(l_local_position * fix32(-1)), position_t::up));
+  l_test.l_scene.camera(l_camera).set_local_position({5, 7.5, -5});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::rotate_around(-m::pi_4<fix32>(), position_t::up) *
+      m::rotate_around(m::pi_4<fix32>(), position_t::left));
 
   l_test.update();
 
@@ -416,10 +416,10 @@ TEST_CASE("ren.cube.corner.up.2") {
   eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
-  auto l_local_position = position_t{5, 5, 5};
-  l_test.l_scene.camera(l_camera).set_local_position(l_local_position);
-  l_test.l_scene.camera(l_camera).set_local_rotation(m::quat_lookat(
-      m::normalize(l_local_position * fix32(-1)), position_t::up));
+  l_test.l_scene.camera(l_camera).set_local_position({5, 7.5, 5});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::rotate_around(-m::pi_2<fix32>() - m::pi_4<fix32>(), position_t::up) *
+      m::rotate_around(m::pi_4<fix32>(), position_t::left));
 
   l_test.update();
 
@@ -435,10 +435,10 @@ TEST_CASE("ren.cube.corner.up.3") {
   eng::object_handle l_camera = l_test.create_orthographic_camera();
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer();
 
-  auto l_local_position = position_t{-5, 5, 5};
-  l_test.l_scene.camera(l_camera).set_local_position(l_local_position);
-  l_test.l_scene.camera(l_camera).set_local_rotation(m::quat_lookat(
-      m::normalize(l_local_position * fix32(-1)), position_t::up));
+  l_test.l_scene.camera(l_camera).set_local_position({-5, 7.5, 5});
+  l_test.l_scene.camera(l_camera).set_local_rotation(
+      m::rotate_around(m::pi_2<fix32>() + m::pi_4<fix32>(), position_t::up) *
+      m::rotate_around(m::pi_4<fix32>(), position_t::left));
 
   l_test.update();
 
