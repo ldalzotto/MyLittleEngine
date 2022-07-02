@@ -83,7 +83,7 @@ add_executable(TESTS
 ./src/tst/test_common.cpp 
 ./src/tst/test_assets.cpp 
 ./src/tst/test_numbers.cpp 
-./src/tst/test_rasterizer_assets.cpp 
+./src/tst/test_rasterizer.cpp
 ./src/tst/test_ren_cube.cpp 
 ./src/tst/test_window.cpp
 )
