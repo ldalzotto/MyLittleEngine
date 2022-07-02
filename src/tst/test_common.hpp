@@ -3,21 +3,23 @@
 #include <doctest.h>
 #include <eng/engine.hpp>
 
-#ifndef TEST_RESOURCE_PATH_RAW
-#define TEST_RESOURCE_PATH_RAW                                                 \
+#if !RUNTIME_CI_PREPROCESS
+
+#define TEST_RESOURCE_PATH_RAW_PREPROCESS                                                 \
   "/media/loic/SSD/SoftwareProjects/Once/test_data/"
+
+#define WRITE_OUTPUT_TO_TMP 0
+#define WRITE_OUTPUT_TO_RESULT 0
+
+#else
+
+#define WRITE_OUTPUT_TO_TMP 0
+#define WRITE_OUTPUT_TO_RESULT 0
+
 #endif
 
 inline static constexpr auto TEST_RESOURCE_PATH =
-    container::arr_literal<ui8>(TEST_RESOURCE_PATH_RAW);
-
-#ifndef WRITE_OUTPUT_TO_TMP
-#define WRITE_OUTPUT_TO_TMP 0
-#endif
-
-#ifndef WRITE_OUTPUT_TO_RESULT
-#define WRITE_OUTPUT_TO_RESULT 0
-#endif
+    container::arr_literal<ui8>(TEST_RESOURCE_PATH_RAW_PREPROCESS);
 
 struct TestImageAssertionConfig {
   ui8 m_write_output_to_tmp;

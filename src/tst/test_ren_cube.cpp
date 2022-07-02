@@ -7,7 +7,7 @@
 #include <tst/test_common.hpp>
 
 inline static constexpr auto TEST_REN_RELATIVE_FOLDER =
-    container::arr_literal<ui8>(TEST_RESOURCE_PATH_RAW "ren/");
+    container::arr_literal<ui8>(TEST_RESOURCE_PATH_RAW_PREPROCESS "ren/");
 
 inline static constexpr auto TEST_REN_TMP_FOLDER =
     container::arr_literal<ui8>("/media/loic/SSD/SoftwareProjects/glm/");
