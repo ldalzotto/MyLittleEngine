@@ -15,90 +15,17 @@ inline static constexpr auto TEST_REN_RELATIVE_FOLDER =
 inline static constexpr auto TEST_REN_TMP_FOLDER =
     container::arr_literal<ui8>("/media/loic/SSD/SoftwareProjects/glm/");
 
-inline static container::span<ui8>
-test_file_path_null_terminated(const container::range<ui8> &p_left,
-                               const container::range<ui8> &p_relative_path) {
-  container::span<ui8> l_tmp_path_null_terminated;
-  l_tmp_path_null_terminated.allocate(p_left.count() + p_relative_path.count() +
-                                      1);
-  l_tmp_path_null_terminated.range().copy_from(p_left);
-  l_tmp_path_null_terminated.range()
-      .slide(p_left.size_of())
-      .copy_from(p_relative_path);
-  l_tmp_path_null_terminated.at(l_tmp_path_null_terminated.count() - 1) = '\0';
-  return l_tmp_path_null_terminated;
-};
+static constexpr TestImageAssertionConfig s_resource_config = {
+    .m_write_output_to_tmp = WRITE_OUTPUT_TO_TMP,
+    .m_write_output_to_result = WRITE_OUTPUT_TO_RESULT,
+    .m_tmp_folder = {.m_begin = (ui8 *)TEST_REN_TMP_FOLDER.m_data,
+                     .m_count = TEST_REN_TMP_FOLDER.count()},
+    .m_result_folder = {
+        .m_begin = (ui8 *)TEST_REN_RELATIVE_FOLDER.m_data,
+        .m_count = TEST_REN_RELATIVE_FOLDER.count(),
+    }};
 
 namespace RasterizerTestToolbox {
-
-template <typename Engine>
-inline static void
-assert_frame_equals(const container::range<ui8> &p_relative_path,
-                    eng::engine_api<Engine> p_engine, ui16 p_width,
-                    ui16 p_height) {
-  container::range<ui8> l_png_frame;
-  container::span<rgb_t> l_frame_buffer_rgb;
-  {
-
-    container::range<rgba_t> p_frame_buffer_rgba =
-        p_engine.window_system()
-            .window_get_image_buffer(p_engine.thiz.m_window)
-            .m_data.range()
-            .template cast_to<rgba_t>();
-
-    l_frame_buffer_rgb.allocate(p_frame_buffer_rgba.count());
-    for (auto i = 0; i < p_frame_buffer_rgba.count(); ++i) {
-      l_frame_buffer_rgb.at(i) = p_frame_buffer_rgba.at(i).xyz();
-    }
-
-    if (WRITE_OUTPUT_TO_TMP) {
-      container::span<ui8> l_tmp_path_null_terminated =
-          test_file_path_null_terminated(TEST_REN_TMP_FOLDER.range(),
-                                         p_relative_path);
-      TestUtils::write_png((const ui8 *)l_tmp_path_null_terminated.data(),
-                           p_width, p_height, 3,
-                           (ui8 *)l_frame_buffer_rgb.data(), 3 * p_width);
-      l_tmp_path_null_terminated.free();
-    }
-
-    if (WRITE_OUTPUT_TO_RESULT) {
-      container::span<ui8> l_tmp_path_null_terminated =
-          test_file_path_null_terminated(TEST_REN_RELATIVE_FOLDER.range(),
-                                         p_relative_path);
-      TestUtils::write_png((const ui8 *)l_tmp_path_null_terminated.data(),
-                           p_width, p_height, 3,
-                           (ui8 *)l_frame_buffer_rgb.data(), 3 * p_width);
-      l_tmp_path_null_terminated.free();
-    }
-
-    l_png_frame =
-        TestUtils::write_png_to_mem((const ui8 *)l_frame_buffer_rgb.data(),
-                                    3 * p_width, p_width, p_height, 3);
-  }
-
-  if (!WRITE_OUTPUT_TO_TMP) {
-
-    container::span<ui8> l_expected_path_null_terminated =
-        test_file_path_null_terminated(TEST_REN_RELATIVE_FOLDER.range(),
-                                       p_relative_path);
-    i32 l_width, l_height, l_channel;
-    container::range<ui8> l_expected_frame;
-    l_expected_frame.m_begin =
-        TestUtils::read_png((const ui8 *)l_expected_path_null_terminated.data(),
-                            &l_width, &l_height, &l_channel, 0);
-    l_expected_frame.m_count = l_width * l_height * l_channel;
-    l_expected_path_null_terminated.free();
-
-    // REQUIRE(l_png_frame.count() == l_expected_frame.count());
-    REQUIRE(l_expected_frame.is_contained_by(
-        l_frame_buffer_rgb.range().cast_to<ui8>()));
-
-    TestUtils::read_free(l_expected_frame.m_begin);
-  }
-  TestUtils::write_free(l_png_frame.m_begin);
-
-  l_frame_buffer_rgb.free();
-};
 
 template <typename Engine>
 inline static ren::shader_handle
@@ -271,8 +198,9 @@ TEST_CASE("ren.cube.face.back") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.back.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 // look at front face (camera forward is -z)
@@ -290,8 +218,9 @@ TEST_CASE("ren.cube.face.front") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.front.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 // look at right face (camera forward is +x)
@@ -309,8 +238,9 @@ TEST_CASE("ren.cube.face.right") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.right.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 // look at left face (camera forward is -x)
@@ -328,8 +258,9 @@ TEST_CASE("ren.cube.face.left") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.left.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 // look at down face (camera forward is +y)
@@ -347,8 +278,9 @@ TEST_CASE("ren.cube.face.down") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.down.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 // look at up face (camera forward is -y)
@@ -366,8 +298,9 @@ TEST_CASE("ren.cube.face.up") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.up.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.0") {
@@ -385,8 +318,9 @@ TEST_CASE("ren.cube.corner.up.0") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.0.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.1") {
@@ -404,8 +338,9 @@ TEST_CASE("ren.cube.corner.up.1") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.1.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.2") {
@@ -423,8 +358,9 @@ TEST_CASE("ren.cube.corner.up.2") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.2.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.3") {
@@ -442,8 +378,9 @@ TEST_CASE("ren.cube.corner.up.3") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.3.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.0") {
@@ -461,8 +398,9 @@ TEST_CASE("ren.cube.corner.down.0") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.0.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.1") {
@@ -480,8 +418,9 @@ TEST_CASE("ren.cube.corner.down.1") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.1.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.2") {
@@ -499,8 +438,9 @@ TEST_CASE("ren.cube.corner.down.2") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.2.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.3") {
@@ -518,8 +458,9 @@ TEST_CASE("ren.cube.corner.down.3") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.3.png");
-  RasterizerTestToolbox::assert_frame_equals(
-      l_tmp_path.range(), eng::engine_api{l_test.__engine}, l_width, l_height);
+  TestUtils::assert_frame_equals(l_tmp_path.range(),
+                                 eng::engine_api{l_test.__engine}, l_width,
+                                 l_height, s_resource_config);
 }
 
 #include <sys/sys_impl.hpp>
