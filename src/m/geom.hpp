@@ -160,33 +160,6 @@ static mat<T, 4, 4> look_at(const vec<T, 3> &p_eye, const vec<T, 3> &p_center,
 };
 
 template <typename T>
-static mat<T, 4, 4> perspective(T p_fovy, T p_aspect, T p_zNear, T p_zFar) {
-  sys::sassert(m::abs(p_aspect - m::epsilon<T>::value()) > T(0));
-
-  T const tanHalfFovy = m::tan(p_fovy / T(2));
-
-  mat<T, 4, 4> l_result;
-  l_result.at(0, 0) = T(1) / (p_aspect * tanHalfFovy);
-  l_result.at(1, 1) = T(1) / (tanHalfFovy);
-  l_result.at(2, 2) = -(p_zFar + p_zNear) / (p_zFar - p_zNear);
-  l_result.at(2, 3) = -T(1);
-  l_result.at(3, 2) = -(T(2) * p_zFar * p_zNear) / (p_zFar - p_zNear);
-
-  l_result.at(0, 1) = 0;
-  l_result.at(0, 2) = 0;
-  l_result.at(0, 3) = 0;
-  l_result.at(1, 0) = 0;
-  l_result.at(1, 2) = 0;
-  l_result.at(1, 3) = 0;
-  l_result.at(2, 0) = 0;
-  l_result.at(2, 1) = 0;
-  l_result.at(3, 0) = 0;
-  l_result.at(3, 1) = 0;
-  l_result.at(3, 3) = 0;
-  return l_result;
-};
-
-template <typename T>
 static mat<T, 4, 4> orthographic(T left, T right, T bottom, T top, T zNear,
                                  T zFar) {
   mat<T, 4, 4> l_result = l_result.getIdentity();

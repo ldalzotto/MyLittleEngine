@@ -169,16 +169,6 @@ struct BaseRenCubeTest {
     l_engine.update([&]() { l_scene.update(); });
   };
 
-  eng::object_handle create_perspective_camera() {
-    eng::object_handle l_camera = l_scene.camera_create();
-    eng::camera_view<scene_t> l_camera_view = l_scene.camera(l_camera);
-    l_camera_view.set_width_height(m_width, m_height);
-    l_camera_view.set_render_width_height(m_width, m_height);
-    l_camera_view.set_perspective(60.0f * m::deg_to_rad, 0.1, 50);
-    m_cameras.push_back(l_camera);
-    return l_camera;
-  };
-
   eng::object_handle create_orthographic_camera() {
     api_decltype(eng::engine_api, l_engine, __engine);
     eng::object_handle l_camera = l_scene.camera_create();

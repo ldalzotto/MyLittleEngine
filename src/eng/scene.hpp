@@ -116,13 +116,6 @@ template <typename Scene> struct camera_view : object_view<Scene> {
                                          p_rendertexture_height, l_rast);
   };
 
-  void set_perspective(fix32 p_fov, fix32 p_near, fix32 p_far) {
-    camera &l_camera = get_camera();
-    api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
-    api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-    l_ren.camera_set_perspective(l_camera.m_camera, p_fov, p_near, p_far);
-  };
-
   void set_orthographic(fix32 p_width, fix32 p_height, fix32 p_near,
                         fix32 p_far) {
     camera &l_camera = get_camera();

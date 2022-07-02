@@ -29,11 +29,6 @@ template <typename Private> struct ren_api {
                                         p_rendertexture_height, p_rast);
   };
 
-  FORCE_INLINE void camera_set_perspective(camera_handle p_camera, fix32 p_fov,
-                                           fix32 p_near, fix32 p_far) {
-    thiz.camera_set_perspective(p_camera, p_fov, p_near, p_far);
-  };
-
   FORCE_INLINE void
   camera_set_projection(camera_handle p_camera,
                         const m::mat<fix32, 4, 4> &p_projection) {
