@@ -37,7 +37,7 @@ inline uint64_t shader_meta_get_state(const shader_meta &p_shader_meta) {
   uint64_t l_state = 0;
   if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::clockwise) {
     l_state = l_state | BGFX_STATE_CULL_CW;
-  } else if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::clockwise) {
+  } else if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::cclockwise) {
     l_state = l_state | BGFX_STATE_CULL_CCW;
   }
 
