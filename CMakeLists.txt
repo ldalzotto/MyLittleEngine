@@ -3,12 +3,11 @@ cmake_minimum_required(VERSION 3.16)
 enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
-
-if(!RUNTIME_CI)
-    # set(ENABLE_SAFETY_CHECKS true)
-    # set(ENABLE_ADDRESS true)
-    # set(ENABLE_UNDEFINED true)
-    # set(WIN_HEADLESS true)
+if(NOT DEFINED RUNTIME_CI)
+    set(ENABLE_SAFETY_CHECKS true)
+    set(ENABLE_ADDRESS true)
+    set(ENABLE_UNDEFINED true)
+    set(WIN_HEADLESS true)
     # set(PLATFORM_WEBASSEMBLY true)
 endif()
 

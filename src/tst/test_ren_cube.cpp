@@ -115,6 +115,9 @@ struct BaseRenCubeTest {
   ren::mesh_handle m_mesh_handle;
   ren::shader_handle m_shader;
 
+  container::vector<eng::object_handle> m_cameras;
+  container::vector<eng::object_handle> m_mesh_renderers;
+
   BaseRenCubeTest(ui16 p_width, ui16 p_height) {
     __engine.allocate(p_width, p_height);
     api_decltype(eng::engine_api, l_engine, __engine);
@@ -122,6 +125,9 @@ struct BaseRenCubeTest {
     l_scene.allocate();
     m_width = p_width;
     m_height = p_height;
+
+    m_cameras.allocate(0);
+    m_mesh_renderers.allocate(0);
 
     auto l_cube_mesh =
         assets::obj_mesh_loader{}.compile(l_cube_mesh_obj.range());
@@ -138,8 +144,24 @@ struct BaseRenCubeTest {
         l_engine, l_meta);
   }
 
-  ~BaseRenCubeTest(){
+  ~BaseRenCubeTest() {
+    api_decltype(rast_api, l_rast, __engine.m_rasterizer);
+    api_decltype(ren::ren_api, l_ren, __engine.m_renderer);
+    l_ren.destroy(m_shader, l_rast);
+    l_ren.destroy(m_mesh_handle, l_rast);
 
+    for (auto i = 0; i < m_cameras.count(); ++i) {
+      l_scene.camera_destroy(m_cameras.at(i));
+    }
+
+    for (auto i = 0; i < m_mesh_renderers.count(); ++i) {
+      l_scene.mesh_renderer_destroy(m_mesh_renderers.at(i));
+    }
+    m_cameras.free();
+    m_mesh_renderers.free();
+
+    l_scene.free();
+    __engine.free();
   };
 
   void update() {
@@ -153,6 +175,7 @@ struct BaseRenCubeTest {
     l_camera_view.set_width_height(m_width, m_height);
     l_camera_view.set_render_width_height(m_width, m_height);
     l_camera_view.set_perspective(60.0f * m::deg_to_rad, 0.1, 50);
+    m_cameras.push_back(l_camera);
     return l_camera;
   };
 
@@ -163,6 +186,7 @@ struct BaseRenCubeTest {
     l_camera_view.set_width_height(m_width, m_height);
     l_camera_view.set_render_width_height(m_width, m_height);
     l_camera_view.set_orthographic(5, 5, 0.1, 50);
+    m_cameras.push_back(l_camera);
     return l_camera;
   };
 
@@ -170,6 +194,7 @@ struct BaseRenCubeTest {
     eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
     l_scene.mesh_renderer(l_mesh_renderer).set_mesh(m_mesh_handle);
     l_scene.mesh_renderer(l_mesh_renderer).set_program(m_shader);
+    m_mesh_renderers.push_back(l_mesh_renderer);
     return l_mesh_renderer;
   };
 };
