@@ -63,6 +63,7 @@ class BuildConfig {
     ENABLE_ADDRESS: boolean = false;
     ENABLE_UNDEFINED: boolean = false;
     WIN_HEADLESS: boolean = false;
+    CLOCK_FIXED: boolean = false;
     PLATFORM_WEBASSEMBLY: boolean = false;
 
     public constructor(init?: Partial<BuildConfig>) {
@@ -89,6 +90,9 @@ class BuildConfig {
     winHeadlessParam(): string {
         return `WIN_HEADLESS=${this.WIN_HEADLESS}`;
     };
+    clockFixedParam(): string {
+        return `CLOCK_FIXED=${this.CLOCK_FIXED}`;
+    };
     platformWebasseblyParam(): string {
         return `PLATFORM_WEBASSEMBLY=${this.PLATFORM_WEBASSEMBLY}`;
     };
@@ -96,7 +100,7 @@ class BuildConfig {
 
 let build_cmake_project = async function (p_target: string, p_config: BuildConfig) {
     await execute_command(["cmake", "-Bbuild_ninja", "-D", p_config.buildTypeParam(), "-D", "CMAKE_C_COMPILER=clang-10", "-D", "CMAKE_CXX_COMPILER=clang++-10", "-D", p_config.runtimeCi(), "-D", p_config.enableSafetyChecksParam(),
-        "-D", p_config.enableAddressParam(), "-D", p_config.enableUndefinedParam(), "-D", p_config.winHeadlessParam(), "-D", p_config.platformWebasseblyParam(), "-H.", "-GNinja"], root_path);
+        "-D", p_config.enableAddressParam(), "-D", p_config.enableUndefinedParam(), "-D", p_config.winHeadlessParam(), "-D", p_config.clockFixedParam(), "-D", p_config.platformWebasseblyParam(), "-H.", "-GNinja"], root_path);
     await execute_command(["cmake", "--build", ".", "--target", p_target], build_path);
 };
 
@@ -156,13 +160,13 @@ let l_type = Deno.args[0];
 if (l_type == "BUILD_TESTS_DEBUG") {
     fs.emptyDirSync(tmp_path);
     fs.emptyDirSync(build_path);
-    await build_cmake_project("TESTS", new BuildConfig({ ENABLE_ADDRESS: true, ENABLE_SAFETY_CHECKS: true, ENABLE_UNDEFINED: true, WIN_HEADLESS: true }));
+    await build_cmake_project("TESTS", new BuildConfig({ ENABLE_ADDRESS: true, ENABLE_SAFETY_CHECKS: true, ENABLE_UNDEFINED: true, WIN_HEADLESS: true, CLOCK_FIXED: true }));
     await run_cmake_project("TESTS", build_path);
 }
 else if (l_type == "BUILD_TESTS_RELEASE") {
     fs.emptyDirSync(tmp_path);
     fs.emptyDirSync(build_path);
-    await build_cmake_project("TESTS", new BuildConfig({ BUILD_TYPE: "Release", ENABLE_ADDRESS: false, ENABLE_SAFETY_CHECKS: false, ENABLE_UNDEFINED: false, WIN_HEADLESS: true }));
+    await build_cmake_project("TESTS", new BuildConfig({ BUILD_TYPE: "Release", ENABLE_ADDRESS: false, ENABLE_SAFETY_CHECKS: false, ENABLE_UNDEFINED: false, WIN_HEADLESS: true, CLOCK_FIXED: true }));
     await run_cmake_project("TESTS", build_path);
 }
 else if (l_type == "BUILD_EMSCRIPTEN") {
