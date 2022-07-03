@@ -121,6 +121,11 @@ struct image_view {
   };
 };
 
+struct shader_uniform {
+  bgfx::UniformType::Enum type;
+  uimax hash;
+};
+
 struct shader_vertex_runtime_ctx {
   const m::mat<fix32, 4, 4> &m_proj;
   const m::mat<fix32, 4, 4> &m_view;
@@ -180,11 +185,14 @@ struct shader_vertex_output_parameter {
 struct shader_vertex_bytes {
 
   struct table {
+    uimax m_uniform_byte_size;
     uimax m_output_parameters_byte_size;
   };
 
-  static uimax byte_size(uimax p_output_parameter_count) {
+  static uimax byte_size(uimax p_uniform_count,
+                         uimax p_output_parameter_count) {
     return sizeof(table) + sizeof(uimax) +
+           (sizeof(shader_uniform) * p_uniform_count) + sizeof(uimax) +
            (sizeof(shader_vertex_output_parameter) * p_output_parameter_count) +
            sizeof(shader_vertex_function);
   };
@@ -192,35 +200,58 @@ struct shader_vertex_bytes {
   struct view {
     ui8 *m_data;
 
-    void fill(const container::range<shader_vertex_output_parameter>
+    void fill(const container::range<shader_uniform> &p_uniforms,
+              const container::range<shader_vertex_output_parameter>
                   &p_output_parameters,
               shader_vertex_function p_function) {
-      table *l_table = (table *)m_data;
+      ui8 *l_cursor = m_data;
+      table *l_table = (table *)l_cursor;
+      l_table->m_uniform_byte_size = p_uniforms.size_of();
       l_table->m_output_parameters_byte_size = p_output_parameters.size_of();
 
-      uimax *l_output_parameters_count = (uimax *)(m_data + sizeof(table));
+      l_cursor += sizeof(*l_table);
+
+      uimax *l_uniform_count = (uimax *)l_cursor;
+      *l_uniform_count = p_uniforms.count();
+
+      l_cursor += sizeof(*l_uniform_count);
+
+      if (l_table->m_uniform_byte_size > 0) {
+        container::range<shader_uniform> l_byte_uniforms;
+        l_byte_uniforms.m_begin = (shader_uniform *)l_cursor;
+        l_byte_uniforms.m_count = p_output_parameters.count();
+        p_uniforms.copy_to(l_byte_uniforms);
+
+        l_cursor += l_table->m_uniform_byte_size;
+      }
+
+      uimax *l_output_parameters_count = (uimax *)(l_cursor);
       *l_output_parameters_count = p_output_parameters.count();
+
+      l_cursor += sizeof(*l_output_parameters_count);
 
       container::range<shader_vertex_output_parameter> l_byte_output_parameters;
       l_byte_output_parameters.m_begin =
-          (shader_vertex_output_parameter *)(m_data + sizeof(table) +
-                                             sizeof(uimax));
+          (shader_vertex_output_parameter *)(l_cursor);
       l_byte_output_parameters.m_count = p_output_parameters.count();
 
       p_output_parameters.copy_to(l_byte_output_parameters);
 
-      shader_vertex_function *l_function =
-          (shader_vertex_function *)(m_data + sizeof(table) + sizeof(uimax) +
-                                     l_table->m_output_parameters_byte_size);
+      l_cursor += l_table->m_output_parameters_byte_size;
+      shader_vertex_function *l_function = (shader_vertex_function *)(l_cursor);
       *l_function = p_function;
     };
 
     container::range<shader_vertex_output_parameter> output_parameters() {
+      table *l_table = (table *)m_data;
       container::range<shader_vertex_output_parameter> l_range;
       l_range.m_begin =
           (shader_vertex_output_parameter *)(m_data + sizeof(table) +
+                                             sizeof(uimax) +
+                                             l_table->m_uniform_byte_size +
                                              sizeof(uimax));
-      l_range.m_count = *(uimax *)(m_data + sizeof(table));
+      l_range.m_count = *(uimax *)(m_data + sizeof(table) + sizeof(uimax) +
+                                   l_table->m_uniform_byte_size);
       return l_range;
     };
 
@@ -228,6 +259,8 @@ struct shader_vertex_bytes {
       table *l_table = (table *)m_data;
       return *(
           shader_vertex_function *)(m_data + sizeof(table) + sizeof(uimax) +
+                                    l_table->m_uniform_byte_size +
+                                    sizeof(uimax) +
                                     l_table->m_output_parameters_byte_size);
     };
   };
