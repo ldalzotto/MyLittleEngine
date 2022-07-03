@@ -230,7 +230,7 @@ private:
 
 #include <sys/clock.hpp>
 
-static clock s_clock;
+static struct clock s_clock;
 
 inline static eng::details::engine<ren::details::ren_impl, rast_impl_software>
     s_engine_impl;
