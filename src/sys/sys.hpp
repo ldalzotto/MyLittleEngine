@@ -86,6 +86,14 @@ struct sys {
     }
     return l_return;
   };
+
+  template <typename T> inline static uimax strlen(const T *p_value) {
+    uimax l_it = 0;
+    while (p_value[l_it] != '\0') {
+      l_it += 1;
+    }
+    return l_it;
+  };
 };
 
 #define FORCE_INLINE __attribute__((always_inline)) inline
