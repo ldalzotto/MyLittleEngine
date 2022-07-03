@@ -64,9 +64,9 @@ struct BaseEngineTest {
     __engine.free();
   };
 
-  void update() {
+  void update(fix32 p_delta = 0) {
     api_decltype(eng::engine_api, l_engine, __engine);
-    l_engine.update([&]() { l_scene.update(); });
+    l_engine.update(p_delta, [&]() { l_scene.update(); });
   };
 
   ren::mesh_handle create_mesh_obj(const container::range<ui8> &p_obj_asset) {

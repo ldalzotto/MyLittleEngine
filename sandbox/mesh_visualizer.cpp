@@ -269,6 +269,6 @@ int main() {
 };
 #endif
 
-#include <sys/clock_linux_impl.hpp>
+#include <sys/clock_impl.hpp>
 #include <sys/sys_impl.hpp>
 #include <sys/win_impl.hpp>
