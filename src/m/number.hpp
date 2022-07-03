@@ -19,10 +19,13 @@ template <> struct is_builtin<i8> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<ui16> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<i16> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<ui32> { static constexpr ui8 value = 1; };
+template <> struct is_builtin<i64> { static constexpr ui8 value = 1; };
+template <> struct is_builtin<ui64> { static constexpr ui8 value = 1; };
+template <> struct is_builtin<ul64> { static constexpr ui8 value = 1; };
+template <> struct is_builtin<l64> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<i32> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<f32> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<f64> { static constexpr ui8 value = 1; };
-template <> struct is_builtin<long> { static constexpr ui8 value = 1; };
 
 template <typename T> struct is_signed { static constexpr ui8 value = 0; };
 template <> struct is_signed<i8> { static constexpr ui8 value = 1; };
