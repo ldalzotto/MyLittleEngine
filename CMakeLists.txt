@@ -33,6 +33,12 @@ else()
     add_compile_definitions(WIN_HEADLESS_PREPROCESS=0)
 endif()
 
+if(CLOCK_FIXED)
+    add_compile_definitions(CLOCK_FIXED_PREPROCESS=1)
+else()
+    add_compile_definitions(CLOCK_FIXED_PREPROCESS=0)
+endif()
+
 if(ENABLE_SAFETY_CHECKS)
     add_compile_definitions(DEBUG_PREPROCESS=1)
 else()
@@ -81,6 +87,7 @@ target_link_libraries(ENGINE INTERFACE BGFX_API)
 add_executable(TESTS 
 ./src/tst/tests.cpp 
 ./src/tst/test_common.cpp 
+./src/tst/test_clock.cpp 
 ./src/tst/test_assets.cpp 
 ./src/tst/test_numbers.cpp 
 ./src/tst/test_rasterizer.cpp
