@@ -120,6 +120,11 @@ template <typename Private> struct rast_api {
     rast_api_destroy(&thiz, p_uniform);
   };
 
+  FORCE_INLINE void setUniform(bgfx::UniformHandle _handle, const void *_value,
+                               uint16_t _num = 1) {
+    rast_api_setUniform(&thiz, _handle, _value, _num);
+  };
+
   FORCE_INLINE void setViewRect(bgfx::ViewId _id, uint16_t _x, uint16_t _y,
                                 uint16_t _width, uint16_t _height) {
     rast_api_setViewRect(&thiz, _id, _x, _y, _width, _height);
