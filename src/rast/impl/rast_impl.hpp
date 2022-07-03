@@ -138,6 +138,12 @@ struct rast_impl_software {
     };
   };
 
+  struct Uniform {
+    bgfx::UniformType::Enum type;
+    uimax hash;
+    uimax index;
+  };
+
   struct heap {
 
     orm::table_heap_paged_v2<ui8> buffer_memory_table;
@@ -159,6 +165,12 @@ struct rast_impl_software {
     orm::table_vector_v2<RenderPass> renderpass_table;
     orm::table_pool_v2<Shader> shader_table;
 
+    struct {
+      container::pool<m::vec<fix32, 4>> vecs;
+    } uniform_values;
+
+    container::pool<Uniform> uniforms;
+
     orm::table_pool_v2<Program> program_table;
 
     void allocate() {
@@ -172,6 +184,10 @@ struct rast_impl_software {
       indexbuffer_table.allocate(0);
       shader_table.allocate(0);
       program_table.allocate(0);
+
+      uniform_values.vecs.allocate(0);
+      uniforms.allocate(0);
+
       renderpass_table.push_back(
           RenderPass::get_default()); // at least one renderpass
     };
@@ -388,6 +404,31 @@ struct rast_impl_software {
 
     void free_program(bgfx::ProgramHandle p_handle) {
       program_table.remove_at(p_handle.idx);
+    };
+
+    bgfx::UniformHandle allocate_uniform(uimax p_name_hash,
+                                         bgfx::UniformType::Enum p_type) {
+      Uniform l_uniform;
+      l_uniform.hash = p_name_hash;
+      l_uniform.type = p_type;
+      if (p_type == bgfx::UniformType::Enum::Vec4) {
+        l_uniform.index = uniform_values.vecs.push_back({});
+      } else {
+        sys::abort();
+      }
+      bgfx::UniformHandle l_handle;
+      l_handle.idx = uniforms.push_back(l_uniform);
+      return l_handle;
+    };
+
+    void free_uniform(bgfx::UniformHandle p_uniform) {
+      Uniform &l_uniform = uniforms.at(p_uniform.idx);
+      if (l_uniform.type == bgfx::UniformType::Enum::Vec4) {
+        uniform_values.vecs.remove_at(l_uniform.index);
+      } else {
+        sys::abort();
+      }
+      uniforms.remove_at(p_uniform.idx);
     };
 
   } heap;
@@ -835,6 +876,18 @@ rast_api_createProgram(rast_impl_software *thiz, bgfx::ShaderHandle _vsh,
 FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
                                    bgfx::ProgramHandle _handle) {
   thiz->heap.free_program(_handle);
+};
+
+FORCE_INLINE bgfx::UniformHandle
+rast_api_createUniform(rast_impl_software *thiz, const char *_name,
+                       bgfx::UniformType::Enum _type, uint16_t _num) {
+  container::range<ui8> l_name = l_name.make((ui8 *)_name, sys::strlen(_name));
+  return thiz->heap.allocate_uniform(algorithm::hash(l_name), _type);
+};
+
+FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
+                                   bgfx::UniformHandle p_uniform) {
+  thiz->heap.free_uniform(p_uniform);
 };
 
 FORCE_INLINE void rast_api_setViewRect(rast_impl_software *thiz,
