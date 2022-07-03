@@ -67,12 +67,13 @@ template <typename Private> struct ren_api {
   template <typename Rasterizer>
   FORCE_INLINE program_handle program_create(
       const ren::program_meta &p_program_meta,
+      const container::range<rast::shader_uniform> &p_vertex_uniforms,
       const container::range<rast::shader_vertex_output_parameter>
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
       rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
-    return thiz.program_create(p_program_meta, p_vertex_output, p_vertex,
-                               p_fragment, p_rast);
+    return thiz.program_create(p_program_meta, p_vertex_uniforms,
+                               p_vertex_output, p_vertex, p_fragment, p_rast);
   };
 
   template <typename Rasterizer>
