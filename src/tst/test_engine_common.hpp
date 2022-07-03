@@ -144,6 +144,13 @@ struct BaseEngineTest {
     }
   };
 
+  void assert_frame_equals(const container::range<ui8> &p_image_relative_path,
+                           const TestImageAssertionConfig &p_resource_config) {
+    TestUtils::assert_frame_equals(p_image_relative_path,
+                                   eng::engine_api{__engine}, m_width, m_height,
+                                   p_resource_config);
+  };
+
 private:
   template <typename Engine>
   inline static ren::program_handle

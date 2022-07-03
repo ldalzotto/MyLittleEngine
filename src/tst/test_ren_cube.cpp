@@ -62,9 +62,7 @@ TEST_CASE("ren.cube.face.back") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.back.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 // look at front face (camera forward is -z)
@@ -85,9 +83,7 @@ TEST_CASE("ren.cube.face.front") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.front.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 // look at right face (camera forward is +x)
@@ -108,9 +104,7 @@ TEST_CASE("ren.cube.face.right") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.right.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 // look at left face (camera forward is -x)
@@ -131,9 +125,7 @@ TEST_CASE("ren.cube.face.left") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.left.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 // look at down face (camera forward is +y)
@@ -154,9 +146,7 @@ TEST_CASE("ren.cube.face.down") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.down.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 // look at up face (camera forward is -y)
@@ -177,9 +167,7 @@ TEST_CASE("ren.cube.face.up") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.faces.up.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.0") {
@@ -200,9 +188,7 @@ TEST_CASE("ren.cube.corner.up.0") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.0.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.1") {
@@ -223,9 +209,7 @@ TEST_CASE("ren.cube.corner.up.1") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.1.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.2") {
@@ -246,9 +230,7 @@ TEST_CASE("ren.cube.corner.up.2") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.2.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.up.3") {
@@ -269,9 +251,7 @@ TEST_CASE("ren.cube.corner.up.3") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.up.3.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.0") {
@@ -292,9 +272,7 @@ TEST_CASE("ren.cube.corner.down.0") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.0.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.1") {
@@ -315,9 +293,7 @@ TEST_CASE("ren.cube.corner.down.1") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.1.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.2") {
@@ -338,9 +314,7 @@ TEST_CASE("ren.cube.corner.down.2") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.2.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("ren.cube.corner.down.3") {
@@ -361,9 +335,7 @@ TEST_CASE("ren.cube.corner.down.3") {
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("ren.cube.corner.down.3.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 #include <sys/sys_impl.hpp>
