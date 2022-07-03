@@ -70,6 +70,8 @@ struct clock {
   clock_time m_current;
   clock_time m_last;
 
+  clock_time m_delta;
+
   void init(clock_time p_delta) {
     m_current = clock_sys::get_current_time_micro();
     m_last = m_current;
@@ -83,10 +85,13 @@ struct clock {
     m_current = l_new;
     auto l_delta = m_current - m_last;
     if (l_delta >= m_min_delta_ms) {
+      m_delta = {.m_seconds = 0, .m_micros = 0};
       m_last += m_min_delta_ms;
+      m_delta += m_min_delta_ms;
       l_delta = m_current - m_last;
       while (l_delta >= m_min_delta_ms) {
         m_last += m_min_delta_ms;
+        m_delta += m_min_delta_ms;
         l_delta = m_current - m_last;
       }
       assert_debug(m_last <= m_current);
@@ -96,5 +101,7 @@ struct clock {
     return 0;
   };
 
-  fix32 delta() { return fix32(m_min_delta_ms.m_micros) / 1000000; };
+  fix32 delta() {
+    return fix32(m_delta.m_seconds) + (fix32(m_delta.m_micros) / 1000000);
+  };
 };

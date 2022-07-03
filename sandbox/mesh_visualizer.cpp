@@ -241,7 +241,7 @@ inline static mesh_visualizer<decltype(s_engine_impl)> s_mesh_visualizer;
 extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void initialize() {
-  s_clock.init(clock_time::make_s_ms(0, 60));
+  s_clock.init(clock_time::make_s_ms(0, 120));
   s_engine.allocate(800, 800);
   s_mesh_visualizer.allocate(s_engine);
 };
