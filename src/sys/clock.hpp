@@ -2,14 +2,13 @@
 #include <cor/assertions.hpp>
 #include <m/number.hpp>
 
-using time_t = long int;
-
 struct clock_time {
-  static const time_t MAX_MICRO = 999999;
-  time_t m_seconds;
-  time_t m_micros;
+  using clock_time_t = long int;
+  static const clock_time_t MAX_MICRO = 999999;
+  clock_time_t m_seconds;
+  clock_time_t m_micros;
 
-  static clock_time make_s_ms(time_t p_s, time_t p_mp) {
+  static clock_time make_s_ms(clock_time_t p_s, clock_time_t p_mp) {
     return {.m_seconds = p_s, .m_micros = p_mp * 1000};
   };
 
