@@ -22,6 +22,7 @@ template <> struct is_builtin<ui32> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<i32> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<f32> { static constexpr ui8 value = 1; };
 template <> struct is_builtin<f64> { static constexpr ui8 value = 1; };
+template <> struct is_builtin<long> { static constexpr ui8 value = 1; };
 
 template <typename T> struct is_signed { static constexpr ui8 value = 0; };
 template <> struct is_signed<i8> { static constexpr ui8 value = 1; };

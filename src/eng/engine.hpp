@@ -1,6 +1,7 @@
 #pragma once
 
 #include <eng/input.hpp>
+#include <eng/time.hpp>
 #include <eng/window.hpp>
 #include <rast/rast.hpp>
 #include <ren/ren.hpp>
@@ -16,8 +17,8 @@ template <typename EngineImpl> struct engine_api {
   };
   FORCE_INLINE void free() { thiz.free(); };
   template <typename UpdateCallback>
-  FORCE_INLINE ui8 update(const UpdateCallback &p_update) {
-    return thiz.update(p_update);
+  FORCE_INLINE void update(fix32 p_delta, const UpdateCallback &p_update) {
+    thiz.update(p_delta, p_update);
   };
   FORCE_INLINE typename EngineImpl::ren_impl_t &renderer() {
     return thiz.m_renderer;
@@ -29,13 +30,13 @@ template <typename EngineImpl> struct engine_api {
   FORCE_INLINE typename EngineImpl::rast_impl_t &rasterizer() {
     return thiz.m_rasterizer;
   };
-  FORCE_INLINE rast_api<typename EngineImpl::rast_impl_t>
-  rasterizer_api() {
+  FORCE_INLINE rast_api<typename EngineImpl::rast_impl_t> rasterizer_api() {
     return rast_api<typename EngineImpl::rast_impl_t>{rasterizer()};
   };
 
   FORCE_INLINE input::system &input() { return thiz.m_input_system; };
   FORCE_INLINE window::system &window_system() { return thiz.m_window_system; };
+  FORCE_INLINE time &time() { return thiz.m_time; };
 };
 
 namespace details {
@@ -50,6 +51,7 @@ template <typename RenImpl, typename RastImpl> struct engine {
 
   ren_impl_t m_renderer;
   rast_impl_t m_rasterizer;
+  time m_time;
 
   window_handle m_window;
 
@@ -62,6 +64,8 @@ template <typename RenImpl, typename RastImpl> struct engine {
 
     l_rast.init();
     l_renderer.allocate();
+
+    m_time.allocate();
 
     m_window = m_window_system.create_window(p_window_width, p_window_height);
     m_window_system.open_window(m_window);
@@ -81,26 +85,24 @@ template <typename RenImpl, typename RastImpl> struct engine {
   };
 
   template <typename UpdateCallback>
-  ui8 update(const UpdateCallback &p_update) {
-    if (m_window_system.fetch_events()) {
+  void update(fix32 p_delta, const UpdateCallback &p_update) {
 
-      api_decltype(ren::ren_api, l_renderer, m_renderer);
-      api_decltype(rast_api, l_rast, m_rasterizer);
+    m_time.increment(p_delta);
+    m_window_system.fetch_events();
 
-      m_input_system.update(m_window_system.input_system_events());
+    api_decltype(ren::ren_api, l_renderer, m_renderer);
+    api_decltype(rast_api, l_rast, m_rasterizer);
 
-      p_update();
+    m_input_system.update(m_window_system.input_system_events());
 
-      l_renderer.frame(l_rast);
-      l_rast.frame();
+    p_update();
 
-      rast::image_view l_rendereed_frame =
-          m_renderer.frame_view(ren::camera_handle{.m_idx = 0}, l_rast);
-      m_window_system.draw_window(m_window, l_rendereed_frame);
-      return 1;
-    }
+    l_renderer.frame(l_rast);
+    l_rast.frame();
 
-    return 0;
+    rast::image_view l_rendereed_frame =
+        m_renderer.frame_view(ren::camera_handle{.m_idx = 0}, l_rast);
+    m_window_system.draw_window(m_window, l_rendereed_frame);
   };
 };
 }; // namespace details

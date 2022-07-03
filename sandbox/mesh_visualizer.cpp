@@ -153,8 +153,7 @@ f 5/5 1/1 2/2
     l_ren.destroy(m_mesh_1, l_rast);
   };
 
-  i32 m_counter = 0;
-  fix32 m_delta = 0.1f;
+  fix32 m_speed = m::pi<fix32>();
 
   void frame(eng::engine_api<EngineImpl> p_engine) {
 
@@ -179,14 +178,12 @@ f 5/5 1/1 2/2
     }
 
     rotation_t l_rotation =
-        m::rotate_around(m_delta * m_counter, position_t::up);
+        m::rotate_around(m_speed * p_engine.time().m_elapsed, position_t::up);
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
     l_mesh_renderer.set_local_rotation(l_rotation);
 
     m_scene.update();
-
-    m_counter += 1;
   };
 
 private:
@@ -231,6 +228,10 @@ private:
 
 #endif
 
+#include <sys/clock.hpp>
+
+static clock s_clock;
+
 inline static eng::details::engine<ren::details::ren_impl, rast_impl_software>
     s_engine_impl;
 inline static eng::engine_api<decltype(s_engine_impl)> s_engine(s_engine_impl);
@@ -240,12 +241,16 @@ inline static mesh_visualizer<decltype(s_engine_impl)> s_mesh_visualizer;
 extern "C" {
 EMSCRIPTEN_KEEPALIVE
 void initialize() {
+  s_clock.init(clock_time::make_s_ms(0, 60));
   s_engine.allocate(800, 800);
   s_mesh_visualizer.allocate(s_engine);
 };
 EMSCRIPTEN_KEEPALIVE
-unsigned char main_loop() {
-  return s_engine.update([&]() { s_mesh_visualizer.frame(s_engine); });
+void main_loop() {
+  if (s_clock.update()) {
+    s_engine.update(s_clock.delta(),
+                    [&]() { s_mesh_visualizer.frame(s_engine); });
+  }
 };
 EMSCRIPTEN_KEEPALIVE
 void terminate() {
@@ -257,11 +262,13 @@ void terminate() {
 #if !PLATFORM_WEBASSEMBLY_PREPROCESS
 int main() {
   initialize();
-  while (main_loop()) {
+  while (true) {
+    main_loop();
   };
   terminate();
 };
 #endif
 
+#include <sys/clock_linux_impl.hpp>
 #include <sys/sys_impl.hpp>
 #include <sys/win_impl.hpp>
