@@ -573,6 +573,14 @@ struct rast_impl_software {
 
   heap_proxy proxy() { return {.m_heap = heap}; };
 
+  void set_uniform(bgfx::UniformHandle p_handle, const void *p_value) {
+    auto l_uniform = __get_uniform(p_handle);
+    container::range<ui8> l_value;
+    l_value.m_begin = (ui8 *)p_value;
+    l_value.count() = l_uniform.count();
+    l_value.copy_to(l_uniform);
+  };
+
   bgfx::TextureHandle allocate_texture(uint16_t p_width, uint16_t p_height,
                                        bool p_hasMips, uint16_t p_numLayers,
                                        bgfx::TextureFormat::Enum p_format,
@@ -766,6 +774,16 @@ struct rast_impl_software {
     m_rasterize_heap.free();
     // TODO
   };
+
+private:
+  container::range<ui8> __get_uniform(bgfx::UniformHandle p_handle) {
+    auto &l_uniform = heap.uniforms.at(p_handle.idx);
+    if (l_uniform.type == bgfx::UniformType::Vec4) {
+      auto &l_value = heap.uniform_values.vecs.at(l_uniform.index);
+      return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
+    }
+    return container::range<ui8>::make(0, 0);
+  };
 };
 
 FORCE_INLINE ui8 rast_api_init(rast_impl_software *thiz,
@@ -888,6 +906,12 @@ rast_api_createUniform(rast_impl_software *thiz, const char *_name,
 FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
                                    bgfx::UniformHandle p_uniform) {
   thiz->heap.free_uniform(p_uniform);
+};
+
+FORCE_INLINE void rast_api_setUniform(rast_impl_software *thiz,
+                                      bgfx::UniformHandle _handle,
+                                      const void *_value, uint16_t _num) {
+  thiz->set_uniform(_handle, _value);
 };
 
 FORCE_INLINE void rast_api_setViewRect(rast_impl_software *thiz,
