@@ -84,11 +84,11 @@ f 4 5 6
   auto l_camera = l_test.create_orthographic_camera(2, 2);
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
 
-  ren::shader_meta l_c_meta = ren::shader_meta::get_default();
-  l_c_meta.m_cull_mode = ren::shader_meta::cull_mode::clockwise;
+  ren::program_meta l_c_meta = ren::program_meta::get_default();
+  l_c_meta.m_cull_mode = ren::program_meta::cull_mode::clockwise;
 
-  ren::shader_meta l_cc_meta = ren::shader_meta::get_default();
-  l_cc_meta.m_cull_mode = ren::shader_meta::cull_mode::cclockwise;
+  ren::program_meta l_cc_meta = ren::program_meta::get_default();
+  l_cc_meta.m_cull_mode = ren::program_meta::cull_mode::cclockwise;
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
@@ -195,7 +195,7 @@ f 4/2 5/2 6/2
   auto l_camera = l_test.create_orthographic_camera(2, 2);
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
 
-  ren::shader_meta l_meta = l_meta.get_default();
+  ren::program_meta l_meta = l_meta.get_default();
   l_meta.m_write_depth = 0;
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(

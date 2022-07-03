@@ -17,7 +17,7 @@ struct BaseEngineTest {
   ui16 m_height;
 
   container::vector<ren::mesh_handle> m_mesh_handles;
-  container::vector<ren::shader_handle> m_shader_handles;
+  container::vector<ren::program_handle> m_shader_handles;
 
   container::vector<eng::object_handle> m_cameras;
   container::vector<eng::object_handle> m_mesh_renderers;
@@ -41,11 +41,11 @@ struct BaseEngineTest {
     api_decltype(ren::ren_api, l_ren, __engine.m_renderer);
 
     for (auto i = 0; i < m_shader_handles.count(); ++i) {
-      l_ren.destroy(m_shader_handles.at(i), l_rast);
+      l_ren.program_destroy(m_shader_handles.at(i), l_rast);
     }
 
     for (auto i = 0; i < m_mesh_handles.count(); ++i) {
-      l_ren.destroy(m_mesh_handles.at(i), l_rast);
+      l_ren.mesh_destroy(m_mesh_handles.at(i), l_rast);
     }
 
     for (auto i = 0; i < m_cameras.count(); ++i) {
@@ -72,7 +72,7 @@ struct BaseEngineTest {
   ren::mesh_handle create_mesh_obj(const container::range<ui8> &p_obj_asset) {
     api_decltype(eng::engine_api, l_engine, __engine);
     auto l_cube_mesh = assets::obj_mesh_loader{}.compile(p_obj_asset);
-    ren::mesh_handle l_mesh_handle = l_engine.renderer_api().create_mesh(
+    ren::mesh_handle l_mesh_handle = l_engine.renderer_api().mesh_create(
         l_cube_mesh, l_engine.rasterizer_api());
     l_cube_mesh.free();
     m_mesh_handles.push_back(l_mesh_handle);
@@ -89,21 +89,22 @@ struct BaseEngineTest {
     }
 
     api_decltype(eng::engine_api, l_engine, __engine);
-    l_engine.renderer_api().destroy(p_mesh, l_engine.rasterizer_api());
+    l_engine.renderer_api().mesh_destroy(p_mesh, l_engine.rasterizer_api());
   };
 
   template <typename ShaderType>
-  ren::shader_handle create_shader(
-      const ren::shader_meta &p_meta = ren::shader_meta::get_default()) {
+  ren::program_handle create_shader(
+      const ren::program_meta &p_meta = ren::program_meta::get_default()) {
     api_decltype(eng::engine_api, l_engine, __engine);
-    ren::shader_handle l_shader = load_shader<ShaderType>(l_engine, p_meta);
+    ren::program_handle l_shader = program_create<ShaderType>(l_engine, p_meta);
     m_shader_handles.push_back(l_shader);
     return l_shader;
   };
 
-  void destroy_shader(ren::shader_handle p_shader) {
+  void destroy_shader(ren::program_handle p_shader) {
     api_decltype(eng::engine_api, l_engine, __engine);
-    l_engine.renderer_api().destroy(p_shader, l_engine.rasterizer_api());
+    l_engine.renderer_api().program_destroy(p_shader,
+                                            l_engine.rasterizer_api());
 
     for (auto i = 0; i < m_shader_handles.count(); ++i) {
       if (m_shader_handles.at(i).m_idx == p_shader.m_idx) {
@@ -125,7 +126,7 @@ struct BaseEngineTest {
   };
 
   eng::object_handle create_mesh_renderer(ren::mesh_handle p_mesh,
-                                          ren::shader_handle p_shader) {
+                                          ren::program_handle p_shader) {
     eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
     l_scene.mesh_renderer(l_mesh_renderer).set_mesh(p_mesh);
     l_scene.mesh_renderer(l_mesh_renderer).set_program(p_shader);
@@ -145,26 +146,27 @@ struct BaseEngineTest {
 
 private:
   template <typename Engine>
-  inline static ren::shader_handle
-  load_shader(eng::engine_api<Engine> p_engine,
-              const ren::shader_meta &p_shader_meta,
-              const container::range<rast::shader_vertex_output_parameter>
-                  &p_vertex_output,
-              rast::shader_vertex_function p_vertex,
-              rast::shader_fragment_function p_fragment) {
+  inline static ren::program_handle
+  program_create(eng::engine_api<Engine> p_engine,
+                 const ren::program_meta &p_program_meta,
+                 const container::range<rast::shader_vertex_output_parameter>
+                     &p_vertex_output,
+                 rast::shader_vertex_function p_vertex,
+                 rast::shader_fragment_function p_fragment) {
 
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
-    return l_ren.create_shader(p_shader_meta, p_vertex_output, p_vertex,
-                               p_fragment, l_rast);
+    return l_ren.program_create(p_program_meta, p_vertex_output, p_vertex,
+                                p_fragment, l_rast);
   };
 
   template <typename Shader, typename Engine>
-  inline static ren::shader_handle load_shader(eng::engine_api<Engine> p_engine,
-                                               const ren::shader_meta &p_meta) {
-    ren::shader_meta l_meta = l_meta.get_default();
-    return load_shader(p_engine, p_meta, Shader::s_vertex_output.range(),
-                       Shader::vertex, Shader::fragment);
+  inline static ren::program_handle
+  program_create(eng::engine_api<Engine> p_engine,
+                 const ren::program_meta &p_meta) {
+    ren::program_meta l_meta = l_meta.get_default();
+    return program_create(p_engine, p_meta, Shader::s_vertex_output.range(),
+                          Shader::vertex, Shader::fragment);
   };
 };
 
