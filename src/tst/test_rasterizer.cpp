@@ -32,9 +32,7 @@ f 1 2 3
 
   auto l_tmp_path =
       container::arr_literal<ui8>("rast.single_triangle.visibility.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("rast.single_triangle.vertex_color_interpolation") {
@@ -61,9 +59,7 @@ f 1/1 2/2 3/3
 
   auto l_tmp_path = container::arr_literal<ui8>(
       "rast.single_triangle.vertex_color_interpolation.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("rast.cull.clockwise.counterclockwise") {
@@ -84,11 +80,11 @@ f 4 5 6
   auto l_camera = l_test.create_orthographic_camera(2, 2);
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
 
-  ren::shader_meta l_c_meta = ren::shader_meta::get_default();
-  l_c_meta.m_cull_mode = ren::shader_meta::cull_mode::clockwise;
+  ren::program_meta l_c_meta = ren::program_meta::get_default();
+  l_c_meta.m_cull_mode = ren::program_meta::cull_mode::clockwise;
 
-  ren::shader_meta l_cc_meta = ren::shader_meta::get_default();
-  l_cc_meta.m_cull_mode = ren::shader_meta::cull_mode::cclockwise;
+  ren::program_meta l_cc_meta = ren::program_meta::get_default();
+  l_cc_meta.m_cull_mode = ren::program_meta::cull_mode::cclockwise;
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
@@ -97,9 +93,7 @@ f 4 5 6
   l_test.update();
 
   auto l_c_path = container::arr_literal<ui8>("rast.cull.clockwise.png");
-  TestUtils::assert_frame_equals(l_c_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_c_path.range(), s_resource_config);
 
   l_test.l_scene.mesh_renderer(l_mesh_renderer)
       .set_program(l_test.create_shader<WhiteShader>(l_cc_meta));
@@ -107,9 +101,7 @@ f 4 5 6
   l_test.update();
 
   auto l_cc_path = container::arr_literal<ui8>("rast.cull.cclockwise.png");
-  TestUtils::assert_frame_equals(l_cc_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_cc_path.range(), s_resource_config);
 }
 
 TEST_CASE("rast.depth.comparison") {
@@ -139,9 +131,7 @@ f 4/2 5/2 6/2
   l_test.update();
 
   auto l_tmp_path = container::arr_literal<ui8>("rast.depth.comparison.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("rast.depth.comparison.large_framebuffer") {
@@ -171,9 +161,7 @@ f 4/2 5/2 6/2
 
   auto l_tmp_path = container::arr_literal<ui8>(
       "rast.depth.comparison.large_framebuffer.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 TEST_CASE("rast.depth.comparison.readonly") {
@@ -195,7 +183,7 @@ f 4/2 5/2 6/2
   auto l_camera = l_test.create_orthographic_camera(2, 2);
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
 
-  ren::shader_meta l_meta = l_meta.get_default();
+  ren::program_meta l_meta = l_meta.get_default();
   l_meta.m_write_depth = 0;
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
@@ -206,9 +194,7 @@ f 4/2 5/2 6/2
 
   auto l_tmp_path =
       container::arr_literal<ui8>("rast.depth.comparison.readonly.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 // top left-right out of bounds
@@ -240,9 +226,7 @@ f 4/2 5/2 6/2
 
   auto l_tmp_path =
       container::arr_literal<ui8>("rast.depth.comparison.outofbounds.png");
-  TestUtils::assert_frame_equals(l_tmp_path.range(),
-                                 eng::engine_api{l_test.__engine}, l_width,
-                                 l_height, s_resource_config);
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
 #include <sys/sys_impl.hpp>

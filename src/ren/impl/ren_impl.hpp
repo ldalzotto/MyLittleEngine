@@ -27,25 +27,26 @@ struct camera {
   camera() = default;
 };
 
-struct shader_rasterizer_handles {
+struct program_rasterizer_handles {
   bgfx::ProgramHandle m_program;
   bgfx::ShaderHandle m_vertex;
   bgfx::ShaderHandle m_fragment;
 };
 
-inline uint64_t shader_meta_get_state(const shader_meta &p_shader_meta) {
+inline uint64_t program_meta_get_state(const program_meta &p_program_meta) {
   uint64_t l_state = 0;
-  if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::clockwise) {
+  if (p_program_meta.m_cull_mode == program_meta::cull_mode::clockwise) {
     l_state = l_state | BGFX_STATE_CULL_CW;
-  } else if (p_shader_meta.m_cull_mode == shader_meta::cull_mode::cclockwise) {
+  } else if (p_program_meta.m_cull_mode ==
+             program_meta::cull_mode::cclockwise) {
     l_state = l_state | BGFX_STATE_CULL_CCW;
   }
 
-  if (p_shader_meta.m_write_depth) {
+  if (p_program_meta.m_write_depth) {
     l_state = l_state | BGFX_STATE_WRITE_Z;
   }
 
-  if (p_shader_meta.m_depth_test == shader_meta::depth_test::less) {
+  if (p_program_meta.m_depth_test == program_meta::depth_test::less) {
     l_state = l_state | BGFX_STATE_DEPTH_TEST_LESS;
   }
 
@@ -58,15 +59,15 @@ struct ren_impl {
   // The camera should be able to be linked to multiple shader.
   struct render_pass {
     camera_handle m_camera;
-    shader_handle m_shader;
+    program_handle m_program;
     container::vector<m::mat<fix32, 4, 4>> m_transforms;
     container::vector<mesh_handle> m_meshes;
 
-    void allocate(camera_handle p_camera, shader_handle p_shader,
+    void allocate(camera_handle p_camera, program_handle p_program,
                   const container::range<m::mat<fix32, 4, 4>> &p_transforms,
                   const container::range<mesh_handle> &p_meshes) {
       m_camera = p_camera;
-      m_shader = p_shader;
+      m_program = p_program;
       m_transforms.allocate(p_transforms.count());
       m_transforms.count() = p_transforms.count();
       m_transforms.range().copy_from(p_transforms);
@@ -84,23 +85,24 @@ struct ren_impl {
   struct heap {
 
     orm::table_pool_v2<camera, bgfx::FrameBufferHandle> m_camera_table;
-    orm::table_pool_v2<shader_meta, shader_rasterizer_handles> m_shader_table;
+    orm::table_pool_v2<program_meta, program_rasterizer_handles>
+        m_program_table;
     orm::table_pool_v2<mesh, bgfx::VertexBufferHandle, bgfx::IndexBufferHandle>
         m_mesh_table;
 
     container::vector<render_pass> m_render_passes;
 
-    // TODO -> add render passes per shader
+    // TODO -> add render passes per program
     void allocate() {
       m_camera_table.allocate(0);
-      m_shader_table.allocate(0);
+      m_program_table.allocate(0);
       m_mesh_table.allocate(0);
       m_render_passes.allocate(0);
     };
 
     void free() {
       m_camera_table.free();
-      m_shader_table.free();
+      m_program_table.free();
       m_mesh_table.free();
       m_render_passes.free();
     };
@@ -171,7 +173,7 @@ struct ren_impl {
   };
 
   template <typename Rasterizer>
-  mesh_handle create_mesh(const assets::mesh &p_mesh,
+  mesh_handle mesh_create(const assets::mesh &p_mesh,
                           rast_api<Rasterizer> p_rast) {
     bgfx::VertexBufferHandle l_vertex_buffer;
     bgfx::IndexBufferHandle l_index_buffer;
@@ -183,7 +185,7 @@ struct ren_impl {
   };
 
   template <typename Rasterizer>
-  void destroy_mesh(mesh_handle p_mesh, rast_api<Rasterizer> p_rast) {
+  void mesh_destroy(mesh_handle p_mesh, rast_api<Rasterizer> p_rast) {
     bgfx::VertexBufferHandle *l_vertex_buffer;
     bgfx::IndexBufferHandle *l_index_buffer;
     m_heap.m_mesh_table.at(p_mesh.m_idx, none(), &l_vertex_buffer,
@@ -194,13 +196,13 @@ struct ren_impl {
   };
 
   template <typename Rasterizer>
-  shader_handle
-  create_shader(const ren::shader_meta &p_shader_meta,
-                const container::range<rast::shader_vertex_output_parameter>
-                    &p_vertex_output,
-                rast::shader_vertex_function p_vertex,
-                rast::shader_fragment_function p_fragment,
-                rast_api<Rasterizer> p_rast) {
+  program_handle
+  program_create(const ren::program_meta &p_program_meta,
+                 const container::range<rast::shader_vertex_output_parameter>
+                     &p_vertex_output,
+                 rast::shader_vertex_function p_vertex,
+                 rast::shader_fragment_function p_fragment,
+                 rast_api<Rasterizer> p_rast) {
     uimax l_vertex_shader_size =
         rast::shader_vertex_bytes::byte_size(p_vertex_output.count());
     const bgfx::Memory *l_vertex_shader_memory =
@@ -213,37 +215,37 @@ struct ren_impl {
     rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
         p_fragment);
 
-    shader_rasterizer_handles l_shader_rast_handles;
-    l_shader_rast_handles.m_vertex =
+    program_rasterizer_handles l_program_rast_handles;
+    l_program_rast_handles.m_vertex =
         p_rast.createShader(l_vertex_shader_memory);
-    l_shader_rast_handles.m_fragment =
+    l_program_rast_handles.m_fragment =
         p_rast.createShader(l_fragment_shader_memory);
 
-    l_shader_rast_handles.m_program = p_rast.createProgram(
-        l_shader_rast_handles.m_vertex, l_shader_rast_handles.m_fragment);
-    uimax l_index =
-        m_heap.m_shader_table.push_back(p_shader_meta, l_shader_rast_handles);
+    l_program_rast_handles.m_program = p_rast.createProgram(
+        l_program_rast_handles.m_vertex, l_program_rast_handles.m_fragment);
+    uimax l_index = m_heap.m_program_table.push_back(p_program_meta,
+                                                     l_program_rast_handles);
 
-    return shader_handle{.m_idx = l_index};
+    return program_handle{.m_idx = l_index};
   };
 
-  void draw(camera_handle p_camera, shader_handle p_shader,
+  void draw(camera_handle p_camera, program_handle p_program,
             const container::range<m::mat<fix32, 4, 4>> &p_transforms,
             const container::range<mesh_handle> &p_meshes) {
     render_pass l_render_pass;
-    l_render_pass.allocate(p_camera, p_shader, p_transforms, p_meshes);
+    l_render_pass.allocate(p_camera, p_program, p_transforms, p_meshes);
     m_heap.m_render_passes.push_back(l_render_pass);
   };
 
   template <typename Rasterizer>
-  void destroy_shader(shader_handle p_shader, rast_api<Rasterizer> p_rast) {
-    shader_rasterizer_handles *l_shader_rast_handles;
-    m_heap.m_shader_table.at(p_shader.m_idx, none(), &l_shader_rast_handles);
+  void program_destroy(program_handle p_program, rast_api<Rasterizer> p_rast) {
+    program_rasterizer_handles *l_program_rast_handles;
+    m_heap.m_program_table.at(p_program.m_idx, none(), &l_program_rast_handles);
 
-    p_rast.destroy(l_shader_rast_handles->m_program);
-    p_rast.destroy(l_shader_rast_handles->m_vertex);
-    p_rast.destroy(l_shader_rast_handles->m_fragment);
-    m_heap.m_shader_table.remove_at(p_shader.m_idx);
+    p_rast.destroy(l_program_rast_handles->m_program);
+    p_rast.destroy(l_program_rast_handles->m_vertex);
+    p_rast.destroy(l_program_rast_handles->m_fragment);
+    m_heap.m_program_table.remove_at(p_program.m_idx);
   };
 
   template <typename Rasterizer> void frame(rast_api<Rasterizer> p_rast) {
@@ -260,11 +262,11 @@ struct ren_impl {
                               l_camera->m_projection.m_data);
       p_rast.setViewFrameBuffer(0, *l_frame_buffer);
 
-      shader_meta *l_shader_parameter;
-      shader_rasterizer_handles *l_shader_rast_handles;
-      m_heap.m_shader_table.at(p_render_pass.m_shader.m_idx,
-                               &l_shader_parameter, &l_shader_rast_handles);
-      auto l_state = shader_meta_get_state(*l_shader_parameter);
+      program_meta *l_program_meta;
+      program_rasterizer_handles *l_program_rast_handles;
+      m_heap.m_program_table.at(p_render_pass.m_program.m_idx, &l_program_meta,
+                                &l_program_rast_handles);
+      auto l_state = program_meta_get_state(*l_program_meta);
       for (auto l_mesh_it = 0; l_mesh_it < p_render_pass.m_meshes.count();
            ++l_mesh_it) {
         bgfx::VertexBufferHandle *l_vertex_buffer;
@@ -281,7 +283,7 @@ struct ren_impl {
         p_rast.setVertexBuffer(0, *l_vertex_buffer);
         p_rast.setState(l_state);
 
-        p_rast.submit(0, l_shader_rast_handles->m_program);
+        p_rast.submit(0, l_program_rast_handles->m_program);
       }
     });
   };

@@ -42,7 +42,7 @@ struct camera {
 struct mesh_renderer {
   transform_handle m_transform;
   ren::mesh_handle m_mesh;
-  ren::shader_handle m_shader;
+  ren::program_handle m_program;
 };
 
 template <typename Scene> struct object_view {
@@ -143,9 +143,9 @@ template <typename Scene> struct mesh_renderer_view : object_view<Scene> {
     base::m_transform = get_mesh_renderer().m_transform;
   };
 
-  void set_program(ren::shader_handle p_program) {
+  void set_program(ren::program_handle p_program) {
     struct mesh_renderer &l_mesh_renderer = get_mesh_renderer();
-    l_mesh_renderer.m_shader = p_program;
+    l_mesh_renderer.m_program = p_program;
   };
 
   void set_mesh(ren::mesh_handle p_mesh) {
@@ -294,7 +294,7 @@ template <typename Engine> struct scene {
             l_transform->m_local_to_world};
         container::arr<ren::mesh_handle, 1> l_rendered_meshes = {
             l_mesh_renderer.m_mesh};
-        l_ren.draw(l_main_camera.m_camera, l_mesh_renderer.m_shader,
+        l_ren.draw(l_main_camera.m_camera, l_mesh_renderer.m_program,
                    l_rendered_transforms.range(), l_rendered_meshes.range());
       }
     }

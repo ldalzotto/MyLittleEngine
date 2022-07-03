@@ -21,7 +21,7 @@ template <typename EngineImpl> struct mesh_visualizer {
 
   eng::object_handle m_mesh_renderer;
 
-  ren::shader_handle m_shader;
+  ren::program_handle m_program;
 
 private:
   inline static ui16 m_width = 128;
@@ -84,7 +84,7 @@ f 5/5 1/1 2/2
       assets::mesh l_mesh =
           assets::obj_mesh_loader().compile(l_obj_str.range());
 
-      m_mesh_0 = l_ren.create_mesh(l_mesh, l_rast);
+      m_mesh_0 = l_ren.mesh_create(l_mesh, l_rast);
       l_mesh.free();
     }
     {
@@ -122,22 +122,22 @@ f 5/5 1/1 2/2
       assets::mesh l_mesh =
           assets::obj_mesh_loader().compile(l_obj_str.range());
 
-      m_mesh_1 = l_ren.create_mesh(l_mesh, l_rast);
+      m_mesh_1 = l_ren.mesh_create(l_mesh, l_rast);
       l_mesh.free();
     }
 
     m_mesh_renderer = m_scene.mesh_renderer_create();
 
-    m_shader =
-        l_ren.create_shader(ren::shader_meta::get_default(),
-                            ColorInterpolationShader::s_vertex_output.range(),
-                            &ColorInterpolationShader::vertex,
-                            &ColorInterpolationShader::fragment, l_rast);
+    m_program =
+        l_ren.program_create(ren::program_meta::get_default(),
+                             ColorInterpolationShader::s_vertex_output.range(),
+                             &ColorInterpolationShader::vertex,
+                             &ColorInterpolationShader::fragment, l_rast);
 
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
     l_mesh_renderer.set_mesh(m_mesh_0);
-    l_mesh_renderer.set_program(m_shader);
+    l_mesh_renderer.set_program(m_program);
     l_mesh_renderer.set_local_position({0, 0, 0});
   };
 
@@ -148,9 +148,9 @@ f 5/5 1/1 2/2
 
     m_scene.camera_destroy(m_camera);
     m_scene.mesh_renderer_destroy(m_mesh_renderer);
-    l_ren.destroy(m_shader, l_rast);
-    l_ren.destroy(m_mesh_0, l_rast);
-    l_ren.destroy(m_mesh_1, l_rast);
+    l_ren.program_destroy(m_program, l_rast);
+    l_ren.mesh_destroy(m_mesh_0, l_rast);
+    l_ren.mesh_destroy(m_mesh_1, l_rast);
   };
 
   fix32 m_speed = m::pi<fix32>();
