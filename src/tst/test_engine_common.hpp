@@ -186,8 +186,8 @@ struct WhiteShader {
   inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
-                     ui8 **out_vertex) {
+                     const ui8 *p_vertex, ui8 *p_uniforms,
+                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
@@ -206,8 +206,8 @@ struct ColorInterpolationShader {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
   inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
-                     ui8 **out_vertex) {
+                     const ui8 *p_vertex, ui8 *p_uniforms,
+                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
