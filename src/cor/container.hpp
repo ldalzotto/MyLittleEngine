@@ -16,10 +16,7 @@ template <typename T> struct range {
   uimax m_count;
 
   static constexpr range make(T *p_begin, uimax p_count) {
-    return {
-      .m_begin = p_begin,
-      .m_count = p_count
-    };
+    return {.m_begin = p_begin, .m_count = p_count};
   };
 
   const T *data() const { return (const T *)m_begin; };
@@ -1057,6 +1054,103 @@ struct multi_byte_buffer {
   runtime_buffer &col(uimax p_index) {
     assert_debug(p_index < m_col_count);
     return m_cols.m_runtime_buffers[p_index];
+  };
+};
+
+template <typename Key> struct hashmap_intrusive {
+  container::pool_intrusive m_keys_intrisic;
+  Key *m_keys;
+  ui8 *m_is_allocated;
+
+  void allocate() {
+    m_keys_intrisic.allocate(0);
+    m_keys = (Key *)default_allocator::malloc(0);
+    m_is_allocated = (ui8 *)default_allocator::malloc(0);
+  };
+
+  void free() {
+    m_keys_intrisic.free();
+    default_allocator::free(m_keys);
+    default_allocator::free(m_is_allocated);
+  };
+
+  ui8 push_back_realloc(const Key &p_key, uimax *out_index) {
+    ui8 l_needs_reallocate = 0;
+    uimax l_old_capacity = m_keys_intrisic.m_capacity;
+    uimax l_index;
+    if (m_keys_intrisic.find_next_realloc(&l_index)) {
+      __realloc(m_keys_intrisic.m_capacity);
+      for (auto i = l_old_capacity; i < m_keys_intrisic.m_capacity; ++i) {
+        m_is_allocated[i] = 0;
+      }
+      l_needs_reallocate = 1;
+    }
+    m_keys[l_index] = p_key;
+    m_is_allocated[l_index] = 1;
+    *out_index = l_index;
+    return l_needs_reallocate;
+  };
+
+  void remove_at(const Key &p_key) {
+    uimax l_index = find_key_index(p_key);
+    m_keys_intrisic.free_element(l_index);
+    m_is_allocated[l_index] = 0;
+  };
+
+  uimax find_key_index(const Key &p_key) {
+    for (auto i = 0; i < m_keys_intrisic.m_count; ++i) {
+      if (m_is_allocated[i]) {
+        if (m_keys[i] == p_key) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  };
+
+private:
+  void __realloc(uimax p_new_size) {
+    m_keys =
+        (Key *)default_allocator::realloc(m_keys, sizeof(*m_keys) * p_new_size);
+    m_is_allocated = (ui8 *)default_allocator::realloc(
+        m_is_allocated, sizeof(*m_is_allocated) * p_new_size);
+  };
+};
+
+template <typename Key, typename Value> struct hashmap {
+  hashmap_intrusive<Key> m_intrusive;
+  Value *m_data;
+
+  void allocate() {
+    m_intrusive.allocate();
+    m_data = (Value *)default_allocator::malloc(0);
+  };
+
+  void free() {
+    m_intrusive.free();
+    default_allocator::free(m_data);
+  };
+
+  void push_back(const Key &p_key, const Value &p_value) {
+    uimax l_index;
+    if (m_intrusive.push_back_realloc(p_key, &l_index)) {
+      __realloc();
+    }
+    m_data[l_index] = p_value;
+  };
+
+  void remove_at(const Key &p_key) { m_intrusive.remove_at(p_key); };
+
+  Value &at(const Key &p_key) {
+    uimax l_index = m_intrusive.find_key_index(p_key);
+    assert_debug(l_index != -1);
+    return m_data[l_index];
+  };
+
+private:
+  void __realloc() {
+    m_data = default_allocator::realloc(
+        m_data, sizeof(*m_data) * m_intrusive.m_keys_intrisic.m_capacity);
   };
 };
 
