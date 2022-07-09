@@ -41,3 +41,5 @@ TEST_CASE("clock") {
   REQUIRE(l_clock.update());
   REQUIRE(l_clock.delta() == l_delta_s * 2);
 };
+
+#include <sys/sys_impl.hpp>
