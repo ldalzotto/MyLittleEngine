@@ -144,6 +144,7 @@ struct shader_vertex_runtime_ctx {
 
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         const ui8 *p_vertex,
+                                        ui8 *p_uniforms,
                                         m::vec<fix32, 4> &out_screen_position,
                                         ui8 **out_vertex);
 

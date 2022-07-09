@@ -746,11 +746,13 @@ struct rast_impl_software {
         l_rasterizer_program.m_fragment =
             l_program.FragmentShader().m_shader->m_buffer->data;
 
+        rast::algorithm::program_uniforms l_uniforms;
+
         rast::algorithm::rasterize(
             m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,
             p_render_pass.value()->proj, p_render_pass.value()->view,
             l_draw_call.value()->transform, l_index_buffer->range(),
-            l_vertex_buffer->layout, l_vertex_buffer->range(),
+            l_vertex_buffer->layout, l_vertex_buffer->range(), l_uniforms,
             l_draw_call.value()->state, l_draw_call.value()->rgba,
             l_frame_rgb_texture.value()->info, l_frame_rgb_texture_range,
             l_frame_depth_texture_info, l_frame_depth_texture_range);
