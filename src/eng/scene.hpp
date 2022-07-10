@@ -43,6 +43,7 @@ struct mesh_renderer {
   transform_handle m_transform;
   ren::mesh_handle m_mesh;
   ren::program_handle m_program;
+  ren::material_handle m_material;
 };
 
 template <typename Scene> struct object_view {
@@ -151,6 +152,11 @@ template <typename Scene> struct mesh_renderer_view : object_view<Scene> {
   void set_mesh(ren::mesh_handle p_mesh) {
     struct mesh_renderer &l_mesh_renderer = get_mesh_renderer();
     l_mesh_renderer.m_mesh = p_mesh;
+  };
+
+  void set_material(ren::material_handle p_material) {
+    struct mesh_renderer &l_mesh_renderer = get_mesh_renderer();
+    l_mesh_renderer.m_material = p_material;
   };
 
 private:
@@ -295,7 +301,8 @@ template <typename Engine> struct scene {
         container::arr<ren::mesh_handle, 1> l_rendered_meshes = {
             l_mesh_renderer.m_mesh};
         l_ren.draw(l_main_camera.m_camera, l_mesh_renderer.m_program,
-                   l_rendered_transforms.range(), l_rendered_meshes.range());
+                   l_mesh_renderer.m_material, l_rendered_transforms.range(),
+                   l_rendered_meshes.range());
       }
     }
   };

@@ -18,6 +18,8 @@ struct BaseEngineTest {
 
   container::vector<ren::mesh_handle> m_mesh_handles;
   container::vector<ren::program_handle> m_shader_handles;
+  container::vector<ren::material_handle> m_material_handles;
+  ren::material_handle m_default_material;
 
   container::vector<eng::object_handle> m_cameras;
   container::vector<eng::object_handle> m_mesh_renderers;
@@ -32,8 +34,11 @@ struct BaseEngineTest {
 
     m_mesh_handles.allocate(0);
     m_shader_handles.allocate(0);
+    m_material_handles.allocate(0);
     m_cameras.allocate(0);
     m_mesh_renderers.allocate(0);
+
+    m_default_material = l_engine.renderer().material_create();
   }
 
   ~BaseEngineTest() {
@@ -46,6 +51,10 @@ struct BaseEngineTest {
 
     for (auto i = 0; i < m_mesh_handles.count(); ++i) {
       l_ren.mesh_destroy(m_mesh_handles.at(i), l_rast);
+    }
+
+    for (auto i = 0; i < m_material_handles.count(); ++i) {
+      l_ren.material_destroy(m_material_handles.at(i), l_rast);
     }
 
     for (auto i = 0; i < m_cameras.count(); ++i) {
@@ -126,10 +135,12 @@ struct BaseEngineTest {
   };
 
   eng::object_handle create_mesh_renderer(ren::mesh_handle p_mesh,
-                                          ren::program_handle p_shader) {
+                                          ren::program_handle p_shader,
+                                          ren::material_handle p_material) {
     eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
     l_scene.mesh_renderer(l_mesh_renderer).set_mesh(p_mesh);
     l_scene.mesh_renderer(l_mesh_renderer).set_program(p_shader);
+    l_scene.mesh_renderer(l_mesh_renderer).set_material(p_material);
     m_mesh_renderers.push_back(l_mesh_renderer);
     return l_mesh_renderer;
   };
@@ -143,6 +154,8 @@ struct BaseEngineTest {
       }
     }
   };
+
+  ren::material_handle material_default() { return m_default_material; };
 
   void assert_frame_equals(const container::range<ui8> &p_image_relative_path,
                            const TestImageAssertionConfig &p_resource_config) {

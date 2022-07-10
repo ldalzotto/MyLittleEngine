@@ -53,7 +53,8 @@ TEST_CASE("ren.cube.face.back") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -10});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -74,7 +75,8 @@ TEST_CASE("ren.cube.face.front") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, 10});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -95,7 +97,8 @@ TEST_CASE("ren.cube.face.right") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({-10, 0, 0});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -116,7 +119,8 @@ TEST_CASE("ren.cube.face.left") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({10, 0, 0});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -137,7 +141,8 @@ TEST_CASE("ren.cube.face.down") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({0, -10, 0});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -158,7 +163,8 @@ TEST_CASE("ren.cube.face.up") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({0, 10, 0});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -178,7 +184,8 @@ TEST_CASE("ren.cube.corner.up.0") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({-5, 7.5, -5});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -199,7 +206,8 @@ TEST_CASE("ren.cube.corner.up.1") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({5, 7.5, -5});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -220,7 +228,8 @@ TEST_CASE("ren.cube.corner.up.2") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({5, 7.5, 5});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -241,7 +250,8 @@ TEST_CASE("ren.cube.corner.up.3") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({-5, 7.5, 5});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -262,7 +272,8 @@ TEST_CASE("ren.cube.corner.down.0") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({-5, -7.5, -5});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -283,7 +294,8 @@ TEST_CASE("ren.cube.corner.down.1") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({5, -7.5, -5});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -304,7 +316,8 @@ TEST_CASE("ren.cube.corner.down.2") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({5, -7.5, 5});
   l_test.l_scene.camera(l_camera).set_local_rotation(
@@ -325,7 +338,8 @@ TEST_CASE("ren.cube.corner.down.3") {
       l_test.create_orthographic_camera(s_camera_width, s_camera_height);
   eng::object_handle l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_cube_mesh_obj.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.l_scene.camera(l_camera).set_local_position({-5, -7.5, 5});
   l_test.l_scene.camera(l_camera).set_local_rotation(

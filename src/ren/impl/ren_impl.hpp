@@ -60,14 +60,17 @@ struct ren_impl {
   struct render_pass {
     camera_handle m_camera;
     program_handle m_program;
+    material_handle m_material;
     container::vector<m::mat<fix32, 4, 4>> m_transforms;
     container::vector<mesh_handle> m_meshes;
 
     void allocate(camera_handle p_camera, program_handle p_program,
+                  material_handle p_material,
                   const container::range<m::mat<fix32, 4, 4>> &p_transforms,
                   const container::range<mesh_handle> &p_meshes) {
       m_camera = p_camera;
       m_program = p_program;
+      m_material = p_material;
       m_transforms.allocate(p_transforms.count());
       m_transforms.count() = p_transforms.count();
       m_transforms.range().copy_from(p_transforms);
@@ -285,10 +288,12 @@ struct ren_impl {
   };
 
   void draw(camera_handle p_camera, program_handle p_program,
+            material_handle p_material,
             const container::range<m::mat<fix32, 4, 4>> &p_transforms,
             const container::range<mesh_handle> &p_meshes) {
     render_pass l_render_pass;
-    l_render_pass.allocate(p_camera, p_program, p_transforms, p_meshes);
+    l_render_pass.allocate(p_camera, p_program, p_material, p_transforms,
+                           p_meshes);
     m_heap.m_render_passes.push_back(l_render_pass);
   };
 
@@ -316,6 +321,17 @@ struct ren_impl {
       p_rast.setViewTransform(0, l_camera->m_view.m_data,
                               l_camera->m_projection.m_data);
       p_rast.setViewFrameBuffer(0, *l_frame_buffer);
+
+      material *l_material;
+      m_heap.m_materials.at(p_render_pass.m_material.m_idx, &l_material);
+
+      for (auto l_material_parameter_idx = 0;
+           l_material_parameter_idx < l_material->m_count;
+           ++l_material_parameter_idx) {
+        p_rast.setUniform(
+            l_material->m_uniforms.at(l_material_parameter_idx),
+            l_material->m_values.at(l_material_parameter_idx).m_data.data());
+      }
 
       program_meta *l_program_meta;
       program_rasterizer_handles *l_program_rast_handles;
