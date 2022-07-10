@@ -26,7 +26,7 @@ f 1 2 3
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<WhiteShader>());
+      l_test.create_shader<WhiteShader>(), l_test.material_default());
 
   l_test.update();
 
@@ -53,7 +53,8 @@ f 1/1 2/2 3/3
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
@@ -88,7 +89,7 @@ f 4 5 6
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<WhiteShader>(l_c_meta));
+      l_test.create_shader<WhiteShader>(l_c_meta), l_test.material_default());
 
   l_test.update();
 
@@ -126,7 +127,8 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
@@ -155,7 +157,8 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
@@ -188,7 +191,8 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>(l_meta));
+      l_test.create_shader<ColorInterpolationShader>(l_meta),
+      l_test.material_default());
 
   l_test.update();
 
@@ -220,7 +224,8 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
