@@ -460,10 +460,8 @@ static inline ui8 find_next_block(const range<heap_chunk> &p_chunks,
   assert_debug(p_alignment > 0);
   for (auto l_chunk_it = 0; l_chunk_it < p_chunks.count(); ++l_chunk_it) {
     const heap_chunk &l_chunk = p_chunks.at(l_chunk_it);
-    uimax l_chunk_alignment_offset = 0;
-    while ((l_chunk.m_begin + l_chunk_alignment_offset) % p_alignment != 0) {
-      l_chunk_alignment_offset += 1;
-    }
+    uimax l_chunk_alignment_offset =
+        algorithm::alignment_offset(l_chunk.m_begin, p_alignment);
     if (l_chunk.m_size + l_chunk_alignment_offset >= p_size) {
       *out_chunk_index = l_chunk_it;
       *out_chunk_alignment_offset = l_chunk_alignment_offset;
