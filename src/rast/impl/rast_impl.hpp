@@ -170,7 +170,10 @@ struct rast_impl_software {
       container::pool<m::vec<fix32, 4>> vecs;
     } uniform_values;
 
-    container::hashmap<uimax, Uniform> uniforms;
+    struct {
+      container::pool<Uniform> by_index;
+      container::hashmap<uimax, uimax> by_key;
+    } uniforms;
 
     orm::table_pool_v2<Program> program_table;
 
@@ -187,14 +190,15 @@ struct rast_impl_software {
       program_table.allocate(0);
 
       uniform_values.vecs.allocate(0);
-      uniforms.allocate();
+      uniforms.by_index.allocate(0);
+      uniforms.by_key.allocate();
 
       renderpass_table.push_back(
           RenderPass::get_default()); // at least one renderpass
     };
 
     void free() {
-      assert_debug(!uniforms.has_allocated_elements());
+      assert_debug(!uniforms.by_key.has_allocated_elements());
       assert_debug(!vertexbuffer_table.has_allocated_elements());
       assert_debug(!indexbuffer_table.has_allocated_elements());
       assert_debug(renderpass_table.count() == 1);
@@ -202,7 +206,9 @@ struct rast_impl_software {
       assert_debug(!program_table.has_allocated_elements());
       assert_debug(!framebuffer_table.has_allocated_elements());
 
-      uniforms.free();
+      uniforms.by_key.free();
+      uniforms.by_index.free();
+
       for (auto l_render_pass_it = 0;
            l_render_pass_it < renderpass_table.count(); ++l_render_pass_it) {
         RenderPass *l_render_pass;
@@ -411,22 +417,26 @@ struct rast_impl_software {
 
     bgfx::UniformHandle allocate_uniform(const ui8 *p_name,
                                          bgfx::UniformType::Enum p_type) {
-      auto l_uniform_hash = algorithm::hash(p_name);
-
-      if (!uniforms.has_key(l_uniform_hash)) {
+      auto l_uniform_hash = algorithm::hash(
+          container::range<ui8>::make((ui8 *)p_name, sys::strlen(p_name)));
+      uimax l_uniform_index;
+      if (!uniforms.by_key.has_key(l_uniform_hash)) {
         Uniform l_uniform;
         l_uniform.usage_count = 0;
-        l_uniform.hash = algorithm::hash(p_name);
+        l_uniform.hash = l_uniform_hash;
         l_uniform.type = p_type;
         if (p_type == bgfx::UniformType::Enum::Vec4) {
           l_uniform.index = uniform_values.vecs.push_back({});
         } else {
           sys::abort();
         }
-        uniforms.push_back(l_uniform_hash, l_uniform);
+        l_uniform_index = uniforms.by_index.push_back(l_uniform);
+        uniforms.by_key.push_back(l_uniform_hash, l_uniform_index);
+      } else {
+        l_uniform_index = uniforms.by_key.at(l_uniform_hash);
       }
 
-      uniforms.at(l_uniform_hash).usage_count += 1;
+      uniforms.by_index.at(uniforms.by_key.at(l_uniform_hash)).usage_count += 1;
 
       bgfx::UniformHandle l_handle;
       l_handle.idx = l_uniform_hash;
@@ -434,10 +444,11 @@ struct rast_impl_software {
     };
 
     void free_uniform(bgfx::UniformHandle p_uniform) {
-      Uniform &l_uniform = uniforms.at(p_uniform.idx);
+      Uniform &l_uniform = uniforms.by_index.at(p_uniform.idx);
       l_uniform.usage_count -= 1;
       if (l_uniform.usage_count == 0) {
-        uniforms.remove_at(p_uniform.idx);
+        uniforms.by_key.remove_at(l_uniform.hash);
+        uniforms.by_index.remove_at(p_uniform.idx);
       }
     };
 
@@ -756,16 +767,35 @@ struct rast_impl_software {
         l_rasterizer_program.m_fragment =
             l_program.FragmentShader().m_shader->m_buffer->data;
 
-        rast::algorithm::program_uniforms l_uniforms;
+        rast::algorithm::program_uniforms l_vertex_uniforms;
+        /*
+                auto l_vertex_shader_uniforms =
+                    rast::shader_vertex_bytes::view{
+                        (ui8 *)l_rasterizer_program.m_vertex}
+                        .uniforms();
+                rast::algorithm::program_uniforms l_vertex_uniforms;
+                for (auto l_vertex_uniform_it = 0;
+                     l_vertex_uniform_it < l_vertex_shader_uniforms.count();
+                     ++l_vertex_uniform_it) {
+                  l_vertex_uniforms.at(l_vertex_uniform_it) =
+                  heap.uniforms.at(l_vertex_shader_uniforms.at(l_vertex_uniform_it).hash);
+                      (void *)__get_uniform(
+                          bgfx::UniformHandle{
+                              l_vertex_shader_uniforms.at(l_vertex_uniform_it).hash})
+                          .data();
+
+        }
+        */
 
         rast::algorithm::rasterize(
             m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,
             p_render_pass.value()->proj, p_render_pass.value()->view,
             l_draw_call.value()->transform, l_index_buffer->range(),
-            l_vertex_buffer->layout, l_vertex_buffer->range(), l_uniforms,
-            l_draw_call.value()->state, l_draw_call.value()->rgba,
-            l_frame_rgb_texture.value()->info, l_frame_rgb_texture_range,
-            l_frame_depth_texture_info, l_frame_depth_texture_range);
+            l_vertex_buffer->layout, l_vertex_buffer->range(),
+            l_vertex_uniforms, l_draw_call.value()->state,
+            l_draw_call.value()->rgba, l_frame_rgb_texture.value()->info,
+            l_frame_rgb_texture_range, l_frame_depth_texture_info,
+            l_frame_depth_texture_range);
       });
     });
 
@@ -788,8 +818,18 @@ struct rast_impl_software {
   };
 
 private:
+  container::range<ui8> __get_uniform(uimax p_hash) {
+    auto &l_uniform =
+        heap.uniforms.by_index.at(heap.uniforms.by_key.at(p_hash));
+    if (l_uniform.type == bgfx::UniformType::Vec4) {
+      auto &l_value = heap.uniform_values.vecs.at(l_uniform.index);
+      return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
+    }
+    return container::range<ui8>::make(0, 0);
+  };
+
   container::range<ui8> __get_uniform(bgfx::UniformHandle p_handle) {
-    auto &l_uniform = heap.uniforms.at(p_handle.idx);
+    auto &l_uniform = heap.uniforms.by_index.at(p_handle.idx);
     if (l_uniform.type == bgfx::UniformType::Vec4) {
       auto &l_value = heap.uniform_values.vecs.at(l_uniform.index);
       return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
