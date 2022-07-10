@@ -269,6 +269,7 @@ template <typename T, typename Allocator = default_allocator> struct vector {
 
   uimax &capacity() { return m_intrusive.m_capacity; };
   uimax &count() { return m_intrusive.m_count; };
+  const uimax &count() const { return m_intrusive.m_count; };
 
   void allocate(uimax p_capacity, Allocator *p_allocator = 0) {
     m_intrusive.allocate(p_capacity);
@@ -1075,6 +1076,8 @@ template <typename Key> struct hashmap_intrusive {
   };
 
   ui8 push_back_realloc(const Key &p_key, uimax *out_index) {
+    assert_debug(!find_key_index(p_key));
+
     ui8 l_needs_reallocate = 0;
     uimax l_old_capacity = m_keys_intrisic.m_capacity;
     uimax l_index;
@@ -1097,7 +1100,9 @@ template <typename Key> struct hashmap_intrusive {
     m_is_allocated[l_index] = 0;
   };
 
-  uimax find_key_index(const Key &p_key) {
+  ui8 has_key(const Key &p_key) const { return find_key_index(p_key) != -1; };
+
+  uimax find_key_index(const Key &p_key) const {
     for (auto i = 0; i < m_keys_intrisic.m_count; ++i) {
       if (m_is_allocated[i]) {
         if (m_keys[i] == p_key) {
@@ -1106,6 +1111,11 @@ template <typename Key> struct hashmap_intrusive {
       }
     }
     return -1;
+  };
+
+  ui8 has_allocated_elements() const {
+    ui8 l_has_allocated_elements = 0;
+    return m_keys_intrisic.m_free_elements.count() != 0;
   };
 
 private:
@@ -1145,6 +1155,12 @@ template <typename Key, typename Value> struct hashmap {
     uimax l_index = m_intrusive.find_key_index(p_key);
     assert_debug(l_index != -1);
     return m_data[l_index];
+  };
+
+  ui8 has_key(const Key &p_key) const { return m_intrusive.has_key(p_key); };
+
+  ui8 has_allocated_elements() const {
+    return m_intrusive.has_allocated_elements();
   };
 
 private:

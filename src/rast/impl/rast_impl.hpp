@@ -142,6 +142,7 @@ struct rast_impl_software {
     bgfx::UniformType::Enum type;
     uimax hash;
     uimax index;
+    uimax usage_count;
   };
 
   struct heap {
@@ -169,7 +170,7 @@ struct rast_impl_software {
       container::pool<m::vec<fix32, 4>> vecs;
     } uniform_values;
 
-    container::pool<Uniform> uniforms;
+    container::hashmap<uimax, Uniform> uniforms;
 
     orm::table_pool_v2<Program> program_table;
 
@@ -186,13 +187,14 @@ struct rast_impl_software {
       program_table.allocate(0);
 
       uniform_values.vecs.allocate(0);
-      uniforms.allocate(0);
+      uniforms.allocate();
 
       renderpass_table.push_back(
           RenderPass::get_default()); // at least one renderpass
     };
 
     void free() {
+      assert_debug(!uniforms.has_allocated_elements());
       assert_debug(!vertexbuffer_table.has_allocated_elements());
       assert_debug(!indexbuffer_table.has_allocated_elements());
       assert_debug(renderpass_table.count() == 1);
@@ -200,6 +202,7 @@ struct rast_impl_software {
       assert_debug(!program_table.has_allocated_elements());
       assert_debug(!framebuffer_table.has_allocated_elements());
 
+      uniforms.free();
       for (auto l_render_pass_it = 0;
            l_render_pass_it < renderpass_table.count(); ++l_render_pass_it) {
         RenderPass *l_render_pass;
@@ -406,29 +409,36 @@ struct rast_impl_software {
       program_table.remove_at(p_handle.idx);
     };
 
-    bgfx::UniformHandle allocate_uniform(uimax p_name_hash,
+    bgfx::UniformHandle allocate_uniform(const ui8 *p_name,
                                          bgfx::UniformType::Enum p_type) {
-      Uniform l_uniform;
-      l_uniform.hash = p_name_hash;
-      l_uniform.type = p_type;
-      if (p_type == bgfx::UniformType::Enum::Vec4) {
-        l_uniform.index = uniform_values.vecs.push_back({});
-      } else {
-        sys::abort();
+      auto l_uniform_hash = algorithm::hash(p_name);
+
+      if (!uniforms.has_key(l_uniform_hash)) {
+        Uniform l_uniform;
+        l_uniform.usage_count = 0;
+        l_uniform.hash = algorithm::hash(p_name);
+        l_uniform.type = p_type;
+        if (p_type == bgfx::UniformType::Enum::Vec4) {
+          l_uniform.index = uniform_values.vecs.push_back({});
+        } else {
+          sys::abort();
+        }
+        uniforms.push_back(l_uniform_hash, l_uniform);
       }
+
+      uniforms.at(l_uniform_hash).usage_count += 1;
+
       bgfx::UniformHandle l_handle;
-      l_handle.idx = uniforms.push_back(l_uniform);
+      l_handle.idx = l_uniform_hash;
       return l_handle;
     };
 
     void free_uniform(bgfx::UniformHandle p_uniform) {
       Uniform &l_uniform = uniforms.at(p_uniform.idx);
-      if (l_uniform.type == bgfx::UniformType::Enum::Vec4) {
-        uniform_values.vecs.remove_at(l_uniform.index);
-      } else {
-        sys::abort();
+      l_uniform.usage_count -= 1;
+      if (l_uniform.usage_count == 0) {
+        uniforms.remove_at(p_uniform.idx);
       }
-      uniforms.remove_at(p_uniform.idx);
     };
 
   } heap;
@@ -902,7 +912,7 @@ FORCE_INLINE bgfx::UniformHandle
 rast_api_createUniform(rast_impl_software *thiz, const char *_name,
                        bgfx::UniformType::Enum _type, uint16_t _num) {
   container::range<ui8> l_name = l_name.make((ui8 *)_name, sys::strlen(_name));
-  return thiz->heap.allocate_uniform(algorithm::hash(l_name), _type);
+  return thiz->heap.allocate_uniform((const ui8 *)_name, _type);
 };
 
 FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
