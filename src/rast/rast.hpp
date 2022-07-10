@@ -113,7 +113,7 @@ template <typename Private> struct rast_api {
   FORCE_INLINE bgfx::UniformHandle createUniform(const char *_name,
                                                  bgfx::UniformType::Enum _type,
                                                  uint16_t _num = 1) {
-    rast_api_createUniform(&thiz, _name, _type, _num);
+    return rast_api_createUniform(&thiz, _name, _type, _num);
   };
 
   FORCE_INLINE void destroy(bgfx::UniformHandle p_uniform) {

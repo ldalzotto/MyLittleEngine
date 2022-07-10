@@ -432,7 +432,7 @@ private:
       }
 
       m::vec<fix32, 4> l_vertex_shader_out;
-      l_vertex_function(l_ctx, l_vertex_bytes, (ui8 *)m_input.m_uniforms.data(),
+      l_vertex_function(l_ctx, l_vertex_bytes, (ui8 **)m_input.m_uniforms.data(),
                         l_vertex_shader_out,
                         m_heap.m_vertex_output_send_to_vertex_shader.m_data);
 
