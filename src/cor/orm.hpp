@@ -230,13 +230,13 @@ template <typename... Types> struct table_span_v2 {
   uimax &count() { return m_meta; };
   const uimax &count() const { return m_meta; };
 
-  template <typename... Input> void at(uimax p_index, Input &&... p_input) {
+  template <typename... Input> void at(uimax p_index, Input &&...p_input) {
     assert_debug(p_index < count());
     __at<0, Input...>{}(*this, p_index, p_input...);
   };
 
   template <typename... Input>
-  void set(uimax p_index, const Input &... p_input) {
+  void set(uimax p_index, const Input &...p_input) {
     assert_debug(p_index < count());
     __set<0, Input...>{}(*this, p_index, p_input...);
   };
@@ -318,7 +318,7 @@ private:
 
   template <ui8 Col, typename InputFirst, typename... Input> struct __set {
     void operator()(table_span_v2 &thiz, uimax p_index,
-                    const InputFirst &p_first, const Input &... p_input) {
+                    const InputFirst &p_first, const Input &...p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
         (thiz.cols().template col<Col>())[p_index] = p_first;
       }
@@ -330,7 +330,7 @@ private:
   };
 
   template <ui8... Cols, typename... Input>
-  void __set_v2(uimax p_index, const Input &... p_input) {
+  void __set_v2(uimax p_index, const Input &...p_input) {
     if constexpr (sizeof...(Cols) > 0) {
     }
   };
@@ -385,7 +385,7 @@ template <typename... Types> struct table_vector_v2 {
 
   void free() { table_vector_free<0>{}(*this); };
 
-  template <typename... Input> void push_back(const Input &... p_input) {
+  template <typename... Input> void push_back(const Input &...p_input) {
     if (m_meta.add_realloc(1)) {
       __realloc<0>{}(*this);
     }
@@ -401,7 +401,7 @@ template <typename... Types> struct table_vector_v2 {
     m_meta.m_count -= 1;
   };
 
-  template <typename... Input> void at(uimax p_index, Input &&... p_input) {
+  template <typename... Input> void at(uimax p_index, Input &&...p_input) {
     assert_debug(p_index < count());
     __at<0, Input...>{}(*this, p_index, p_input...);
   };
@@ -455,7 +455,7 @@ private:
   struct table_vector_set_value {
 
     void operator()(table_vector_v2 &thiz, const InputFirst &p_first,
-                    const Input &... p_input) {
+                    const Input &...p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
         thiz.cols().template col<Col>()[thiz.m_meta.m_count - 1] = p_first;
       }
@@ -496,16 +496,16 @@ template <typename... Types> struct table_pool_v2 {
     table_pool_free<0>{}(*this);
   };
 
-  template <typename... Input> uimax push_back(const Input &... p_input) {
+  template <typename... Input> uimax push_back(const Input &...p_input) {
     uimax l_index;
     if (m_meta.find_next_realloc(&l_index)) {
       __realloc<0>{}(*this);
     }
-    table_pool_set_value<0, const Input &...>{}(*this, p_input...);
+    table_pool_set_value<0, const Input &...>{}(*this, l_index, p_input...);
     return l_index;
   };
 
-  template <typename... Input> void at(uimax p_index, Input &&... p_input) {
+  template <typename... Input> void at(uimax p_index, Input &&...p_input) {
     assert_debug(p_index < m_meta.m_count);
     __at<0, Input...>{}(*this, p_index, p_input...);
   };
@@ -549,15 +549,16 @@ private:
   template <ui8 Col, typename InputFirst, typename... Input>
   struct table_pool_set_value {
 
-    void operator()(table_pool_v2 &thiz, const InputFirst &p_first,
-                    const Input &... p_input) {
+    void operator()(table_pool_v2 &thiz, uimax p_index,
+                    const InputFirst &p_first, const Input &...p_input) {
 
       if constexpr (!::traits::is_none<InputFirst>::value) {
-        thiz.cols().template col<Col>()[thiz.m_meta.m_count - 1] = p_first;
+        thiz.cols().template col<Col>()[p_index] = p_first;
       }
 
       if constexpr (Col + 1 < COL_COUNT) {
-        table_pool_set_value<Col + 1, const Input &...>{}(thiz, p_input...);
+        table_pool_set_value<Col + 1, const Input &...>{}(thiz, p_index,
+                                                          p_input...);
       }
     };
   };
@@ -596,7 +597,7 @@ template <typename... Types> struct table_heap_paged_v2 {
     return m_meta.m_allocated_chunks.m_intrusive.has_allocated_elements();
   };
 
-  template <typename... Input> uimax at(uimax p_index, Input &&... p_input) {
+  template <typename... Input> uimax at(uimax p_index, Input &&...p_input) {
     assert_debug(p_index < m_meta.m_allocated_chunks.count());
     __at<0, Input...>{}(*this, p_index, p_input...);
     return m_meta.m_allocated_chunks.at(p_index).m_chunk.m_size;
@@ -671,6 +672,106 @@ private:
         l_col.realloc(thiz.m_meta);
         l_col.allocate_page(thiz.m_meta, p_page_index);
         table_heap_paged_push_new_page<Col + 1>{}(thiz, p_page_index);
+      }
+    };
+  };
+};
+
+template <typename Key, typename... Types> struct table_hashmap {
+  container::hashmap_intrusive<Key> m_meta;
+  details::cols<Types...> m_cols;
+  static constexpr ui8 COL_COUNT = details::cols<Types...>::COL_COUNT;
+
+  details::cols<Types...> &cols() { return m_cols; };
+
+  void allocate() {
+    m_meta.allocate();
+    table_hashmap_allocate<0>{}(*this);
+  };
+
+  void free() {
+    m_meta.free();
+    table_hashmap_free<0>{}(*this);
+  };
+
+  template <typename... Input>
+  uimax push_back(const Key &p_key, const Input &...p_input) {
+    uimax l_index;
+    if (m_meta.push_back_realloc(p_key, &l_index)) {
+      __realloc<0>{}(*this);
+    }
+    table_hashmap_set_value<0, const Input &...>{}(*this, l_index, p_input...);
+    return l_index;
+  };
+
+  template <typename... Input> void at(const Key &p_key, Input &&...p_input) {
+    uimax l_key_index = m_meta.find_key_index(p_key);
+    assert_debug(l_key_index != -1);
+    __at<0, Input...>{}(*this, l_key_index, p_input...);
+  };
+
+  void remove_at(uimax p_index) { m_meta.free_element(p_index); };
+  ui8 has_allocated_elements() { return m_meta.has_allocated_elements(); };
+
+private:
+  template <ui8 Col> struct table_hashmap_allocate {
+    void operator()(table_hashmap &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        l_col = (T *)sys::malloc(0);
+        table_hashmap_allocate<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col> struct table_hashmap_free {
+    void operator()(table_hashmap &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        sys::free(l_col);
+        table_hashmap_free<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col> struct __realloc {
+    void operator()(table_hashmap &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        l_col = (T *)sys::realloc(
+            l_col, thiz.m_meta.m_keys_intrisic.m_capacity * sizeof(T));
+        __realloc<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col, typename InputFirst, typename... Input>
+  struct table_hashmap_set_value {
+
+    void operator()(table_hashmap &thiz, uimax p_index,
+                    const InputFirst &p_first, const Input &...p_input) {
+
+      if constexpr (!::traits::is_none<InputFirst>::value) {
+        thiz.cols().template col<Col>()[thiz.m_meta.m_count - 1] = p_first;
+      }
+
+      if constexpr (Col + 1 < COL_COUNT) {
+        table_hashmap_set_value<Col + 1, const Input &...>{}(thiz, p_index,
+                                                             p_input...);
+      }
+    };
+  };
+
+  template <ui8 Col, typename InputFirst, typename... Input> struct __at {
+    void operator()(table_hashmap &thiz, const uimax &p_index,
+                    InputFirst p_first, Input... p_input) {
+      if constexpr (!::traits::is_none<InputFirst>::value) {
+        *p_first = &(thiz.cols().template col<Col>())[p_index];
+      }
+      if constexpr (sizeof...(Input) > 0) {
+        __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
       }
     };
   };
