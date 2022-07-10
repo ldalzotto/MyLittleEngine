@@ -82,14 +82,24 @@ struct ren_impl {
     };
   };
 
+  struct material {
+    struct parameter_value {
+      container::arr<ui8, sizeof(m::vec<fix32, 4>)> m_data;
+      container::range<ui8> range() { return m_data.range(); };
+    };
+    container::arr<bgfx::UniformHandle, 255> m_uniforms;
+    container::arr<parameter_value, 255> m_values;
+    uimax m_count;
+  };
+
   struct heap {
 
     orm::table_pool_v2<camera, bgfx::FrameBufferHandle> m_camera_table;
     orm::table_pool_v2<program_meta, program_rasterizer_handles>
         m_program_table;
-    orm::table_pool_v2<mesh, bgfx::VertexBufferHandle, bgfx::IndexBufferHandle>
+    orm::table_pool_v2<bgfx::VertexBufferHandle, bgfx::IndexBufferHandle>
         m_mesh_table;
-
+    orm::table_pool_v2<material> m_materials;
     container::vector<render_pass> m_render_passes;
 
     // TODO -> add render passes per program
@@ -97,6 +107,7 @@ struct ren_impl {
       m_camera_table.allocate(0);
       m_program_table.allocate(0);
       m_mesh_table.allocate(0);
+      m_materials.allocate(0);
       m_render_passes.allocate(0);
     };
 
@@ -104,6 +115,7 @@ struct ren_impl {
       m_camera_table.free();
       m_program_table.free();
       m_mesh_table.free();
+      m_materials.free();
       m_render_passes.free();
     };
 
@@ -179,8 +191,8 @@ struct ren_impl {
     bgfx::IndexBufferHandle l_index_buffer;
     algorithm::upload_mesh_to_gpu(p_rast, p_mesh, &l_vertex_buffer,
                                   &l_index_buffer);
-    uimax l_index = m_heap.m_mesh_table.push_back(ren::mesh{}, l_vertex_buffer,
-                                                  l_index_buffer);
+    uimax l_index =
+        m_heap.m_mesh_table.push_back(l_vertex_buffer, l_index_buffer);
     return mesh_handle{.m_idx = l_index};
   };
 
@@ -188,11 +200,54 @@ struct ren_impl {
   void mesh_destroy(mesh_handle p_mesh, rast_api<Rasterizer> p_rast) {
     bgfx::VertexBufferHandle *l_vertex_buffer;
     bgfx::IndexBufferHandle *l_index_buffer;
-    m_heap.m_mesh_table.at(p_mesh.m_idx, none(), &l_vertex_buffer,
-                           &l_index_buffer);
+    m_heap.m_mesh_table.at(p_mesh.m_idx, &l_vertex_buffer, &l_index_buffer);
     p_rast.destroy(*l_vertex_buffer);
     p_rast.destroy(*l_index_buffer);
     m_heap.m_mesh_table.remove_at(p_mesh.m_idx);
+  };
+
+  material_handle material_create() {
+    material l_material;
+    l_material.m_count = 0;
+    uimax l_index = m_heap.m_materials.push_back(l_material);
+    return {l_index};
+  };
+
+  template <typename Rasterizer>
+  void material_destroy(material_handle p_material,
+                        rast_api<Rasterizer> p_rast) {
+    material *l_material;
+    m_heap.m_materials.at(p_material.m_idx, &l_material);
+    for (auto i = 0; i < l_material->m_count; ++i) {
+      p_rast.destroy(l_material->m_uniforms.at(i));
+    }
+    m_heap.m_materials.remove_at(p_material.m_idx);
+  };
+
+  template <typename Rasterizer>
+  void material_push(material_handle p_material, const char *p_name,
+                     bgfx::UniformType::UniformType::Enum p_type,
+                     rast_api<Rasterizer> p_rast) {
+    auto l_uniform = p_rast.createUniform(p_name, p_type);
+    material *l_material;
+    m_heap.m_materials.at(p_material.m_idx, &l_material);
+    l_material->m_uniforms.at(l_material->m_count) = l_uniform;
+    l_material->m_count += 1;
+  };
+
+  template <typename ValueType, typename Rasterizer>
+  void material_set_vec4(material_handle p_material, uimax p_index,
+                         const ValueType &p_value,
+                         rast_api<Rasterizer> p_rast) {
+    material *l_material;
+    m_heap.m_materials.at(p_material.m_idx, &l_material);
+
+    block_debug([&]() {
+      auto l_uniform_info = p_rast.getUniformInfo();
+      assert_debug(l_uniform_info.type == bgfx::UniformType::Vec4);
+    });
+
+    l_material->m_values.at(p_index).range().copy_from(p_value);
   };
 
   template <typename Rasterizer>
@@ -272,7 +327,7 @@ struct ren_impl {
         bgfx::VertexBufferHandle *l_vertex_buffer;
         bgfx::IndexBufferHandle *l_index_buffer;
         m_heap.m_mesh_table.at(p_render_pass.m_meshes.at(l_mesh_it).m_idx,
-                               none(), &l_vertex_buffer, &l_index_buffer);
+                               &l_vertex_buffer, &l_index_buffer);
 
         m::mat<fix32, 4, 4> l_transform =
             p_render_pass.m_transforms.at(l_mesh_it);

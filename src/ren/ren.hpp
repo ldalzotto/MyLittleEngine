@@ -64,6 +64,31 @@ template <typename Private> struct ren_api {
     thiz.mesh_destroy(p_mesh, p_rast);
   };
 
+  FORCE_INLINE material_handle material_create() {
+    return thiz.material_create();
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE void material_destroy(material_handle p_material,
+                                     rast_api<Rasterizer> p_rast) {
+    thiz.material_destroy(p_material, p_rast);
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE void material_push(material_handle p_material,
+                                  const char *p_name,
+                                  bgfx::UniformType::UniformType::Enum p_type,
+                                  rast_api<Rasterizer> p_rast) {
+    thiz.material_push(p_material, p_name, p_type, p_rast);
+  };
+
+  template <typename ValueType, typename Rasterizer>
+  void material_set_vec4(material_handle p_material, uimax p_index,
+                         const ValueType &p_value,
+                         rast_api<Rasterizer> p_rast) {
+    thiz.material_set_vec4(p_material, p_index, p_value, p_rast);
+  };
+
   template <typename Rasterizer>
   FORCE_INLINE program_handle program_create(
       const ren::program_meta &p_program_meta,
