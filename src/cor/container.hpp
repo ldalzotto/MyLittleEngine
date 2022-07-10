@@ -1165,7 +1165,7 @@ template <typename Key, typename Value> struct hashmap {
 
 private:
   void __realloc() {
-    m_data = default_allocator::realloc(
+    m_data = (Value*) default_allocator::realloc(
         m_data, sizeof(*m_data) * m_intrusive.m_keys_intrisic.m_capacity);
   };
 };

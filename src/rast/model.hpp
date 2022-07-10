@@ -143,8 +143,7 @@ struct shader_vertex_runtime_ctx {
 };
 
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
-                                        const ui8 *p_vertex,
-                                        ui8 *p_uniforms,
+                                        const ui8 *p_vertex, ui8 *p_uniforms,
                                         m::vec<fix32, 4> &out_screen_position,
                                         ui8 **out_vertex);
 
@@ -253,6 +252,15 @@ struct shader_vertex_bytes {
                                              sizeof(uimax));
       l_range.m_count = *(uimax *)(m_data + sizeof(table) + sizeof(uimax) +
                                    l_table->m_uniform_byte_size);
+      return l_range;
+    };
+
+    container::range<shader_uniform> uniforms() {
+      table *l_table = (table *)m_data;
+      container::range<shader_uniform> l_range;
+      l_range.m_begin =
+          (shader_uniform *)(m_data + sizeof(table) + sizeof(uimax));
+      l_range.m_count = *(uimax *)(m_data + sizeof(table));
       return l_range;
     };
 
