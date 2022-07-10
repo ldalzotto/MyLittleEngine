@@ -263,7 +263,7 @@ struct ren_impl {
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
       rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
-    auto l_vertex_shader_table = rast::shader_vertex_bytes::byte_size(
+    auto l_vertex_shader_table = rast::shader_vertex_bytes::build_byte_header(
         p_vertex_uniforms.count(), p_vertex_output.count());
     const bgfx::Memory *l_vertex_shader_memory =
         p_rast.alloc(l_vertex_shader_table.size_of(), 8);
