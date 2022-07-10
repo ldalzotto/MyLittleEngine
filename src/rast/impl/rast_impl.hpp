@@ -71,11 +71,24 @@ struct rast_impl_software {
     };
   } command_temporary_stack;
 
+  struct CommandUniform {
+    union {
+      m::vec<fix32, 4> m_vecs;
+    };
+  };
+
+  // TODO -> use a stack heap instead
+  struct CommandUniforms {
+    uimax m_count;
+    container::arr<CommandUniform, 255> m_uniforms;
+  };
+
   struct CommandDrawCall {
     bgfx::ProgramHandle program;
     m::mat<fix32, 4, 4> transform;
     bgfx::IndexBufferHandle index_buffer;
     bgfx::VertexBufferHandle vertex_buffer;
+    CommandUniforms vertex_uniforms;
     ui64 state;
     ui32 rgba;
 
@@ -689,6 +702,33 @@ struct rast_impl_software {
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
 
+    Program *__program;
+    heap.program_table.at(l_draw_call.program.idx, &__program);
+    ProgramProxy l_program = ProgramProxy(heap, __program);
+
+    rast::algorithm::program l_rasterizer_program;
+    l_rasterizer_program.m_vertex =
+        l_program.VertexShader().m_shader->m_buffer->data;
+    l_rasterizer_program.m_fragment =
+        l_program.FragmentShader().m_shader->m_buffer->data;
+
+    rast::algorithm::program_uniforms l_vertex_uniforms;
+    auto l_vertex_shader_uniforms =
+        rast::shader_vertex_bytes::view{(ui8 *)l_rasterizer_program.m_vertex}
+            .uniforms();
+    for (auto l_vertex_uniform_it = 0;
+         l_vertex_uniform_it < l_vertex_shader_uniforms.count();
+         ++l_vertex_uniform_it) {
+      rast::shader_uniform &l_shader_uniform =
+          l_vertex_shader_uniforms.at(l_vertex_uniform_it);
+      if (l_shader_uniform.type == bgfx::UniformType::Vec4) {
+        l_draw_call.vertex_uniforms.m_uniforms.at(l_vertex_uniform_it).m_vecs =
+            *__get_uniform_vec4(l_shader_uniform.hash);
+      }
+    }
+
+    l_draw_call.vertex_uniforms.m_count = l_vertex_shader_uniforms.count();
+
     proxy().RenderPass(p_id).value()->commands.push_back(l_draw_call);
   };
 
@@ -768,24 +808,11 @@ struct rast_impl_software {
             l_program.FragmentShader().m_shader->m_buffer->data;
 
         rast::algorithm::program_uniforms l_vertex_uniforms;
-        /*
-                auto l_vertex_shader_uniforms =
-                    rast::shader_vertex_bytes::view{
-                        (ui8 *)l_rasterizer_program.m_vertex}
-                        .uniforms();
-                rast::algorithm::program_uniforms l_vertex_uniforms;
-                for (auto l_vertex_uniform_it = 0;
-                     l_vertex_uniform_it < l_vertex_shader_uniforms.count();
-                     ++l_vertex_uniform_it) {
-                  l_vertex_uniforms.at(l_vertex_uniform_it) =
-                  heap.uniforms.at(l_vertex_shader_uniforms.at(l_vertex_uniform_it).hash);
-                      (void *)__get_uniform(
-                          bgfx::UniformHandle{
-                              l_vertex_shader_uniforms.at(l_vertex_uniform_it).hash})
-                          .data();
-
+        for (auto i = 0; i < l_draw_call.m_value->vertex_uniforms.m_count;
+             ++i) {
+          l_vertex_uniforms.at(i) =
+              &l_draw_call.m_value->vertex_uniforms.m_uniforms.at(i).m_vecs;
         }
-        */
 
         rast::algorithm::rasterize(
             m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,
@@ -818,6 +845,10 @@ struct rast_impl_software {
   };
 
 private:
+  const m::vec<fix32, 4> *__get_uniform_vec4(uimax p_hash) {
+    return __get_uniform(p_hash).cast_to<m::vec<fix32, 4>>().data();
+  }
+
   container::range<ui8> __get_uniform(uimax p_hash) {
     auto &l_uniform =
         heap.uniforms.by_index.at(heap.uniforms.by_key.at(p_hash));
