@@ -982,7 +982,6 @@ FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
 FORCE_INLINE bgfx::UniformHandle
 rast_api_createUniform(rast_impl_software *thiz, const char *_name,
                        bgfx::UniformType::Enum _type, uint16_t _num) {
-  container::range<ui8> l_name = l_name.make((ui8 *)_name, sys::strlen(_name));
   return thiz->heap.allocate_uniform((const ui8 *)_name, _type);
 };
 

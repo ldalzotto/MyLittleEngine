@@ -219,7 +219,7 @@ struct shader_vertex_bytes {
       if (l_table->m_uniform_byte_size > 0) {
         container::range<shader_uniform> l_byte_uniforms;
         l_byte_uniforms.m_begin = (shader_uniform *)l_cursor;
-        l_byte_uniforms.m_count = p_output_parameters.count();
+        l_byte_uniforms.m_count = p_uniforms.count();
         p_uniforms.copy_to(l_byte_uniforms);
 
         l_cursor += l_table->m_uniform_byte_size;

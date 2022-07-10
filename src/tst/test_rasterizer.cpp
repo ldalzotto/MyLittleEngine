@@ -235,15 +235,30 @@ f 4/2 5/2 6/2
 }
 
 struct rast_uniform_vertex_shader {
+  inline static const auto s_param_0 =
+      container::arr_literal<i8>("test_vertex_uniform_0\0");
+  inline static const auto s_param_1 =
+      container::arr_literal<i8>("test_vertex_uniform_1\0");
+  inline static const auto s_param_2 =
+      container::arr_literal<i8>("test_vertex_uniform_2\0");
+
   inline static container::arr<rast::shader_vertex_output_parameter, 1>
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-  inline static container::arr<rast::shader_uniform, 1> s_vertex_uniforms = {
+  inline static container::arr<rast::shader_uniform, 3> s_vertex_uniforms = {
       .m_data = {rast::shader_uniform{
-          .type = bgfx::UniformType::Vec4,
-          .hash = algorithm::hash(
-              container::arr_literal<ui8>("test_vertex_uniform"))}}};
+                     .type = bgfx::UniformType::Vec4,
+                     .hash = algorithm::hash(
+                         s_param_0.range().shrink_to(s_param_0.count() - 1))},
+                 rast::shader_uniform{
+                     .type = bgfx::UniformType::Vec4,
+                     .hash = algorithm::hash(
+                         s_param_1.range().shrink_to(s_param_1.count() - 1))},
+                 rast::shader_uniform{
+                     .type = bgfx::UniformType::Vec4,
+                     .hash = algorithm::hash(
+                         s_param_2.range().shrink_to(s_param_2.count() - 1))}}};
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
@@ -251,10 +266,14 @@ struct rast_uniform_vertex_shader {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
-    position_t *l_delta_pos = (position_t *)p_uniforms[0];
+    position_t *l_delta_pos_x = (position_t *)p_uniforms[0];
+    position_t *l_delta_pos_y = (position_t *)p_uniforms[1];
+    position_t *l_delta_pos_z = (position_t *)p_uniforms[2];
     out_screen_position =
         p_ctx.m_local_to_unit *
-        m::vec<fix32, 4>::make(l_vertex_pos + (*l_delta_pos), 1);
+        m::vec<fix32, 4>::make(
+            l_vertex_pos + (*l_delta_pos_x + *l_delta_pos_y + *l_delta_pos_z),
+            1);
     rgbf_t *l_vertex_color = (rgbf_t *)out_vertex[0];
     (*l_vertex_color) = rgbf_t{1.0f, 1.0f, 1.0f};
   };
@@ -281,10 +300,22 @@ f 1 2 3
 
   auto l_material = l_test.__engine.m_renderer.material_create();
   l_test.__engine.m_renderer.material_push(
-      l_material, "test_vertex_uniform", bgfx::UniformType::Vec4,
+      l_material, rast_uniform_vertex_shader::s_param_0.data(),
+      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
+  l_test.__engine.m_renderer.material_push(
+      l_material, rast_uniform_vertex_shader::s_param_1.data(),
+      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
+  l_test.__engine.m_renderer.material_push(
+      l_material, rast_uniform_vertex_shader::s_param_2.data(),
+      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
+  l_test.__engine.m_renderer.material_set_vec4(
+      l_material, 0, m::vec<fix32, 4>{-1, 0, 0, 0},
       rast_api(l_test.__engine.m_rasterizer));
   l_test.__engine.m_renderer.material_set_vec4(
-      l_material, 0, m::vec<fix32, 4>{-1, -1, -1, 0},
+      l_material, 1, m::vec<fix32, 4>{0, 0, -1, 0},
+      rast_api(l_test.__engine.m_rasterizer));
+  l_test.__engine.m_renderer.material_set_vec4(
+      l_material, 2, m::vec<fix32, 4>{0, -1, 0, 0},
       rast_api(l_test.__engine.m_rasterizer));
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
@@ -293,8 +324,7 @@ f 1 2 3
 
   l_test.update();
 
-  auto l_tmp_path =
-      container::arr_literal<ui8>("rast.uniform.vertex.png");
+  auto l_tmp_path = container::arr_literal<ui8>("rast.uniform.vertex.png");
   l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
