@@ -452,7 +452,7 @@ struct rast_impl_software {
       uniforms.by_index.at(uniforms.by_key.at(l_uniform_hash)).usage_count += 1;
 
       bgfx::UniformHandle l_handle;
-      l_handle.idx = l_uniform_hash;
+      l_handle.idx = l_uniform_index;
       return l_handle;
     };
 

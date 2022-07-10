@@ -1076,7 +1076,7 @@ template <typename Key> struct hashmap_intrusive {
   };
 
   ui8 push_back_realloc(const Key &p_key, uimax *out_index) {
-    assert_debug(!find_key_index(p_key));
+    assert_debug(find_key_index(p_key) == -1);
 
     ui8 l_needs_reallocate = 0;
     uimax l_old_capacity = m_keys_intrisic.m_capacity;
@@ -1165,7 +1165,7 @@ template <typename Key, typename Value> struct hashmap {
 
 private:
   void __realloc() {
-    m_data = (Value*) default_allocator::realloc(
+    m_data = (Value *)default_allocator::realloc(
         m_data, sizeof(*m_data) * m_intrusive.m_keys_intrisic.m_capacity);
   };
 };

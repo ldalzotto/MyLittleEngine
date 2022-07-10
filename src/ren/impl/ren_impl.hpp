@@ -245,12 +245,14 @@ struct ren_impl {
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
 
-    block_debug([&]() {
-      auto l_uniform_info = p_rast.getUniformInfo();
-      assert_debug(l_uniform_info.type == bgfx::UniformType::Vec4);
-    });
-
-    l_material->m_values.at(p_index).range().copy_from(p_value);
+    /*
+        block_debug([&]() {
+          auto l_uniform_info = p_rast.getUniformInfo();
+          assert_debug(l_uniform_info.type == bgfx::UniformType::Vec4);
+        });
+    */
+    l_material->m_values.at(p_index).range().copy_from(
+        container::range<ValueType>::make((ValueType *)&p_value, 1));
   };
 
   template <typename Rasterizer>
