@@ -311,7 +311,7 @@ template <typename T, typename Allocator = default_allocator> struct vector {
   void remove_at(uimax p_index) {
     assert_debug(p_index < count() && count() > 0);
     if (p_index < count() - 1) {
-      sys::memmove_up_t(m_data, p_index + 1, 1, 1);
+      sys::memmove_up_t(m_data, p_index + 1, 1, count() - (p_index + 1));
     }
 
     m_intrusive.m_count -= 1;
