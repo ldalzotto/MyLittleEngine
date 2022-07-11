@@ -254,7 +254,7 @@ struct rasterize_unit {
     index_buffer_const_view m_index_buffer;
     bgfx::VertexLayout m_vertex_layout;
     const container::range<ui8> &m_vertex_buffer;
-    program_uniforms &m_uniforms;
+    program_uniforms &m_vertex_uniforms;
     ui64 m_state;
     ui32 m_rgba;
 
@@ -267,7 +267,7 @@ struct rasterize_unit {
           const container::range<ui8> &p_index_buffer,
           bgfx::VertexLayout p_vertex_layout,
           const container::range<ui8> &p_vertex_buffer,
-          program_uniforms &p_uniforms, ui64 p_state, ui32 p_rgba,
+          program_uniforms &p_vertex_uniforms, ui64 p_state, ui32 p_rgba,
           const bgfx::TextureInfo &p_target_info,
           container::range<ui8> &p_target_buffer,
           const bgfx::TextureInfo &p_depth_info,
@@ -275,7 +275,8 @@ struct rasterize_unit {
         : m_program(p_program), m_rect(p_rect), m_proj(p_proj), m_view(p_view),
           m_transform(p_transform), m_index_buffer(p_index_buffer),
           m_vertex_layout(p_vertex_layout), m_vertex_buffer(p_vertex_buffer),
-          m_uniforms(p_uniforms), m_state(p_state), m_rgba(p_rgba),
+          m_vertex_uniforms(p_vertex_uniforms), m_state(p_state),
+          m_rgba(p_rgba),
           m_target_image_view(p_target_info.width, p_target_info.height,
                               p_target_info.bitsPerPixel, p_target_buffer),
           m_target_depth_view(p_depth_info.width, p_depth_info.height,
@@ -301,14 +302,15 @@ struct rasterize_unit {
                  const container::range<ui8> &p_index_buffer,
                  bgfx::VertexLayout p_vertex_layout,
                  const container::range<ui8> &p_vertex_buffer,
-                 program_uniforms &p_uniforms, ui64 p_state, ui32 p_rgba,
+                 program_uniforms &p_vertex_uniforms, ui64 p_state, ui32 p_rgba,
                  const bgfx::TextureInfo &p_target_info,
                  container::range<ui8> &p_target_buffer,
                  const bgfx::TextureInfo &p_depth_info,
                  container::range<ui8> &p_depth_buffer)
       : m_input(p_program, p_rect, p_proj, p_view, p_transform, p_index_buffer,
-                p_vertex_layout, p_vertex_buffer, p_uniforms, p_state, p_rgba,
-                p_target_info, p_target_buffer, p_depth_info, p_depth_buffer),
+                p_vertex_layout, p_vertex_buffer, p_vertex_uniforms, p_state,
+                p_rgba, p_target_info, p_target_buffer, p_depth_info,
+                p_depth_buffer),
         m_heap(p_heap){};
 
   void rasterize() {
@@ -432,7 +434,8 @@ private:
       }
 
       m::vec<fix32, 4> l_vertex_shader_out;
-      l_vertex_function(l_ctx, l_vertex_bytes, (ui8 **)m_input.m_uniforms.data(),
+      l_vertex_function(l_ctx, l_vertex_bytes,
+                        (ui8 **)m_input.m_vertex_uniforms.data(),
                         l_vertex_shader_out,
                         m_heap.m_vertex_output_send_to_vertex_shader.m_data);
 
