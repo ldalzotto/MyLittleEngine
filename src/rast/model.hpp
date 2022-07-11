@@ -189,7 +189,6 @@ struct shader_vertex_bytes {
     uimax m_uniform_array;
     uimax m_vertex_output_count;
     uimax m_vertex_output_array;
-    uimax m_output_parameters_byte_size;
     uimax m_vertex_function;
     uimax m_end;
 
