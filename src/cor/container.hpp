@@ -434,6 +434,8 @@ template <typename T> struct pool {
     m_intrusive.free_element(p_index);
   };
 
+  ui8 has_allocated_elements() { return m_intrusive.has_allocated_elements(); };
+
 private:
   void __realloc() {
     m_data =
@@ -1183,7 +1185,7 @@ template <typename Key> struct hashmap_intrusive {
 
   ui8 has_allocated_elements() const {
     ui8 l_has_allocated_elements = 0;
-    return m_keys_intrisic.m_free_elements.count() != 0;
+    return m_keys_intrisic.m_free_elements.count() != m_keys_intrisic.m_count;
   };
 
 private:

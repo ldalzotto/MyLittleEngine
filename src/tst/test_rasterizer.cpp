@@ -318,6 +318,8 @@ f 1 2 3
       l_material, 2, m::vec<fix32, 4>{0, -1, 0, 0},
       rast_api(l_test.__engine.m_rasterizer));
 
+  l_test.m_material_handles.push_back(l_material);
+
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
       l_test.create_shader<rast_uniform_vertex_shader>(), l_material);
@@ -381,6 +383,9 @@ f 1 2 3
   l_test.__engine.m_renderer.material_set_vec4(
       l_material_no_offset, 2, m::vec<fix32, 4>{0, 0, 0, 0},
       rast_api(l_test.__engine.m_rasterizer));
+
+  l_test.m_material_handles.push_back(l_material_offset);
+  l_test.m_material_handles.push_back(l_material_no_offset);
 
   l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),

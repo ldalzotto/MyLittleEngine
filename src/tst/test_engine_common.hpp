@@ -39,6 +39,7 @@ struct BaseEngineTest {
     m_mesh_renderers.allocate(0);
 
     m_default_material = l_engine.renderer().material_create();
+    m_material_handles.push_back(m_default_material);
   }
 
   ~BaseEngineTest() {
@@ -68,6 +69,7 @@ struct BaseEngineTest {
     m_shader_handles.free();
     m_cameras.free();
     m_mesh_renderers.free();
+    m_material_handles.free();
 
     l_scene.free();
     __engine.free();

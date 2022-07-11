@@ -212,6 +212,7 @@ struct rast_impl_software {
 
     void free() {
       assert_debug(!uniforms.by_key.has_allocated_elements());
+      assert_debug(!uniforms.by_index.has_allocated_elements());
       assert_debug(!vertexbuffer_table.has_allocated_elements());
       assert_debug(!indexbuffer_table.has_allocated_elements());
       assert_debug(renderpass_table.count() == 1);
