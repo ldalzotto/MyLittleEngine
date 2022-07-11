@@ -395,7 +395,8 @@ template <typename... Types> struct table_vector_v2 {
   void remove_at(uimax p_index) {
     assert_debug(p_index < m_meta.m_count && m_meta.m_count > 0);
     if (p_index < m_meta.m_count - 1) {
-      table_vector_memmove_up<0>{}(*this, p_index + 1, 1, 1);
+      table_vector_memmove_up<0>{}(*this, p_index + 1, 1,
+                                   m_meta.m_count - (p_index + 1));
     }
 
     m_meta.m_count -= 1;
