@@ -462,7 +462,8 @@ static inline ui8 find_next_block(const range<heap_chunk> &p_chunks,
     const heap_chunk &l_chunk = p_chunks.at(l_chunk_it);
     uimax l_chunk_alignment_offset =
         algorithm::alignment_offset(l_chunk.m_begin, p_alignment);
-    if (l_chunk.m_size + l_chunk_alignment_offset >= p_size) {
+    if ((l_chunk.m_size > l_chunk_alignment_offset) &&
+        ((l_chunk.m_size - l_chunk_alignment_offset) >= p_size)) {
       *out_chunk_index = l_chunk_it;
       *out_chunk_alignment_offset = l_chunk_alignment_offset;
       return 1;
@@ -753,7 +754,7 @@ struct heap_paged_intrusive {
     assert_debug(l_page_index != -1);
     assert_debug(l_chunk_index != -1);
 
-    if (l_alignment_offset != -1) {
+    if (l_alignment_offset != -1 && l_alignment_offset != 0) {
       __split_free_chunk(l_page_index, l_chunk_index, l_alignment_offset);
       l_chunk_index += 1;
     }
@@ -766,6 +767,7 @@ struct heap_paged_intrusive {
                          uimax p_chunk_index) {
     auto &l_free_chunks = m_free_chunks_by_page[p_page_index];
     auto &l_free_chunk = l_free_chunks.at(p_chunk_index);
+    assert_debug(l_free_chunk.m_size >= p_size);
     heap_chunk l_chunk;
     l_chunk.m_begin = l_free_chunk.m_begin;
     l_chunk.m_size = p_size;
@@ -779,6 +781,7 @@ struct heap_paged_intrusive {
     } else {
       l_free_chunks.remove_at(p_chunk_index);
     }
+    assert_debug(__check_consistency());
     return l_allocated_chunk_index;
   };
 
@@ -787,6 +790,7 @@ struct heap_paged_intrusive {
     m_free_chunks_by_page[l_paged_chunk.m_page_index].push_back(
         l_paged_chunk.m_chunk);
     m_allocated_chunks.remove_at(p_chunk_index);
+    assert_debug(__check_consistency());
   };
 
 private:
@@ -819,6 +823,72 @@ private:
 
     l_chunk_to_split.m_size = p_relative_begin;
     m_free_chunks_by_page[p_free_chunk_page].push_back(l_chunk_end);
+  };
+
+  ui8 __check_consistency() {
+
+    for (auto l_page_idx = 0; l_page_idx < m_pages_intrusive.m_count;
+         ++l_page_idx) {
+
+      for (auto l_allocated_chunk_idx = 0;
+           l_allocated_chunk_idx < m_allocated_chunks.count();
+           ++l_allocated_chunk_idx) {
+        if (m_allocated_chunks.m_intrusive.is_element_allocated(
+                l_allocated_chunk_idx)) {
+          auto &l_left_chunk = m_allocated_chunks.at(l_allocated_chunk_idx);
+          if (l_left_chunk.m_page_index == l_page_idx) {
+            uimax l_left_begin = l_left_chunk.m_chunk.m_begin;
+            uimax l_left_end =
+                l_left_chunk.m_chunk.m_begin + l_left_chunk.m_chunk.m_size;
+
+            for (auto l_right_allocated_chunk_idx = l_allocated_chunk_idx + 1;
+                 l_right_allocated_chunk_idx < m_allocated_chunks.count();
+                 ++l_right_allocated_chunk_idx) {
+              if (m_allocated_chunks.m_intrusive.is_element_allocated(
+                      l_right_allocated_chunk_idx)) {
+                auto &l_right_chunk =
+                    m_allocated_chunks.at(l_right_allocated_chunk_idx);
+                if (l_right_chunk.m_page_index == l_page_idx) {
+                  uimax l_right_begin = l_right_chunk.m_chunk.m_begin;
+                  uimax l_right_end = l_right_chunk.m_chunk.m_begin +
+                                      l_right_chunk.m_chunk.m_size;
+
+                  if ((l_right_begin - l_left_begin) > 0 &&
+                      (l_right_begin - l_left_end) < 0) {
+                    return 0;
+                  }
+                  if ((l_right_end - l_left_begin) > 0 &&
+                      (l_right_end - l_left_end) < 0) {
+                    return 0;
+                  }
+                }
+              }
+            }
+
+            auto &l_free_chunks = m_free_chunks_by_page[l_page_idx];
+            for (auto l_right_free_chunk_idx = 0;
+                 l_right_free_chunk_idx < l_free_chunks.count();
+                 ++l_right_free_chunk_idx) {
+              auto &l_right_chunk = l_free_chunks.at(l_right_free_chunk_idx);
+
+              uimax l_right_begin = l_right_chunk.m_begin;
+              uimax l_right_end = l_right_chunk.m_begin + l_right_chunk.m_size;
+
+              if ((l_right_begin - l_left_begin) > 0 &&
+                  (l_right_begin - l_left_end) < 0) {
+                return 0;
+              }
+              if ((l_right_end - l_left_begin) > 0 &&
+                  (l_right_end - l_left_end) < 0) {
+                return 0;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return 1;
   };
 
 }; // namespace container
