@@ -246,19 +246,17 @@ struct rast_uniform_vertex_shader {
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
+  inline static container::arr<const ui8 *, 3> s_vertex_uniform_names = {
+      (const ui8 *)s_param_0.data(), (const ui8 *)s_param_1.data(),
+      (const ui8 *)s_param_2.data()};
+
   inline static container::arr<rast::shader_uniform, 3> s_vertex_uniforms = {
-      .m_data = {rast::shader_uniform{
-                     .type = bgfx::UniformType::Vec4,
-                     .hash = algorithm::hash(
-                         s_param_0.range().shrink_to(s_param_0.count() - 1))},
-                 rast::shader_uniform{
-                     .type = bgfx::UniformType::Vec4,
-                     .hash = algorithm::hash(
-                         s_param_1.range().shrink_to(s_param_1.count() - 1))},
-                 rast::shader_uniform{
-                     .type = bgfx::UniformType::Vec4,
-                     .hash = algorithm::hash(
-                         s_param_2.range().shrink_to(s_param_2.count() - 1))}}};
+      .m_data = {rast::shader_uniform::make(s_param_0.range(),
+                                            bgfx::UniformType::Vec4),
+                 rast::shader_uniform::make(s_param_1.range(),
+                                            bgfx::UniformType::Vec4),
+                 rast::shader_uniform::make(s_param_2.range(),
+                                            bgfx::UniformType::Vec4)}};
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
@@ -298,27 +296,10 @@ f 1 2 3
   auto l_camera = l_test.create_orthographic_camera(2, 2);
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
 
-  auto l_material = l_test.__engine.m_renderer.material_create();
-  l_test.__engine.m_renderer.material_push(
-      l_material, rast_uniform_vertex_shader::s_param_0.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_push(
-      l_material, rast_uniform_vertex_shader::s_param_1.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_push(
-      l_material, rast_uniform_vertex_shader::s_param_2.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material, 0, m::vec<fix32, 4>{-1, 0, 0, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material, 1, m::vec<fix32, 4>{0, 0, -1, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material, 2, m::vec<fix32, 4>{0, -1, 0, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-
-  l_test.m_material_handles.push_back(l_material);
+  auto l_material = l_test.create_material<rast_uniform_vertex_shader>();
+  l_test.material_set_vec4(l_material, 0, {-1, 0, 0, 0});
+  l_test.material_set_vec4(l_material, 1, {0, 0, -1, 0});
+  l_test.material_set_vec4(l_material, 2, {0, -1, 0, 0});
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
@@ -344,48 +325,16 @@ f 1 2 3
   auto l_camera = l_test.create_orthographic_camera(2, 2);
   l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
 
-  auto l_material_offset = l_test.__engine.m_renderer.material_create();
-  l_test.__engine.m_renderer.material_push(
-      l_material_offset, rast_uniform_vertex_shader::s_param_0.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_push(
-      l_material_offset, rast_uniform_vertex_shader::s_param_1.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_push(
-      l_material_offset, rast_uniform_vertex_shader::s_param_2.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material_offset, 0, m::vec<fix32, 4>{-1, 0, 0, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material_offset, 1, m::vec<fix32, 4>{0, 0, -1, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material_offset, 2, m::vec<fix32, 4>{0, -1, 0, 0},
-      rast_api(l_test.__engine.m_rasterizer));
+  auto l_material_offset = l_test.create_material<rast_uniform_vertex_shader>();
+  l_test.material_set_vec4(l_material_offset, 0, {-1, 0, 0, 0});
+  l_test.material_set_vec4(l_material_offset, 1, {0, 0, -1, 0});
+  l_test.material_set_vec4(l_material_offset, 2, {0, -1, 0, 0});
 
-  auto l_material_no_offset = l_test.__engine.m_renderer.material_create();
-  l_test.__engine.m_renderer.material_push(
-      l_material_no_offset, rast_uniform_vertex_shader::s_param_0.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_push(
-      l_material_no_offset, rast_uniform_vertex_shader::s_param_1.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_push(
-      l_material_no_offset, rast_uniform_vertex_shader::s_param_2.data(),
-      bgfx::UniformType::Vec4, rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material_no_offset, 0, m::vec<fix32, 4>{0, 0, 0, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material_no_offset, 1, m::vec<fix32, 4>{0, 0, 0, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-  l_test.__engine.m_renderer.material_set_vec4(
-      l_material_no_offset, 2, m::vec<fix32, 4>{0, 0, 0, 0},
-      rast_api(l_test.__engine.m_rasterizer));
-
-  l_test.m_material_handles.push_back(l_material_offset);
-  l_test.m_material_handles.push_back(l_material_no_offset);
+  auto l_material_no_offset =
+      l_test.create_material<rast_uniform_vertex_shader>();
+  l_test.material_set_vec4(l_material_no_offset, 0, {0, 0, 0, 0});
+  l_test.material_set_vec4(l_material_no_offset, 1, {0, 0, 0, 0});
+  l_test.material_set_vec4(l_material_no_offset, 2, {0, 0, 0, 0});
 
   l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),

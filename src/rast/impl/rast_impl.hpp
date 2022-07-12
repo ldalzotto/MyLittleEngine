@@ -723,9 +723,9 @@ struct rast_impl_software {
          ++l_vertex_uniform_it) {
       rast::shader_uniform &l_shader_uniform =
           l_vertex_shader_uniforms.at(l_vertex_uniform_it);
-      if (l_shader_uniform.type == bgfx::UniformType::Vec4) {
+      if (l_shader_uniform.m_type == bgfx::UniformType::Vec4) {
         l_draw_call.vertex_uniforms.m_uniforms.at(l_vertex_uniform_it).m_vecs =
-            *__get_uniform_vec4(l_shader_uniform.hash);
+            *__get_uniform_vec4(l_shader_uniform.m_hash);
       }
     }
 

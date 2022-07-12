@@ -122,8 +122,19 @@ struct image_view {
 };
 
 struct shader_uniform {
-  bgfx::UniformType::Enum type;
-  uimax hash;
+  bgfx::UniformType::Enum m_type;
+  uimax m_hash;
+
+  template <typename CharType>
+  static shader_uniform make(const container::range<CharType> &p_name,
+                             bgfx::UniformType::Enum p_type) {
+    assert_debug(p_name.at(p_name.count() - 1) == '\0');
+    shader_uniform l_shader_uniform;
+    l_shader_uniform.m_type = p_type;
+    l_shader_uniform.m_hash =
+        algorithm::hash(p_name.shrink_to(p_name.count() - 1));
+    return l_shader_uniform;
+  };
 };
 
 struct shader_vertex_runtime_ctx {

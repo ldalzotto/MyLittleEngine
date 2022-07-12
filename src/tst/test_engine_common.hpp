@@ -3,6 +3,7 @@
 #include <assets/loader/mesh_obj.hpp>
 #include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
+#include <ren/algorithm.hpp>
 #include <tst/test_common.hpp>
 
 struct BaseEngineTest {
@@ -123,6 +124,24 @@ struct BaseEngineTest {
         break;
       }
     }
+  };
+
+  template <typename ShaderType> ren::material_handle create_material() {
+    api_decltype(eng::engine_api, l_engine, __engine);
+    ren::material_handle l_material =
+        ren::algorithm::create_material_from_shader(
+            l_engine.renderer_api(), l_engine.rasterizer_api(),
+            ShaderType::s_vertex_uniform_names.range(),
+            ShaderType::s_vertex_uniforms.range());
+    m_material_handles.push_back(l_material);
+    return l_material;
+  };
+
+  void material_set_vec4(ren::material_handle p_material, uimax p_index,
+                         const m::vec<fix32, 4> &p_value) {
+    api_decltype(eng::engine_api, l_engine, __engine);
+    l_engine.renderer_api().material_set_vec4(p_material, p_index, p_value,
+                                              l_engine.rasterizer_api());
   };
 
   eng::object_handle create_orthographic_camera(fix32 p_width, fix32 p_height) {
