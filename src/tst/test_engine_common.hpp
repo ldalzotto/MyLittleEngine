@@ -138,7 +138,7 @@ struct BaseEngineTest {
   };
 
   void material_set_vec4(ren::material_handle p_material, uimax p_index,
-                         const m::vec<fix32, 4> &p_value) {
+                         const rast::uniform_vec4_t &p_value) {
     api_decltype(eng::engine_api, l_engine, __engine);
     l_engine.renderer_api().material_set_vec4(p_material, p_index, p_value,
                                               l_engine.rasterizer_api());

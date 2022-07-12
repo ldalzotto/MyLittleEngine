@@ -122,6 +122,7 @@ struct image_view {
 };
 
 static constexpr uimax program_uniform_max_count = 32;
+using uniform_vec4_t = m::vec<fix32, 4>;
 
 struct shader_uniform {
   bgfx::UniformType::Enum m_type;

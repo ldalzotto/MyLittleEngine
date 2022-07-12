@@ -73,7 +73,7 @@ struct rast_impl_software {
 
   struct CommandUniform {
     union {
-      m::vec<fix32, 4> m_vecs;
+      rast::uniform_vec4_t m_vecs;
     };
   };
 
@@ -180,7 +180,7 @@ struct rast_impl_software {
     orm::table_pool_v2<Shader> shader_table;
 
     struct {
-      container::pool<m::vec<fix32, 4>> vecs;
+      container::pool<rast::uniform_vec4_t> vecs;
     } uniform_values;
 
     struct {
@@ -847,8 +847,8 @@ struct rast_impl_software {
   };
 
 private:
-  const m::vec<fix32, 4> *__get_uniform_vec4(uimax p_hash) {
-    return __get_uniform(p_hash).cast_to<m::vec<fix32, 4>>().data();
+  const rast::uniform_vec4_t *__get_uniform_vec4(uimax p_hash) {
+    return __get_uniform(p_hash).cast_to<rast::uniform_vec4_t>().data();
   }
 
   container::range<ui8> __get_uniform(uimax p_hash) {

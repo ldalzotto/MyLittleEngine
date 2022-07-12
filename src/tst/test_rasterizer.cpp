@@ -264,14 +264,15 @@ struct rast_uniform_vertex_shader {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
-    position_t *l_delta_pos_x = (position_t *)p_uniforms[0];
-    position_t *l_delta_pos_y = (position_t *)p_uniforms[1];
-    position_t *l_delta_pos_z = (position_t *)p_uniforms[2];
+    rast::uniform_vec4_t *l_delta_pos_x = (rast::uniform_vec4_t *)p_uniforms[0];
+    rast::uniform_vec4_t *l_delta_pos_y = (rast::uniform_vec4_t *)p_uniforms[1];
+    rast::uniform_vec4_t *l_delta_pos_z = (rast::uniform_vec4_t *)p_uniforms[2];
     out_screen_position =
         p_ctx.m_local_to_unit *
-        m::vec<fix32, 4>::make(
-            l_vertex_pos + (*l_delta_pos_x + *l_delta_pos_y + *l_delta_pos_z),
-            1);
+        m::vec<fix32, 4>::make(l_vertex_pos + position_t::make(*l_delta_pos_x +
+                                                               *l_delta_pos_y +
+                                                               *l_delta_pos_z),
+                               1);
     rgbf_t *l_vertex_color = (rgbf_t *)out_vertex[0];
     (*l_vertex_color) = rgbf_t{1.0f, 1.0f, 1.0f};
   };

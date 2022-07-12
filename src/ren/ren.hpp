@@ -84,7 +84,7 @@ template <typename Private> struct ren_api {
 
   template <typename Rasterizer>
   void material_set_vec4(material_handle p_material, uimax p_index,
-                         const m::vec<fix32, 4> &p_value,
+                         const rast::uniform_vec4_t &p_value,
                          rast_api<Rasterizer> p_rast) {
     thiz.material_set_vec4(p_material, p_index, p_value, p_rast);
   };

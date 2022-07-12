@@ -87,7 +87,7 @@ struct ren_impl {
 
   struct material {
     struct parameter_value {
-      container::arr<ui8, sizeof(m::vec<fix32, 4>)> m_data;
+      container::arr<ui8, sizeof(rast::uniform_vec4_t)> m_data;
       container::range<ui8> range() { return m_data.range(); };
     };
 
@@ -243,7 +243,7 @@ struct ren_impl {
 
   template <typename Rasterizer>
   void material_set_vec4(material_handle p_material, uimax p_index,
-                         const m::vec<fix32, 4> &p_value,
+                         const rast::uniform_vec4_t &p_value,
                          rast_api<Rasterizer> p_rast) {
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
@@ -255,7 +255,8 @@ struct ren_impl {
         });
     */
     l_material->m_values.at(p_index).range().copy_from(
-        container::range<const m::vec<fix32, 4>>::make(&p_value, 1));
+        container::range<traits::remove_ref<decltype(p_value)>::type>::make(
+            &p_value, 1));
   };
 
   template <typename Rasterizer>
