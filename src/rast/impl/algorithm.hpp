@@ -87,7 +87,7 @@ struct program {
   void *m_fragment;
 };
 
-using program_uniforms = container::arr<void *, 256>;
+using program_uniforms = container::arr<void *, program_uniform_max_count>;
 
 struct utils {
 

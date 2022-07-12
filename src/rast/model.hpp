@@ -121,6 +121,8 @@ struct image_view {
   };
 };
 
+static constexpr uimax program_uniform_max_count = 32;
+
 struct shader_uniform {
   bgfx::UniformType::Enum m_type;
   uimax m_hash;

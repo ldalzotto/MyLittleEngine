@@ -90,8 +90,11 @@ struct ren_impl {
       container::arr<ui8, sizeof(m::vec<fix32, 4>)> m_data;
       container::range<ui8> range() { return m_data.range(); };
     };
-    container::arr<bgfx::UniformHandle, 255> m_uniforms;
-    container::arr<parameter_value, 255> m_values;
+
+    // TODO -> having an arr orm for this.
+    container::arr<bgfx::UniformHandle, rast::program_uniform_max_count>
+        m_uniforms;
+    container::arr<parameter_value, rast::program_uniform_max_count> m_values;
     uimax m_count;
   };
 

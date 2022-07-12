@@ -80,7 +80,7 @@ struct rast_impl_software {
   // TODO -> use a stack heap instead
   struct CommandUniforms {
     uimax m_count;
-    container::arr<CommandUniform, 255> m_uniforms;
+    container::arr<CommandUniform, rast::program_uniform_max_count> m_uniforms;
   };
 
   struct CommandDrawCall {
