@@ -12,6 +12,10 @@ struct mesh_handle {
   uimax m_idx;
 };
 
+struct material_handle {
+  uimax m_idx;
+};
+
 struct program_handle {
   uimax m_idx;
 };
@@ -27,7 +31,5 @@ struct program_meta {
             .m_depth_test = depth_test::less};
   };
 };
-
-struct mesh {};
 
 }; // namespace ren

@@ -3,6 +3,7 @@
 #include <assets/loader/mesh_obj.hpp>
 #include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
+#include <ren/algorithm.hpp>
 #include <tst/test_common.hpp>
 
 struct BaseEngineTest {
@@ -18,6 +19,8 @@ struct BaseEngineTest {
 
   container::vector<ren::mesh_handle> m_mesh_handles;
   container::vector<ren::program_handle> m_shader_handles;
+  container::vector<ren::material_handle> m_material_handles;
+  ren::material_handle m_default_material;
 
   container::vector<eng::object_handle> m_cameras;
   container::vector<eng::object_handle> m_mesh_renderers;
@@ -32,8 +35,12 @@ struct BaseEngineTest {
 
     m_mesh_handles.allocate(0);
     m_shader_handles.allocate(0);
+    m_material_handles.allocate(0);
     m_cameras.allocate(0);
     m_mesh_renderers.allocate(0);
+
+    m_default_material = l_engine.renderer().material_create();
+    m_material_handles.push_back(m_default_material);
   }
 
   ~BaseEngineTest() {
@@ -48,6 +55,10 @@ struct BaseEngineTest {
       l_ren.mesh_destroy(m_mesh_handles.at(i), l_rast);
     }
 
+    for (auto i = 0; i < m_material_handles.count(); ++i) {
+      l_ren.material_destroy(m_material_handles.at(i), l_rast);
+    }
+
     for (auto i = 0; i < m_cameras.count(); ++i) {
       l_scene.camera_destroy(m_cameras.at(i));
     }
@@ -59,6 +70,7 @@ struct BaseEngineTest {
     m_shader_handles.free();
     m_cameras.free();
     m_mesh_renderers.free();
+    m_material_handles.free();
 
     l_scene.free();
     __engine.free();
@@ -114,6 +126,24 @@ struct BaseEngineTest {
     }
   };
 
+  template <typename ShaderType> ren::material_handle create_material() {
+    api_decltype(eng::engine_api, l_engine, __engine);
+    ren::material_handle l_material =
+        ren::algorithm::create_material_from_shader(
+            l_engine.renderer_api(), l_engine.rasterizer_api(),
+            ShaderType::s_vertex_uniform_names.range(),
+            ShaderType::s_vertex_uniforms.range());
+    m_material_handles.push_back(l_material);
+    return l_material;
+  };
+
+  void material_set_vec4(ren::material_handle p_material, uimax p_index,
+                         const rast::uniform_vec4_t &p_value) {
+    api_decltype(eng::engine_api, l_engine, __engine);
+    l_engine.renderer_api().material_set_vec4(p_material, p_index, p_value,
+                                              l_engine.rasterizer_api());
+  };
+
   eng::object_handle create_orthographic_camera(fix32 p_width, fix32 p_height) {
     api_decltype(eng::engine_api, l_engine, __engine);
     eng::object_handle l_camera = l_scene.camera_create();
@@ -126,10 +156,12 @@ struct BaseEngineTest {
   };
 
   eng::object_handle create_mesh_renderer(ren::mesh_handle p_mesh,
-                                          ren::program_handle p_shader) {
+                                          ren::program_handle p_shader,
+                                          ren::material_handle p_material) {
     eng::object_handle l_mesh_renderer = l_scene.mesh_renderer_create();
     l_scene.mesh_renderer(l_mesh_renderer).set_mesh(p_mesh);
     l_scene.mesh_renderer(l_mesh_renderer).set_program(p_shader);
+    l_scene.mesh_renderer(l_mesh_renderer).set_material(p_material);
     m_mesh_renderers.push_back(l_mesh_renderer);
     return l_mesh_renderer;
   };
@@ -144,6 +176,8 @@ struct BaseEngineTest {
     }
   };
 
+  ren::material_handle material_default() { return m_default_material; };
+
   void assert_frame_equals(const container::range<ui8> &p_image_relative_path,
                            const TestImageAssertionConfig &p_resource_config) {
     TestUtils::assert_frame_equals(p_image_relative_path,
@@ -153,18 +187,18 @@ struct BaseEngineTest {
 
 private:
   template <typename Engine>
-  inline static ren::program_handle
-  program_create(eng::engine_api<Engine> p_engine,
-                 const ren::program_meta &p_program_meta,
-                 const container::range<rast::shader_vertex_output_parameter>
-                     &p_vertex_output,
-                 rast::shader_vertex_function p_vertex,
-                 rast::shader_fragment_function p_fragment) {
+  inline static ren::program_handle program_create(
+      eng::engine_api<Engine> p_engine, const ren::program_meta &p_program_meta,
+      const container::range<rast::shader_uniform> &p_vertex_uniforms,
+      const container::range<rast::shader_vertex_output_parameter>
+          &p_vertex_output,
+      rast::shader_vertex_function p_vertex,
+      rast::shader_fragment_function p_fragment) {
 
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
-    return l_ren.program_create(p_program_meta, p_vertex_output, p_vertex,
-                                p_fragment, l_rast);
+    return l_ren.program_create(p_program_meta, p_vertex_uniforms,
+                                p_vertex_output, p_vertex, p_fragment, l_rast);
   };
 
   template <typename Shader, typename Engine>
@@ -172,8 +206,9 @@ private:
   program_create(eng::engine_api<Engine> p_engine,
                  const ren::program_meta &p_meta) {
     ren::program_meta l_meta = l_meta.get_default();
-    return program_create(p_engine, p_meta, Shader::s_vertex_output.range(),
-                          Shader::vertex, Shader::fragment);
+    return program_create(p_engine, p_meta, Shader::s_vertex_uniforms.range(),
+                          Shader::s_vertex_output.range(), Shader::vertex,
+                          Shader::fragment);
   };
 };
 
@@ -182,9 +217,11 @@ struct WhiteShader {
   inline static container::arr<rast::shader_vertex_output_parameter, 0>
       s_vertex_output = {};
 
+  inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
+
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
-                     ui8 **out_vertex) {
+                     const ui8 *p_vertex, ui8 **p_uniforms,
+                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
@@ -201,10 +238,10 @@ struct ColorInterpolationShader {
   inline static container::arr<rast::shader_vertex_output_parameter, 1>
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
-
+  inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, m::vec<fix32, 4> &out_screen_position,
-                     ui8 **out_vertex) {
+                     const ui8 *p_vertex, ui8 **p_uniforms,
+                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);

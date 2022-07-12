@@ -26,7 +26,7 @@ f 1 2 3
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<WhiteShader>());
+      l_test.create_shader<WhiteShader>(), l_test.material_default());
 
   l_test.update();
 
@@ -53,7 +53,8 @@ f 1/1 2/2 3/3
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
@@ -88,7 +89,7 @@ f 4 5 6
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<WhiteShader>(l_c_meta));
+      l_test.create_shader<WhiteShader>(l_c_meta), l_test.material_default());
 
   l_test.update();
 
@@ -126,7 +127,8 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
@@ -155,7 +157,8 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
@@ -188,7 +191,8 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>(l_meta));
+      l_test.create_shader<ColorInterpolationShader>(l_meta),
+      l_test.material_default());
 
   l_test.update();
 
@@ -220,12 +224,131 @@ f 4/2 5/2 6/2
 
   auto l_mesh_renderer = l_test.create_mesh_renderer(
       l_test.create_mesh_obj(l_mesh_raw_str.range()),
-      l_test.create_shader<ColorInterpolationShader>());
+      l_test.create_shader<ColorInterpolationShader>(),
+      l_test.material_default());
 
   l_test.update();
 
   auto l_tmp_path =
       container::arr_literal<ui8>("rast.depth.comparison.outofbounds.png");
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
+}
+
+struct rast_uniform_vertex_shader {
+  inline static const auto s_param_0 =
+      container::arr_literal<i8>("test_vertex_uniform_0\0");
+  inline static const auto s_param_1 =
+      container::arr_literal<i8>("test_vertex_uniform_1\0");
+  inline static const auto s_param_2 =
+      container::arr_literal<i8>("test_vertex_uniform_2\0");
+
+  inline static container::arr<rast::shader_vertex_output_parameter, 1>
+      s_vertex_output = {
+          rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
+
+  inline static container::arr<const ui8 *, 3> s_vertex_uniform_names = {
+      (const ui8 *)s_param_0.data(), (const ui8 *)s_param_1.data(),
+      (const ui8 *)s_param_2.data()};
+
+  inline static container::arr<rast::shader_uniform, 3> s_vertex_uniforms = {
+      .m_data = {rast::shader_uniform::make(s_param_0.range(),
+                                            bgfx::UniformType::Vec4),
+                 rast::shader_uniform::make(s_param_1.range(),
+                                            bgfx::UniformType::Vec4),
+                 rast::shader_uniform::make(s_param_2.range(),
+                                            bgfx::UniformType::Vec4)}};
+
+  static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
+                     const ui8 *p_vertex, ui8 **p_uniforms,
+                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
+    rast::shader_vertex l_shader = {p_ctx};
+    const auto &l_vertex_pos =
+        l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
+    rast::uniform_vec4_t *l_delta_pos_x = (rast::uniform_vec4_t *)p_uniforms[0];
+    rast::uniform_vec4_t *l_delta_pos_y = (rast::uniform_vec4_t *)p_uniforms[1];
+    rast::uniform_vec4_t *l_delta_pos_z = (rast::uniform_vec4_t *)p_uniforms[2];
+    out_screen_position =
+        p_ctx.m_local_to_unit *
+        m::vec<fix32, 4>::make(l_vertex_pos + position_t::make(*l_delta_pos_x +
+                                                               *l_delta_pos_y +
+                                                               *l_delta_pos_z),
+                               1);
+    rgbf_t *l_vertex_color = (rgbf_t *)out_vertex[0];
+    (*l_vertex_color) = rgbf_t{1.0f, 1.0f, 1.0f};
+  };
+
+  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
+    rgbf_t *l_vertex_color = (position_t *)p_vertex_output_interpolated[0];
+    out_color = *l_vertex_color;
+  };
+};
+
+TEST_CASE("rast.uniform.vertex") {
+
+  constexpr ui16 l_width = 8, l_height = 8;
+  auto l_mesh_raw_str = container::arr_literal<ui8>(R""""(
+v 0.0 0.0 0.0
+v 0.0 1.0 0.0
+v 1.0 0.0 0.0
+f 1 2 3
+  )"""");
+
+  BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
+  auto l_camera = l_test.create_orthographic_camera(2, 2);
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
+
+  auto l_material = l_test.create_material<rast_uniform_vertex_shader>();
+  l_test.material_set_vec4(l_material, 0, {-1, 0, 0, 0});
+  l_test.material_set_vec4(l_material, 1, {0, 0, -1, 0});
+  l_test.material_set_vec4(l_material, 2, {0, -1, 0, 0});
+
+  auto l_mesh_renderer = l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_vertex_shader>(), l_material);
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("rast.uniform.vertex.png");
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
+}
+
+TEST_CASE("rast.uniform.vertex.reuse") {
+
+  constexpr ui16 l_width = 8, l_height = 8;
+  auto l_mesh_raw_str = container::arr_literal<ui8>(R""""(
+v 0.0 0.0 0.0
+v 0.0 1.0 0.0
+v 1.0 0.0 0.0
+f 1 2 3
+  )"""");
+
+  BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
+  auto l_camera = l_test.create_orthographic_camera(2, 2);
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
+
+  auto l_material_offset = l_test.create_material<rast_uniform_vertex_shader>();
+  l_test.material_set_vec4(l_material_offset, 0, {-1, 0, 0, 0});
+  l_test.material_set_vec4(l_material_offset, 1, {0, 0, -1, 0});
+  l_test.material_set_vec4(l_material_offset, 2, {0, -1, 0, 0});
+
+  auto l_material_no_offset =
+      l_test.create_material<rast_uniform_vertex_shader>();
+  l_test.material_set_vec4(l_material_no_offset, 0, {0, 0, 0, 0});
+  l_test.material_set_vec4(l_material_no_offset, 1, {0, 0, 0, 0});
+  l_test.material_set_vec4(l_material_no_offset, 2, {0, 0, 0, 0});
+
+  l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_vertex_shader>(), l_material_offset);
+
+  l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_vertex_shader>(), l_material_no_offset);
+
+  l_test.update();
+
+  auto l_tmp_path =
+      container::arr_literal<ui8>("rast.uniform.vertex.reuse.png");
   l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 

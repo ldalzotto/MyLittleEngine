@@ -5,6 +5,14 @@
 
 namespace algorithm {
 
+inline uimax alignment_offset(uimax p_begin, uimax p_alignment) {
+  uimax l_chunk_alignment_offset = 0;
+  while ((p_begin + l_chunk_alignment_offset) % p_alignment != 0) {
+    l_chunk_alignment_offset += 1;
+  }
+  return l_chunk_alignment_offset;
+};
+
 template <typename RangeType, typename SortFunc>
 void sort(RangeType &p_range, const SortFunc &p_sort_func) {
   using element_type = typename RangeType::element_type;

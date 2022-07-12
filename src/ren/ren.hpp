@@ -64,15 +64,41 @@ template <typename Private> struct ren_api {
     thiz.mesh_destroy(p_mesh, p_rast);
   };
 
+  FORCE_INLINE material_handle material_create() {
+    return thiz.material_create();
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE void material_destroy(material_handle p_material,
+                                     rast_api<Rasterizer> p_rast) {
+    thiz.material_destroy(p_material, p_rast);
+  };
+
+  template <typename Rasterizer>
+  FORCE_INLINE void material_push(material_handle p_material,
+                                  const char *p_name,
+                                  bgfx::UniformType::UniformType::Enum p_type,
+                                  rast_api<Rasterizer> p_rast) {
+    thiz.material_push(p_material, p_name, p_type, p_rast);
+  };
+
+  template <typename Rasterizer>
+  void material_set_vec4(material_handle p_material, uimax p_index,
+                         const rast::uniform_vec4_t &p_value,
+                         rast_api<Rasterizer> p_rast) {
+    thiz.material_set_vec4(p_material, p_index, p_value, p_rast);
+  };
+
   template <typename Rasterizer>
   FORCE_INLINE program_handle program_create(
       const ren::program_meta &p_program_meta,
+      const container::range<rast::shader_uniform> &p_vertex_uniforms,
       const container::range<rast::shader_vertex_output_parameter>
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
       rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
-    return thiz.program_create(p_program_meta, p_vertex_output, p_vertex,
-                               p_fragment, p_rast);
+    return thiz.program_create(p_program_meta, p_vertex_uniforms,
+                               p_vertex_output, p_vertex, p_fragment, p_rast);
   };
 
   template <typename Rasterizer>
@@ -86,9 +112,10 @@ template <typename Private> struct ren_api {
   // TODO -> have special allocations for buffer ?
   FORCE_INLINE void
   draw(camera_handle p_camera, program_handle p_shader,
+       material_handle p_material,
        const container::range<m::mat<fix32, 4, 4>> &p_transforms,
        const container::range<mesh_handle> &p_meshes) {
-    thiz.draw(p_camera, p_shader, p_transforms, p_meshes);
+    thiz.draw(p_camera, p_shader, p_material, p_transforms, p_meshes);
   };
 
   template <typename Rasterizer>

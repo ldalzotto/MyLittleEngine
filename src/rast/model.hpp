@@ -121,6 +121,25 @@ struct image_view {
   };
 };
 
+static constexpr uimax program_uniform_max_count = 32;
+using uniform_vec4_t = m::vec<fix32, 4>;
+
+struct shader_uniform {
+  bgfx::UniformType::Enum m_type;
+  uimax m_hash;
+
+  template <typename CharType>
+  static shader_uniform make(const container::range<CharType> &p_name,
+                             bgfx::UniformType::Enum p_type) {
+    assert_debug(p_name.at(p_name.count() - 1) == '\0');
+    shader_uniform l_shader_uniform;
+    l_shader_uniform.m_type = p_type;
+    l_shader_uniform.m_hash =
+        algorithm::hash(p_name.shrink_to(p_name.count() - 1));
+    return l_shader_uniform;
+  };
+};
+
 struct shader_vertex_runtime_ctx {
   const m::mat<fix32, 4, 4> &m_proj;
   const m::mat<fix32, 4, 4> &m_view;
@@ -138,7 +157,7 @@ struct shader_vertex_runtime_ctx {
 };
 
 using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
-                                        const ui8 *p_vertex,
+                                        const ui8 *p_vertex, ui8 **p_uniforms,
                                         m::vec<fix32, 4> &out_screen_position,
                                         ui8 **out_vertex);
 
@@ -179,56 +198,101 @@ struct shader_vertex_output_parameter {
 
 struct shader_vertex_bytes {
 
-  struct table {
-    uimax m_output_parameters_byte_size;
+  struct byte_header {
+    uimax m_uniform_count;
+    uimax m_uniform_array;
+    uimax m_vertex_output_count;
+    uimax m_vertex_output_array;
+    uimax m_vertex_function;
+    uimax m_end;
+
+    uimax size_of() { return m_end; };
   };
 
-  static uimax byte_size(uimax p_output_parameter_count) {
-    return sizeof(table) + sizeof(uimax) +
-           (sizeof(shader_vertex_output_parameter) * p_output_parameter_count) +
-           sizeof(shader_vertex_function);
+  static byte_header build_byte_header(uimax p_uniform_count,
+                                       uimax p_output_parameter_count) {
+    byte_header l_byte_header;
+    l_byte_header.m_uniform_count = sizeof(byte_header);
+    l_byte_header.m_uniform_array =
+        l_byte_header.m_uniform_count + sizeof(uimax);
+    l_byte_header.m_vertex_output_count =
+        l_byte_header.m_uniform_array +
+        (p_uniform_count * sizeof(shader_uniform));
+    l_byte_header.m_vertex_output_array =
+        l_byte_header.m_vertex_output_count + sizeof(uimax);
+    l_byte_header.m_vertex_function =
+        l_byte_header.m_vertex_output_array +
+        (p_output_parameter_count * sizeof(shader_vertex_output_parameter));
+    l_byte_header.m_vertex_function +=
+        algorithm::alignment_offset(l_byte_header.m_vertex_function, 8);
+    l_byte_header.m_end =
+        l_byte_header.m_vertex_function + sizeof(shader_vertex_function);
+    return l_byte_header;
   };
 
   struct view {
     ui8 *m_data;
 
-    void fill(const container::range<shader_vertex_output_parameter>
+    void fill(const byte_header &p_byte_header,
+              const container::range<shader_uniform> &p_uniforms,
+              const container::range<shader_vertex_output_parameter>
                   &p_output_parameters,
               shader_vertex_function p_function) {
-      table *l_table = (table *)m_data;
-      l_table->m_output_parameters_byte_size = p_output_parameters.size_of();
+      byte_header *l_byte_header = (byte_header *)m_data;
+      *l_byte_header = p_byte_header;
 
-      uimax *l_output_parameters_count = (uimax *)(m_data + sizeof(table));
+      uimax *l_uniform_count =
+          (uimax *)(m_data + l_byte_header->m_uniform_count);
+      *l_uniform_count = p_uniforms.count();
+
+      if (*l_uniform_count > 0) {
+        container::range<shader_uniform> l_byte_uniforms;
+        l_byte_uniforms.m_begin =
+            (shader_uniform *)(m_data + l_byte_header->m_uniform_array);
+        l_byte_uniforms.m_count = p_uniforms.count();
+        p_uniforms.copy_to(l_byte_uniforms);
+      }
+
+      uimax *l_output_parameters_count =
+          (uimax *)(m_data + l_byte_header->m_vertex_output_count);
       *l_output_parameters_count = p_output_parameters.count();
 
       container::range<shader_vertex_output_parameter> l_byte_output_parameters;
       l_byte_output_parameters.m_begin =
-          (shader_vertex_output_parameter *)(m_data + sizeof(table) +
-                                             sizeof(uimax));
+          (shader_vertex_output_parameter
+               *)(m_data + l_byte_header->m_vertex_output_array);
       l_byte_output_parameters.m_count = p_output_parameters.count();
 
       p_output_parameters.copy_to(l_byte_output_parameters);
 
       shader_vertex_function *l_function =
-          (shader_vertex_function *)(m_data + sizeof(table) + sizeof(uimax) +
-                                     l_table->m_output_parameters_byte_size);
+          (shader_vertex_function *)(m_data + l_byte_header->m_vertex_function);
       *l_function = p_function;
     };
 
     container::range<shader_vertex_output_parameter> output_parameters() {
+      byte_header *l_byte_header = (byte_header *)m_data;
       container::range<shader_vertex_output_parameter> l_range;
+      l_range.m_begin = (shader_vertex_output_parameter
+                             *)(m_data + l_byte_header->m_vertex_output_array);
+      l_range.m_count =
+          *(uimax *)(m_data + l_byte_header->m_vertex_output_count);
+      return l_range;
+    };
+
+    container::range<shader_uniform> uniforms() {
+      byte_header *l_byte_header = (byte_header *)m_data;
+      container::range<shader_uniform> l_range;
       l_range.m_begin =
-          (shader_vertex_output_parameter *)(m_data + sizeof(table) +
-                                             sizeof(uimax));
-      l_range.m_count = *(uimax *)(m_data + sizeof(table));
+          (shader_uniform *)(m_data + l_byte_header->m_uniform_array);
+      l_range.m_count = *(uimax *)(m_data + l_byte_header->m_uniform_count);
       return l_range;
     };
 
     shader_vertex_function function() {
-      table *l_table = (table *)m_data;
-      return *(
-          shader_vertex_function *)(m_data + sizeof(table) + sizeof(uimax) +
-                                    l_table->m_output_parameters_byte_size);
+      byte_header *l_byte_header = (byte_header *)m_data;
+      return *(shader_vertex_function *)(m_data +
+                                         l_byte_header->m_vertex_function);
     };
   };
 };

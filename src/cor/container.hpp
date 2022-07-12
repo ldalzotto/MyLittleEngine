@@ -16,10 +16,7 @@ template <typename T> struct range {
   uimax m_count;
 
   static constexpr range make(T *p_begin, uimax p_count) {
-    return {
-      .m_begin = p_begin,
-      .m_count = p_count
-    };
+    return {.m_begin = p_begin, .m_count = p_count};
   };
 
   const T *data() const { return (const T *)m_begin; };
@@ -272,6 +269,7 @@ template <typename T, typename Allocator = default_allocator> struct vector {
 
   uimax &capacity() { return m_intrusive.m_capacity; };
   uimax &count() { return m_intrusive.m_count; };
+  const uimax &count() const { return m_intrusive.m_count; };
 
   void allocate(uimax p_capacity, Allocator *p_allocator = 0) {
     m_intrusive.allocate(p_capacity);
@@ -313,7 +311,7 @@ template <typename T, typename Allocator = default_allocator> struct vector {
   void remove_at(uimax p_index) {
     assert_debug(p_index < count() && count() > 0);
     if (p_index < count() - 1) {
-      sys::memmove_up_t(m_data, p_index + 1, 1, 1);
+      sys::memmove_up_t(m_data, p_index + 1, 1, count() - (p_index + 1));
     }
 
     m_intrusive.m_count -= 1;
@@ -436,6 +434,8 @@ template <typename T> struct pool {
     m_intrusive.free_element(p_index);
   };
 
+  ui8 has_allocated_elements() { return m_intrusive.has_allocated_elements(); };
+
 private:
   void __realloc() {
     m_data =
@@ -462,11 +462,10 @@ static inline ui8 find_next_block(const range<heap_chunk> &p_chunks,
   assert_debug(p_alignment > 0);
   for (auto l_chunk_it = 0; l_chunk_it < p_chunks.count(); ++l_chunk_it) {
     const heap_chunk &l_chunk = p_chunks.at(l_chunk_it);
-    uimax l_chunk_alignment_offset = 0;
-    while ((l_chunk.m_begin + l_chunk_alignment_offset) % p_alignment != 0) {
-      l_chunk_alignment_offset += 1;
-    }
-    if (l_chunk.m_size + l_chunk_alignment_offset >= p_size) {
+    uimax l_chunk_alignment_offset =
+        algorithm::alignment_offset(l_chunk.m_begin, p_alignment);
+    if ((l_chunk.m_size > l_chunk_alignment_offset) &&
+        ((l_chunk.m_size - l_chunk_alignment_offset) >= p_size)) {
       *out_chunk_index = l_chunk_it;
       *out_chunk_alignment_offset = l_chunk_alignment_offset;
       return 1;
@@ -757,7 +756,7 @@ struct heap_paged_intrusive {
     assert_debug(l_page_index != -1);
     assert_debug(l_chunk_index != -1);
 
-    if (l_alignment_offset != -1) {
+    if (l_alignment_offset != -1 && l_alignment_offset != 0) {
       __split_free_chunk(l_page_index, l_chunk_index, l_alignment_offset);
       l_chunk_index += 1;
     }
@@ -770,6 +769,7 @@ struct heap_paged_intrusive {
                          uimax p_chunk_index) {
     auto &l_free_chunks = m_free_chunks_by_page[p_page_index];
     auto &l_free_chunk = l_free_chunks.at(p_chunk_index);
+    assert_debug(l_free_chunk.m_size >= p_size);
     heap_chunk l_chunk;
     l_chunk.m_begin = l_free_chunk.m_begin;
     l_chunk.m_size = p_size;
@@ -783,6 +783,7 @@ struct heap_paged_intrusive {
     } else {
       l_free_chunks.remove_at(p_chunk_index);
     }
+    assert_debug(__check_consistency());
     return l_allocated_chunk_index;
   };
 
@@ -791,6 +792,7 @@ struct heap_paged_intrusive {
     m_free_chunks_by_page[l_paged_chunk.m_page_index].push_back(
         l_paged_chunk.m_chunk);
     m_allocated_chunks.remove_at(p_chunk_index);
+    assert_debug(__check_consistency());
   };
 
 private:
@@ -823,6 +825,72 @@ private:
 
     l_chunk_to_split.m_size = p_relative_begin;
     m_free_chunks_by_page[p_free_chunk_page].push_back(l_chunk_end);
+  };
+
+  ui8 __check_consistency() {
+
+    for (auto l_page_idx = 0; l_page_idx < m_pages_intrusive.m_count;
+         ++l_page_idx) {
+
+      for (auto l_allocated_chunk_idx = 0;
+           l_allocated_chunk_idx < m_allocated_chunks.count();
+           ++l_allocated_chunk_idx) {
+        if (m_allocated_chunks.m_intrusive.is_element_allocated(
+                l_allocated_chunk_idx)) {
+          auto &l_left_chunk = m_allocated_chunks.at(l_allocated_chunk_idx);
+          if (l_left_chunk.m_page_index == l_page_idx) {
+            uimax l_left_begin = l_left_chunk.m_chunk.m_begin;
+            uimax l_left_end =
+                l_left_chunk.m_chunk.m_begin + l_left_chunk.m_chunk.m_size;
+
+            for (auto l_right_allocated_chunk_idx = l_allocated_chunk_idx + 1;
+                 l_right_allocated_chunk_idx < m_allocated_chunks.count();
+                 ++l_right_allocated_chunk_idx) {
+              if (m_allocated_chunks.m_intrusive.is_element_allocated(
+                      l_right_allocated_chunk_idx)) {
+                auto &l_right_chunk =
+                    m_allocated_chunks.at(l_right_allocated_chunk_idx);
+                if (l_right_chunk.m_page_index == l_page_idx) {
+                  uimax l_right_begin = l_right_chunk.m_chunk.m_begin;
+                  uimax l_right_end = l_right_chunk.m_chunk.m_begin +
+                                      l_right_chunk.m_chunk.m_size;
+
+                  if ((l_right_begin - l_left_begin) > 0 &&
+                      (l_right_begin - l_left_end) < 0) {
+                    return 0;
+                  }
+                  if ((l_right_end - l_left_begin) > 0 &&
+                      (l_right_end - l_left_end) < 0) {
+                    return 0;
+                  }
+                }
+              }
+            }
+
+            auto &l_free_chunks = m_free_chunks_by_page[l_page_idx];
+            for (auto l_right_free_chunk_idx = 0;
+                 l_right_free_chunk_idx < l_free_chunks.count();
+                 ++l_right_free_chunk_idx) {
+              auto &l_right_chunk = l_free_chunks.at(l_right_free_chunk_idx);
+
+              uimax l_right_begin = l_right_chunk.m_begin;
+              uimax l_right_end = l_right_chunk.m_begin + l_right_chunk.m_size;
+
+              if ((l_right_begin - l_left_begin) > 0 &&
+                  (l_right_begin - l_left_end) < 0) {
+                return 0;
+              }
+              if ((l_right_end - l_left_begin) > 0 &&
+                  (l_right_end - l_left_end) < 0) {
+                return 0;
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return 1;
   };
 
 }; // namespace container
@@ -1057,6 +1125,118 @@ struct multi_byte_buffer {
   runtime_buffer &col(uimax p_index) {
     assert_debug(p_index < m_col_count);
     return m_cols.m_runtime_buffers[p_index];
+  };
+};
+
+template <typename Key> struct hashmap_intrusive {
+  container::pool_intrusive m_keys_intrisic;
+  Key *m_keys;
+  ui8 *m_is_allocated;
+
+  void allocate() {
+    m_keys_intrisic.allocate(0);
+    m_keys = (Key *)default_allocator::malloc(0);
+    m_is_allocated = (ui8 *)default_allocator::malloc(0);
+  };
+
+  void free() {
+    m_keys_intrisic.free();
+    default_allocator::free(m_keys);
+    default_allocator::free(m_is_allocated);
+  };
+
+  ui8 push_back_realloc(const Key &p_key, uimax *out_index) {
+    assert_debug(find_key_index(p_key) == -1);
+
+    ui8 l_needs_reallocate = 0;
+    uimax l_old_capacity = m_keys_intrisic.m_capacity;
+    uimax l_index;
+    if (m_keys_intrisic.find_next_realloc(&l_index)) {
+      __realloc(m_keys_intrisic.m_capacity);
+      for (auto i = l_old_capacity; i < m_keys_intrisic.m_capacity; ++i) {
+        m_is_allocated[i] = 0;
+      }
+      l_needs_reallocate = 1;
+    }
+    m_keys[l_index] = p_key;
+    m_is_allocated[l_index] = 1;
+    *out_index = l_index;
+    return l_needs_reallocate;
+  };
+
+  void remove_at(const Key &p_key) {
+    uimax l_index = find_key_index(p_key);
+    m_keys_intrisic.free_element(l_index);
+    m_is_allocated[l_index] = 0;
+  };
+
+  ui8 has_key(const Key &p_key) const { return find_key_index(p_key) != -1; };
+
+  uimax find_key_index(const Key &p_key) const {
+    for (auto i = 0; i < m_keys_intrisic.m_count; ++i) {
+      if (m_is_allocated[i]) {
+        if (m_keys[i] == p_key) {
+          return i;
+        }
+      }
+    }
+    return -1;
+  };
+
+  ui8 has_allocated_elements() const {
+    ui8 l_has_allocated_elements = 0;
+    return m_keys_intrisic.m_free_elements.count() != m_keys_intrisic.m_count;
+  };
+
+private:
+  void __realloc(uimax p_new_size) {
+    m_keys =
+        (Key *)default_allocator::realloc(m_keys, sizeof(*m_keys) * p_new_size);
+    m_is_allocated = (ui8 *)default_allocator::realloc(
+        m_is_allocated, sizeof(*m_is_allocated) * p_new_size);
+  };
+};
+
+template <typename Key, typename Value> struct hashmap {
+  hashmap_intrusive<Key> m_intrusive;
+  Value *m_data;
+
+  void allocate() {
+    m_intrusive.allocate();
+    m_data = (Value *)default_allocator::malloc(0);
+  };
+
+  void free() {
+    m_intrusive.free();
+    default_allocator::free(m_data);
+  };
+
+  void push_back(const Key &p_key, const Value &p_value) {
+    uimax l_index;
+    if (m_intrusive.push_back_realloc(p_key, &l_index)) {
+      __realloc();
+    }
+    m_data[l_index] = p_value;
+  };
+
+  void remove_at(const Key &p_key) { m_intrusive.remove_at(p_key); };
+
+  Value &at(const Key &p_key) {
+    uimax l_index = m_intrusive.find_key_index(p_key);
+    assert_debug(l_index != -1);
+    return m_data[l_index];
+  };
+
+  ui8 has_key(const Key &p_key) const { return m_intrusive.has_key(p_key); };
+
+  ui8 has_allocated_elements() const {
+    return m_intrusive.has_allocated_elements();
+  };
+
+private:
+  void __realloc() {
+    m_data = (Value *)default_allocator::realloc(
+        m_data, sizeof(*m_data) * m_intrusive.m_keys_intrisic.m_capacity);
   };
 };
 

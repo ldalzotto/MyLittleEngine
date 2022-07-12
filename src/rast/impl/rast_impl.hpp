@@ -71,11 +71,24 @@ struct rast_impl_software {
     };
   } command_temporary_stack;
 
+  struct CommandUniform {
+    union {
+      rast::uniform_vec4_t m_vecs;
+    };
+  };
+
+  // TODO -> use a stack heap instead
+  struct CommandUniforms {
+    uimax m_count;
+    container::arr<CommandUniform, rast::program_uniform_max_count> m_uniforms;
+  };
+
   struct CommandDrawCall {
     bgfx::ProgramHandle program;
     m::mat<fix32, 4, 4> transform;
     bgfx::IndexBufferHandle index_buffer;
     bgfx::VertexBufferHandle vertex_buffer;
+    CommandUniforms vertex_uniforms;
     ui64 state;
     ui32 rgba;
 
@@ -138,6 +151,13 @@ struct rast_impl_software {
     };
   };
 
+  struct Uniform {
+    bgfx::UniformType::Enum type;
+    uimax hash;
+    uimax index;
+    uimax usage_count;
+  };
+
   struct heap {
 
     orm::table_heap_paged_v2<ui8> buffer_memory_table;
@@ -159,6 +179,15 @@ struct rast_impl_software {
     orm::table_vector_v2<RenderPass> renderpass_table;
     orm::table_pool_v2<Shader> shader_table;
 
+    struct {
+      container::pool<rast::uniform_vec4_t> vecs;
+    } uniform_values;
+
+    struct {
+      container::pool<Uniform> by_index;
+      container::hashmap<uimax, uimax> by_key;
+    } uniforms;
+
     orm::table_pool_v2<Program> program_table;
 
     void allocate() {
@@ -172,17 +201,28 @@ struct rast_impl_software {
       indexbuffer_table.allocate(0);
       shader_table.allocate(0);
       program_table.allocate(0);
+
+      uniform_values.vecs.allocate(0);
+      uniforms.by_index.allocate(0);
+      uniforms.by_key.allocate();
+
       renderpass_table.push_back(
           RenderPass::get_default()); // at least one renderpass
     };
 
     void free() {
+      assert_debug(!uniforms.by_key.has_allocated_elements());
+      assert_debug(!uniforms.by_index.has_allocated_elements());
       assert_debug(!vertexbuffer_table.has_allocated_elements());
       assert_debug(!indexbuffer_table.has_allocated_elements());
       assert_debug(renderpass_table.count() == 1);
       assert_debug(!shader_table.has_allocated_elements());
       assert_debug(!program_table.has_allocated_elements());
       assert_debug(!framebuffer_table.has_allocated_elements());
+
+      uniforms.by_key.free();
+      uniforms.by_index.free();
+      uniform_values.vecs.free();
 
       for (auto l_render_pass_it = 0;
            l_render_pass_it < renderpass_table.count(); ++l_render_pass_it) {
@@ -390,6 +430,43 @@ struct rast_impl_software {
       program_table.remove_at(p_handle.idx);
     };
 
+    bgfx::UniformHandle allocate_uniform(const ui8 *p_name,
+                                         bgfx::UniformType::Enum p_type) {
+      auto l_uniform_hash = algorithm::hash(
+          container::range<ui8>::make((ui8 *)p_name, sys::strlen(p_name)));
+      uimax l_uniform_index;
+      if (!uniforms.by_key.has_key(l_uniform_hash)) {
+        Uniform l_uniform;
+        l_uniform.usage_count = 0;
+        l_uniform.hash = l_uniform_hash;
+        l_uniform.type = p_type;
+        if (p_type == bgfx::UniformType::Enum::Vec4) {
+          l_uniform.index = uniform_values.vecs.push_back({});
+        } else {
+          sys::abort();
+        }
+        l_uniform_index = uniforms.by_index.push_back(l_uniform);
+        uniforms.by_key.push_back(l_uniform_hash, l_uniform_index);
+      } else {
+        l_uniform_index = uniforms.by_key.at(l_uniform_hash);
+      }
+
+      uniforms.by_index.at(uniforms.by_key.at(l_uniform_hash)).usage_count += 1;
+
+      bgfx::UniformHandle l_handle;
+      l_handle.idx = l_uniform_index;
+      return l_handle;
+    };
+
+    void free_uniform(bgfx::UniformHandle p_uniform) {
+      Uniform &l_uniform = uniforms.by_index.at(p_uniform.idx);
+      l_uniform.usage_count -= 1;
+      if (l_uniform.usage_count == 0) {
+        uniforms.by_key.remove_at(l_uniform.hash);
+        uniforms.by_index.remove_at(p_uniform.idx);
+      }
+    };
+
   } heap;
 
   rast::algorithm::rasterize_heap m_rasterize_heap;
@@ -532,6 +609,14 @@ struct rast_impl_software {
 
   heap_proxy proxy() { return {.m_heap = heap}; };
 
+  void set_uniform(bgfx::UniformHandle p_handle, const void *p_value) {
+    auto l_uniform = __get_uniform(p_handle);
+    container::range<ui8> l_value;
+    l_value.m_begin = (ui8 *)p_value;
+    l_value.count() = l_uniform.count();
+    l_value.copy_to(l_uniform);
+  };
+
   bgfx::TextureHandle allocate_texture(uint16_t p_width, uint16_t p_height,
                                        bool p_hasMips, uint16_t p_numLayers,
                                        bgfx::TextureFormat::Enum p_format,
@@ -619,6 +704,33 @@ struct rast_impl_software {
     l_draw_call.make_from_temporary_stack(command_temporary_stack);
     command_temporary_stack.clear();
 
+    Program *__program;
+    heap.program_table.at(l_draw_call.program.idx, &__program);
+    ProgramProxy l_program = ProgramProxy(heap, __program);
+
+    rast::algorithm::program l_rasterizer_program;
+    l_rasterizer_program.m_vertex =
+        l_program.VertexShader().m_shader->m_buffer->data;
+    l_rasterizer_program.m_fragment =
+        l_program.FragmentShader().m_shader->m_buffer->data;
+
+    rast::algorithm::program_uniforms l_vertex_uniforms;
+    auto l_vertex_shader_uniforms =
+        rast::shader_vertex_bytes::view{(ui8 *)l_rasterizer_program.m_vertex}
+            .uniforms();
+    for (auto l_vertex_uniform_it = 0;
+         l_vertex_uniform_it < l_vertex_shader_uniforms.count();
+         ++l_vertex_uniform_it) {
+      rast::shader_uniform &l_shader_uniform =
+          l_vertex_shader_uniforms.at(l_vertex_uniform_it);
+      if (l_shader_uniform.m_type == bgfx::UniformType::Vec4) {
+        l_draw_call.vertex_uniforms.m_uniforms.at(l_vertex_uniform_it).m_vecs =
+            *__get_uniform_vec4(l_shader_uniform.m_hash);
+      }
+    }
+
+    l_draw_call.vertex_uniforms.m_count = l_vertex_shader_uniforms.count();
+
     proxy().RenderPass(p_id).value()->commands.push_back(l_draw_call);
   };
 
@@ -697,14 +809,22 @@ struct rast_impl_software {
         l_rasterizer_program.m_fragment =
             l_program.FragmentShader().m_shader->m_buffer->data;
 
+        rast::algorithm::program_uniforms l_vertex_uniforms;
+        for (auto i = 0; i < l_draw_call.m_value->vertex_uniforms.m_count;
+             ++i) {
+          l_vertex_uniforms.at(i) =
+              &l_draw_call.m_value->vertex_uniforms.m_uniforms.at(i).m_vecs;
+        }
+
         rast::algorithm::rasterize(
             m_rasterize_heap, l_rasterizer_program, p_render_pass.value()->rect,
             p_render_pass.value()->proj, p_render_pass.value()->view,
             l_draw_call.value()->transform, l_index_buffer->range(),
             l_vertex_buffer->layout, l_vertex_buffer->range(),
-            l_draw_call.value()->state, l_draw_call.value()->rgba,
-            l_frame_rgb_texture.value()->info, l_frame_rgb_texture_range,
-            l_frame_depth_texture_info, l_frame_depth_texture_range);
+            l_vertex_uniforms, l_draw_call.value()->state,
+            l_draw_call.value()->rgba, l_frame_rgb_texture.value()->info,
+            l_frame_rgb_texture_range, l_frame_depth_texture_info,
+            l_frame_depth_texture_range);
       });
     });
 
@@ -724,6 +844,30 @@ struct rast_impl_software {
     heap.free();
     m_rasterize_heap.free();
     // TODO
+  };
+
+private:
+  const rast::uniform_vec4_t *__get_uniform_vec4(uimax p_hash) {
+    return __get_uniform(p_hash).cast_to<rast::uniform_vec4_t>().data();
+  }
+
+  container::range<ui8> __get_uniform(uimax p_hash) {
+    auto &l_uniform =
+        heap.uniforms.by_index.at(heap.uniforms.by_key.at(p_hash));
+    if (l_uniform.type == bgfx::UniformType::Vec4) {
+      auto &l_value = heap.uniform_values.vecs.at(l_uniform.index);
+      return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
+    }
+    return container::range<ui8>::make(0, 0);
+  };
+
+  container::range<ui8> __get_uniform(bgfx::UniformHandle p_handle) {
+    auto &l_uniform = heap.uniforms.by_index.at(p_handle.idx);
+    if (l_uniform.type == bgfx::UniformType::Vec4) {
+      auto &l_value = heap.uniform_values.vecs.at(l_uniform.index);
+      return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
+    }
+    return container::range<ui8>::make(0, 0);
   };
 };
 
@@ -835,6 +979,23 @@ rast_api_createProgram(rast_impl_software *thiz, bgfx::ShaderHandle _vsh,
 FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
                                    bgfx::ProgramHandle _handle) {
   thiz->heap.free_program(_handle);
+};
+
+FORCE_INLINE bgfx::UniformHandle
+rast_api_createUniform(rast_impl_software *thiz, const char *_name,
+                       bgfx::UniformType::Enum _type, uint16_t _num) {
+  return thiz->heap.allocate_uniform((const ui8 *)_name, _type);
+};
+
+FORCE_INLINE void rast_api_destroy(rast_impl_software *thiz,
+                                   bgfx::UniformHandle p_uniform) {
+  thiz->heap.free_uniform(p_uniform);
+};
+
+FORCE_INLINE void rast_api_setUniform(rast_impl_software *thiz,
+                                      bgfx::UniformHandle _handle,
+                                      const void *_value, uint16_t _num) {
+  thiz->set_uniform(_handle, _value);
 };
 
 FORCE_INLINE void rast_api_setViewRect(rast_impl_software *thiz,
