@@ -22,6 +22,7 @@ template <typename EngineImpl> struct mesh_visualizer {
   eng::object_handle m_mesh_renderer;
 
   ren::program_handle m_program;
+  ren::material_handle m_material;
 
 private:
   inline static ui16 m_width = 128;
@@ -128,16 +129,19 @@ f 5/5 1/1 2/2
 
     m_mesh_renderer = m_scene.mesh_renderer_create();
 
-    m_program =
-        l_ren.program_create(ren::program_meta::get_default(),
-                             ColorInterpolationShader::s_vertex_output.range(),
-                             &ColorInterpolationShader::vertex,
-                             &ColorInterpolationShader::fragment, l_rast);
+    m_material = l_ren.material_create();
+    m_program = l_ren.program_create(
+        ren::program_meta::get_default(),
+        ColorInterpolationShader::s_vertex_uniforms.range(),
+        ColorInterpolationShader::s_vertex_output.range(),
+        &ColorInterpolationShader::vertex, &ColorInterpolationShader::fragment,
+        l_rast);
 
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
     l_mesh_renderer.set_mesh(m_mesh_0);
     l_mesh_renderer.set_program(m_program);
+    l_mesh_renderer.set_material(m_material);
     l_mesh_renderer.set_local_position({0, 0, 0});
   };
 
@@ -192,9 +196,12 @@ private:
         s_vertex_output = {
             rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
+    inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms =
+        {};
+
     static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                       const ui8 *p_vertex, rgbaf_t &out_screen_position,
-                       ui8 **out_vertex) {
+                       const ui8 *p_vertex, ui8 **p_uniforms,
+                       rgbaf_t &out_screen_position, ui8 **out_vertex) {
       rast::shader_vertex l_shader = {p_ctx};
       const auto &l_vertex_pos = l_shader.get_vertex<position_t>(
           bgfx::Attrib::Enum::Position, p_vertex);
