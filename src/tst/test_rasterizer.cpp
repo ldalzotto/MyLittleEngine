@@ -246,9 +246,9 @@ struct rast_uniform_vertex_shader {
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-  inline static container::arr<const ui8 *, 3> s_vertex_uniform_names = {
-      (const ui8 *)s_param_0.data(), (const ui8 *)s_param_1.data(),
-      (const ui8 *)s_param_2.data()};
+  inline static container::arr<ui8 *, 3> s_vertex_uniform_names = {
+      (ui8 *)s_param_0.data(), (ui8 *)s_param_1.data(),
+      (ui8 *)s_param_2.data()};
 
   inline static container::arr<rast::shader_uniform, 3> s_vertex_uniforms = {
       .m_data = {rast::shader_uniform::make(s_param_0.range(),

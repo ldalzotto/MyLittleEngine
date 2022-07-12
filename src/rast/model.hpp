@@ -198,6 +198,7 @@ struct shader_vertex_bytes {
   struct byte_header {
     uimax m_uniform_count;
     uimax m_uniform_array;
+    uimax m_uniform_name_array;
     uimax m_vertex_output_count;
     uimax m_vertex_output_array;
     uimax m_vertex_function;
@@ -212,9 +213,11 @@ struct shader_vertex_bytes {
     l_byte_header.m_uniform_count = sizeof(byte_header);
     l_byte_header.m_uniform_array =
         l_byte_header.m_uniform_count + sizeof(uimax);
-    l_byte_header.m_vertex_output_count =
+    l_byte_header.m_uniform_name_array =
         l_byte_header.m_uniform_array +
         (p_uniform_count * sizeof(shader_uniform));
+    l_byte_header.m_vertex_output_count =
+        l_byte_header.m_uniform_name_array + (p_uniform_count * sizeof(ui8 *));
     l_byte_header.m_vertex_output_array =
         l_byte_header.m_vertex_output_count + sizeof(uimax);
     l_byte_header.m_vertex_function =
@@ -232,6 +235,7 @@ struct shader_vertex_bytes {
 
     void fill(const byte_header &p_byte_header,
               const container::range<shader_uniform> &p_uniforms,
+              const container::range<ui8 *> &p_uniform_names,
               const container::range<shader_vertex_output_parameter>
                   &p_output_parameters,
               shader_vertex_function p_function) {
@@ -248,6 +252,12 @@ struct shader_vertex_bytes {
             (shader_uniform *)(m_data + l_byte_header->m_uniform_array);
         l_byte_uniforms.m_count = p_uniforms.count();
         p_uniforms.copy_to(l_byte_uniforms);
+
+        container::range<ui8 *> l_byte_uniform_names;
+        l_byte_uniform_names.m_begin =
+            (ui8 **)(m_data + l_byte_header->m_uniform_name_array);
+        l_byte_uniform_names.m_count = p_uniform_names.count();
+        p_uniform_names.copy_to(l_byte_uniform_names);
       }
 
       uimax *l_output_parameters_count =

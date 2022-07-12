@@ -4,7 +4,7 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 if(NOT DEFINED RUNTIME_CI)
-    # set(PROFILE_TEST true)
+    set(PROFILE_TEST true)
     if(PROFILE_TEST)
         set(ENABLE_SAFETY_CHECKS true)
         set(ENABLE_ADDRESS true)

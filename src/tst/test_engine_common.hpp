@@ -190,6 +190,7 @@ private:
   inline static ren::program_handle program_create(
       eng::engine_api<Engine> p_engine, const ren::program_meta &p_program_meta,
       const container::range<rast::shader_uniform> &p_vertex_uniforms,
+      const container::range<ui8 *> &p_vertex_uniform_names,
       const container::range<rast::shader_vertex_output_parameter>
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
@@ -198,7 +199,8 @@ private:
     api_decltype(rast_api, l_rast, p_engine.rasterizer());
     api_decltype(ren::ren_api, l_ren, p_engine.renderer());
     return l_ren.program_create(p_program_meta, p_vertex_uniforms,
-                                p_vertex_output, p_vertex, p_fragment, l_rast);
+                                p_vertex_uniform_names, p_vertex_output,
+                                p_vertex, p_fragment, l_rast);
   };
 
   template <typename Shader, typename Engine>
@@ -207,6 +209,7 @@ private:
                  const ren::program_meta &p_meta) {
     ren::program_meta l_meta = l_meta.get_default();
     return program_create(p_engine, p_meta, Shader::s_vertex_uniforms.range(),
+                          Shader::s_vertex_uniform_names.range(),
                           Shader::s_vertex_output.range(), Shader::vertex,
                           Shader::fragment);
   };
@@ -216,6 +219,8 @@ struct WhiteShader {
 
   inline static container::arr<rast::shader_vertex_output_parameter, 0>
       s_vertex_output = {};
+
+  inline static container::arr<ui8 *, 0> s_vertex_uniform_names = {};
 
   inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
 
@@ -239,6 +244,7 @@ struct ColorInterpolationShader {
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
   inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
+  inline static container::arr<ui8 *, 0> s_vertex_uniform_names = {};
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
                      m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {

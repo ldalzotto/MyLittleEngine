@@ -8,7 +8,7 @@ namespace algorithm {
 template <typename Renderer, typename Rasterizer>
 inline static material_handle create_material_from_shader(
     ren_api<Renderer> p_ren, rast_api<Rasterizer> p_rast,
-    const container::range<const ui8 *> &p_vertex_uniform_names,
+    const container::range<ui8 *> &p_vertex_uniform_names,
     const container::range<rast::shader_uniform> &p_vertex_uniforms) {
 
   assert_debug(p_vertex_uniform_names.count() == p_vertex_uniforms.count());

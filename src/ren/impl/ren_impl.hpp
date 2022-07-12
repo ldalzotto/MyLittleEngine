@@ -217,6 +217,25 @@ struct ren_impl {
   };
 
   template <typename Rasterizer>
+  material_handle material_create_from_program(program_handle p_program,
+                                               rast_api<Rasterizer> p_rast) {
+    material_handle l_material = material_create();
+    m_heap.m_program_table.at(p_program.m_idx, Input && p_input...);
+    /*
+  p_rast.
+
+      assert_debug(p_vertex_uniform_names.count() == p_vertex_uniforms.count());
+  auto l_material = p_ren.material_create();
+  for (auto i = 0; i < p_vertex_uniform_names.count(); ++i) {
+    p_ren.material_push(l_material, (const char *)p_vertex_uniform_names.at(i),
+                        p_vertex_uniforms.at(i).m_type, p_rast);
+
+  }
+  */
+    return l_material;
+  };
+
+  template <typename Rasterizer>
   void material_destroy(material_handle p_material,
                         rast_api<Rasterizer> p_rast) {
     material *l_material;
@@ -259,6 +278,7 @@ struct ren_impl {
   program_handle program_create(
       const ren::program_meta &p_program_meta,
       const container::range<rast::shader_uniform> &p_vertex_uniforms,
+      const container::range<ui8 *> &p_vertex_uniform_names,
       const container::range<rast::shader_vertex_output_parameter>
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
@@ -268,7 +288,8 @@ struct ren_impl {
     const bgfx::Memory *l_vertex_shader_memory =
         p_rast.alloc(l_vertex_shader_table.size_of(), 8);
     rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(
-        l_vertex_shader_table, p_vertex_uniforms, p_vertex_output, p_vertex);
+        l_vertex_shader_table, p_vertex_uniforms, p_vertex_uniform_names,
+        p_vertex_output, p_vertex);
 
     const bgfx::Memory *l_fragment_shader_memory =
         p_rast.alloc(rast::shader_fragment_bytes::byte_size(), 8);
