@@ -5,6 +5,7 @@
 
 #include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
+#include <ren/algorithm.hpp>
 #include <ren/impl/ren_impl.hpp>
 
 template <typename EngineImpl> struct mesh_visualizer {
@@ -129,7 +130,10 @@ f 5/5 1/1 2/2
 
     m_mesh_renderer = m_scene.mesh_renderer_create();
 
-    m_material = l_ren.material_create();
+    m_material = ren::algorithm::create_material_from_shader(
+        l_ren, l_rast, ColorInterpolationShader::s_vertex_uniform_names.range(),
+        ColorInterpolationShader::s_vertex_uniforms.range());
+
     m_program = l_ren.program_create(
         ren::program_meta::get_default(),
         ColorInterpolationShader::s_vertex_uniforms.range(),
@@ -157,9 +161,14 @@ f 5/5 1/1 2/2
     l_ren.mesh_destroy(m_mesh_1, l_rast);
   };
 
-  fix32 m_speed = m::pi<fix32>();
+  fix32 m_speed = m::pi<fix32>() / 4;
 
   void frame(eng::engine_api<EngineImpl> p_engine) {
+
+    api_decltype(ren::ren_api, l_ren, p_engine.renderer());
+    api_decltype(rast_api, l_rast, p_engine.rasterizer());
+    l_ren.material_set_vec4(m_material, 0, {p_engine.time().m_elapsed, 0, 0, 0},
+                            l_rast);
 
     {
       eng::input::State *l_state;
@@ -196,19 +205,31 @@ private:
         s_vertex_output = {
             rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-    inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms =
-        {};
+    inline static auto s_time = container::arr_literal<ui8>("u_time\0");
+
+    inline static container::arr<const ui8 *, 1> s_vertex_uniform_names = {
+        s_time.data()};
+
+    inline static container::arr<rast::shader_uniform, 1> s_vertex_uniforms = {
+        rast::shader_uniform::make(s_time.range(),
+                                   bgfx::UniformType::Enum::Vec4)};
 
     static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                        const ui8 *p_vertex, ui8 **p_uniforms,
                        rgbaf_t &out_screen_position, ui8 **out_vertex) {
       rast::shader_vertex l_shader = {p_ctx};
-      const auto &l_vertex_pos = l_shader.get_vertex<position_t>(
+      const position_t &l_vertex_pos = l_shader.get_vertex<position_t>(
           bgfx::Attrib::Enum::Position, p_vertex);
+
+      rast::uniform_vec4_t *l_time = (rast::uniform_vec4_t *)p_uniforms[0];
+      position_t l_position_local =
+          l_vertex_pos +
+          (position_t::up * l_vertex_pos.x() * m::sin(l_time->x()));
+
       const rgb_t &l_color =
           l_shader.get_vertex<rgb_t>(bgfx::Attrib::Enum::Color0, p_vertex);
       out_screen_position =
-          p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
+          p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_position_local, 1);
 
       position_t *l_vertex_color = (position_t *)out_vertex[0];
       (*l_vertex_color) = l_color.cast<fix32>() / 255;
