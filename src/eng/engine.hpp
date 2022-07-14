@@ -108,6 +108,3 @@ template <typename RenImpl, typename RastImpl> struct engine {
 }; // namespace details
 
 }; // namespace eng
-
-// TODO -> remove this
-#include <ren/impl/ren_impl.hpp>

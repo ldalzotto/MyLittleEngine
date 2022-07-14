@@ -1,7 +1,6 @@
 
 #include <assets/loader/mesh_obj.hpp>
 #include <eng/engine.hpp>
-#include <m/const.hpp>
 
 #include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
