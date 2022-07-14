@@ -98,7 +98,6 @@ struct ren_impl {
     orm::table_pool_v2<material> m_materials;
     container::vector<render_pass> m_render_passes;
 
-    // TODO -> add render passes per program
     void allocate() {
       m_camera_table.allocate(0);
       m_program_table.allocate(0);

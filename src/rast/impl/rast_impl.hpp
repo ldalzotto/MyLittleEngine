@@ -836,7 +836,6 @@ struct rast_impl_software {
 
     heap.free();
     m_rasterize_heap.free();
-    // TODO
   };
 
 private:

@@ -93,16 +93,14 @@ template <typename Scene> struct camera_view : object_view<Scene> {
 
   camera_view(Scene &p_scene, object_handle p_handle) : m_handle(p_handle) {
     base::m_scene = &p_scene;
-    base::m_transform = get_camera().m_transform;
+    base::m_transform = __get_camera().m_transform;
   };
 
-  // TODO -> temporary public
-  camera &get_camera() { return base::m_scene->m_cameras.at(m_handle.m_idx); };
-
+public:
   void set_width_height(ui32 p_width, ui32 p_height) {
     api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
-    camera &l_camera = get_camera();
+    camera &l_camera = __get_camera();
     l_ren.camera_set_width_height(l_camera.m_camera, p_width, p_height);
   };
 
@@ -111,7 +109,7 @@ template <typename Scene> struct camera_view : object_view<Scene> {
     api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
     api_decltype(rast_api, l_rast, l_engine.rasterizer());
-    camera &l_camera = get_camera();
+    camera &l_camera = __get_camera();
     l_ren.camera_set_render_width_height(l_camera.m_camera,
                                          p_rendertexture_width,
                                          p_rendertexture_height, l_rast);
@@ -119,7 +117,7 @@ template <typename Scene> struct camera_view : object_view<Scene> {
 
   void set_orthographic(fix32 p_width, fix32 p_height, fix32 p_near,
                         fix32 p_far) {
-    camera &l_camera = get_camera();
+    camera &l_camera = __get_camera();
     api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
     l_ren.camera_set_orthographic(l_camera.m_camera, p_width, p_height, p_near,
@@ -127,10 +125,15 @@ template <typename Scene> struct camera_view : object_view<Scene> {
   };
 
   void set_projection(const m::mat<fix32, 4, 4> &p_projection) {
-    camera &l_camera = get_camera();
+    camera &l_camera = __get_camera();
     api_decltype(eng::engine_api, l_engine, *base::m_scene->m_engine);
     api_decltype(ren::ren_api, l_ren, l_engine.renderer());
     l_ren.camera_set_projection(l_camera.m_camera, p_projection);
+  };
+
+private:
+  camera &__get_camera() {
+    return base::m_scene->m_cameras.at(m_handle.m_idx);
   };
 };
 
@@ -176,7 +179,6 @@ template <typename Engine> struct scene {
   container::vector<uimax> m_allocated_cameras;
 
   container::pool<mesh_renderer> m_mesh_renderers;
-  // TODO -> mesh rendering should be handled by the renderer instead
   container::vector<uimax> m_allocated_mesh_renderers;
 
   void allocate() {

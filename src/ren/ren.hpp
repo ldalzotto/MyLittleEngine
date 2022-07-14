@@ -108,8 +108,6 @@ template <typename Private> struct ren_api {
   };
 
   // Pushes a render pass.
-  // TODO -> this will evolve in the future ?
-  // TODO -> have special allocations for buffer ?
   FORCE_INLINE void draw(camera_handle p_camera, program_handle p_shader,
                          material_handle p_material,
                          const m::mat<fix32, 4, 4> &p_transform,
