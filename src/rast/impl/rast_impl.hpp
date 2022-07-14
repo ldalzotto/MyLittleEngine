@@ -821,7 +821,7 @@ struct rast_impl_software {
               &l_draw_call.m_value->m_vertex_uniforms.m_uniforms.at(i).m_vecs;
         }
 
-        rast::algorithm::rasterize(
+        rast::algorithm::rasterize_unit(
             m_rasterize_heap, l_rasterizer_program,
             p_render_pass.value()->m_rect, p_render_pass.value()->m_proj,
             p_render_pass.value()->m_view, l_draw_call.value()->m_transform,
@@ -829,7 +829,8 @@ struct rast_impl_software {
             l_vertex_buffer->range(), l_vertex_uniforms,
             l_draw_call.value()->m_state, l_draw_call.value()->m_rgba,
             l_frame_rgb_texture.value()->m_info, l_frame_rgb_texture_range,
-            l_frame_depth_texture_info, l_frame_depth_texture_range);
+            l_frame_depth_texture_info, l_frame_depth_texture_range)
+            .rasterize();
       });
     });
 
