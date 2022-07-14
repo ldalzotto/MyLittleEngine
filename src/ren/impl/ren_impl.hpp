@@ -82,11 +82,10 @@ struct ren_impl {
       container::range<ui8> range() { return m_data.range(); };
     };
 
-    // TODO -> moving this to a shared stack between materials ??
-    container::arr<bgfx::UniformHandle, rast::program_uniform_max_count>
-        m_uniforms;
-    container::arr<parameter_value, rast::program_uniform_max_count> m_values;
-    uimax m_count;
+    orm::table_vector_v2<bgfx::UniformHandle, parameter_value> m_parameters;
+
+    void allocate() { m_parameters.allocate(0); };
+    void free() { m_parameters.free(); };
   };
 
   struct heap {
@@ -205,7 +204,7 @@ struct ren_impl {
 
   material_handle material_create() {
     material l_material;
-    l_material.m_count = 0;
+    l_material.allocate();
     uimax l_index = m_heap.m_materials.push_back(l_material);
     return {l_index};
   };
@@ -215,9 +214,12 @@ struct ren_impl {
                         rast_api<Rasterizer> p_rast) {
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
-    for (auto i = 0; i < l_material->m_count; ++i) {
-      p_rast.destroy(l_material->m_uniforms.at(i));
+    for (auto i = 0; i < l_material->m_parameters.count(); ++i) {
+      bgfx::UniformHandle *l_uniform_handle;
+      l_material->m_parameters.at(i, &l_uniform_handle);
+      p_rast.destroy(*l_uniform_handle);
     }
+    l_material->free();
     m_heap.m_materials.remove_at(p_material.m_idx);
   };
 
@@ -228,8 +230,7 @@ struct ren_impl {
     auto l_uniform = p_rast.createUniform(p_name, p_type);
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
-    l_material->m_uniforms.at(l_material->m_count) = l_uniform;
-    l_material->m_count += 1;
+    l_material->m_parameters.push_back(l_uniform, material::parameter_value{});
   };
 
   template <typename Rasterizer>
@@ -239,13 +240,16 @@ struct ren_impl {
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
 
+    // TODO -> enable this
     /*
         block_debug([&]() {
           auto l_uniform_info = p_rast.getUniformInfo();
           assert_debug(l_uniform_info.type == bgfx::UniformType::Vec4);
         });
     */
-    l_material->m_values.at(p_index).range().copy_from(
+    material::parameter_value *l_parameters;
+    l_material->m_parameters.at(p_index, none(), &l_parameters);
+    l_parameters->range().copy_from(
         container::range<traits::remove_ref<decltype(p_value)>::type>::make(
             &p_value, 1));
   };
@@ -321,11 +325,14 @@ struct ren_impl {
       m_heap.m_materials.at(p_render_pass.m_material.m_idx, &l_material);
 
       for (auto l_material_parameter_idx = 0;
-           l_material_parameter_idx < l_material->m_count;
+           l_material_parameter_idx < l_material->m_parameters.count();
            ++l_material_parameter_idx) {
-        p_rast.setUniform(
-            l_material->m_uniforms.at(l_material_parameter_idx),
-            l_material->m_values.at(l_material_parameter_idx).m_data.data());
+
+        bgfx::UniformHandle *l_uniform_handle;
+        material::parameter_value *l_parameters;
+        l_material->m_parameters.at(l_material_parameter_idx, &l_uniform_handle,
+                                    &l_parameters);
+        p_rast.setUniform(*l_uniform_handle, l_parameters->m_data.data());
       }
 
       program_meta *l_program_meta;
