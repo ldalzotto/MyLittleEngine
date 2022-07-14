@@ -82,7 +82,7 @@ struct ren_impl {
       container::range<ui8> range() { return m_data.range(); };
     };
 
-    // TODO -> having an arr orm for this.
+    // TODO -> moving this to a shared stack between materials ??
     container::arr<bgfx::UniformHandle, rast::program_uniform_max_count>
         m_uniforms;
     container::arr<parameter_value, rast::program_uniform_max_count> m_values;

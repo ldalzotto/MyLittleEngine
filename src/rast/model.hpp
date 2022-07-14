@@ -121,6 +121,7 @@ struct image_view {
   };
 };
 
+// TODO -> remove this
 static constexpr uimax program_uniform_max_count = 32;
 using uniform_vec4_t = m::vec<fix32, 4>;
 

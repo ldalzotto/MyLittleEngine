@@ -892,8 +892,60 @@ private:
 
     return 1;
   };
+};
 
-}; // namespace container
+struct heap_stacked_intrusive {
+  container::vector<heap_chunk> m_allocated_chunks;
+  uimax m_cursor;
+  uimax m_capacity;
+
+  void allocate(uimax p_capacity) {
+    m_allocated_chunks.allocate(0);
+    m_capacity = p_capacity;
+    clear();
+  };
+
+  void clear() {
+    m_allocated_chunks.clear();
+    m_cursor = 0;
+  };
+
+  void increase_capacity(uimax p_delta) {
+    uimax l_new_capacity = m_capacity + p_delta;
+    while (m_capacity < l_new_capacity) {
+      if (m_capacity == 0) {
+        m_capacity = 1;
+      } else {
+        m_capacity *= 2;
+      }
+    }
+  };
+
+  void free() { m_allocated_chunks.free(); };
+
+  uimax count() { return m_allocated_chunks.count(); };
+  ui8 has_allocated_elements() { return count() != 0; };
+
+  ui8 find_next_chunk(uimax p_size, uimax p_alignment, uimax *out_chunk_index) {
+    uimax l_alignement_offset =
+        algorithm::alignment_offset(m_cursor, p_alignment);
+    uimax l_total_size = p_size + l_alignement_offset;
+    if ((m_cursor + l_total_size) > m_capacity) {
+      return 0;
+    }
+
+    heap_chunk l_chunk;
+    l_chunk.m_begin = m_cursor + l_alignement_offset;
+    l_chunk.m_size = p_size;
+    m_cursor += l_total_size;
+    m_allocated_chunks.push_back(l_chunk);
+    *out_chunk_index = m_allocated_chunks.count() - 1;
+
+    return 1;
+  };
+
+  ui8 consistency() { return m_cursor <= m_capacity; };
+};
 
 struct heap {
   heap_intrusive m_intrusive;
@@ -1035,6 +1087,50 @@ struct heap_paged_allocator {
     sys::memcpy(l_new, l_old, l_old_range.count());
     free(p_ptr);
     return l_new;
+  };
+};
+
+struct heap_stacked {
+  heap_stacked_intrusive m_intrusive;
+  container::span<ui8> m_data;
+
+  void allocate(uimax p_capacity) {
+    m_intrusive.allocate(p_capacity);
+    m_data.allocate(p_capacity);
+  };
+
+  void free() {
+    m_intrusive.free();
+    m_data.free();
+  };
+
+  void clear() { m_intrusive.clear(); };
+
+  void push_back(uimax p_size, uimax p_alignment) {
+    uimax l_chunk_index = -1;
+    if (!m_intrusive.find_next_chunk(p_size, p_alignment, &l_chunk_index)) {
+      m_intrusive.increase_capacity(p_size + p_alignment);
+      m_data.realloc(m_intrusive.m_capacity);
+      m_intrusive.find_next_chunk(p_size, p_alignment, &l_chunk_index);
+    }
+    assert_debug(m_intrusive.consistency());
+    assert_debug(l_chunk_index != -1);
+  };
+
+  void push_back_no_realloc(uimax p_size, uimax p_alignment) {
+    uimax l_chunk_index = -1;
+    m_intrusive.find_next_chunk(p_size, p_alignment, &l_chunk_index);
+    assert_debug(l_chunk_index != -1);
+  };
+
+  uimax count() { return m_intrusive.count(); };
+  ui8 has_allocated_elements() { return m_intrusive.has_allocated_elements(); };
+
+  container::range<ui8> at(uimax p_index) {
+    assert_debug(p_index < count());
+    heap_chunk &l_chunk = m_intrusive.m_allocated_chunks.at(p_index);
+    return container::range<ui8>::make(m_data.m_data + l_chunk.m_begin,
+                                       l_chunk.m_size);
   };
 };
 
