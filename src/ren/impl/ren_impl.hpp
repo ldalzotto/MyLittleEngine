@@ -55,33 +55,24 @@ inline uint64_t program_meta_get_state(const program_meta &p_program_meta) {
 
 struct ren_impl {
 
-  // TODO -> this should evolve in the future.
-  // The camera should be able to be linked to multiple shader.
   struct render_pass {
     camera_handle m_camera;
     program_handle m_program;
     material_handle m_material;
-    container::vector<m::mat<fix32, 4, 4>> m_transforms;
-    container::vector<mesh_handle> m_meshes;
+    m::mat<fix32, 4, 4> m_transform;
+    mesh_handle m_mesh;
 
-    void allocate(camera_handle p_camera, program_handle p_program,
-                  material_handle p_material,
-                  const container::range<m::mat<fix32, 4, 4>> &p_transforms,
-                  const container::range<mesh_handle> &p_meshes) {
-      m_camera = p_camera;
-      m_program = p_program;
-      m_material = p_material;
-      m_transforms.allocate(p_transforms.count());
-      m_transforms.count() = p_transforms.count();
-      m_transforms.range().copy_from(p_transforms);
-      m_meshes.allocate(p_meshes.count());
-      m_meshes.count() = p_meshes.count();
-      m_meshes.range().copy_from(p_meshes);
-    };
-
-    void free() {
-      m_transforms.free();
-      m_meshes.free();
+    static render_pass make(camera_handle p_camera, program_handle p_program,
+                            material_handle p_material,
+                            const m::mat<fix32, 4, 4> &p_transform,
+                            mesh_handle p_mesh) {
+      render_pass l_render_pass;
+      l_render_pass.m_camera = p_camera;
+      l_render_pass.m_program = p_program;
+      l_render_pass.m_material = p_material;
+      l_render_pass.m_transform = p_transform;
+      l_render_pass.m_mesh = p_mesh;
+      return l_render_pass;
     };
   };
 
@@ -294,12 +285,10 @@ struct ren_impl {
   };
 
   void draw(camera_handle p_camera, program_handle p_program,
-            material_handle p_material,
-            const container::range<m::mat<fix32, 4, 4>> &p_transforms,
-            const container::range<mesh_handle> &p_meshes) {
-    render_pass l_render_pass;
-    l_render_pass.allocate(p_camera, p_program, p_material, p_transforms,
-                           p_meshes);
+            material_handle p_material, const m::mat<fix32, 4, 4> &p_transform,
+            mesh_handle p_mesh) {
+    render_pass l_render_pass = l_render_pass.make(
+        p_camera, p_program, p_material, p_transform, p_mesh);
     m_heap.m_render_passes.push_back(l_render_pass);
   };
 
@@ -344,24 +333,20 @@ struct ren_impl {
       m_heap.m_program_table.at(p_render_pass.m_program.m_idx, &l_program_meta,
                                 &l_program_rast_handles);
       auto l_state = program_meta_get_state(*l_program_meta);
-      for (auto l_mesh_it = 0; l_mesh_it < p_render_pass.m_meshes.count();
-           ++l_mesh_it) {
-        bgfx::VertexBufferHandle *l_vertex_buffer;
-        bgfx::IndexBufferHandle *l_index_buffer;
-        m_heap.m_mesh_table.at(p_render_pass.m_meshes.at(l_mesh_it).m_idx,
-                               &l_vertex_buffer, &l_index_buffer);
+      mesh_handle l_mesh = p_render_pass.m_mesh;
+      bgfx::VertexBufferHandle *l_vertex_buffer;
+      bgfx::IndexBufferHandle *l_index_buffer;
+      m_heap.m_mesh_table.at(l_mesh.m_idx, &l_vertex_buffer, &l_index_buffer);
 
-        m::mat<fix32, 4, 4> l_transform =
-            p_render_pass.m_transforms.at(l_mesh_it);
+      m::mat<fix32, 4, 4> l_transform = p_render_pass.m_transform;
 
-        p_rast.setTransform(l_transform.m_data);
+      p_rast.setTransform(l_transform.m_data);
 
-        p_rast.setIndexBuffer(*l_index_buffer);
-        p_rast.setVertexBuffer(0, *l_vertex_buffer);
-        p_rast.setState(l_state);
+      p_rast.setIndexBuffer(*l_index_buffer);
+      p_rast.setVertexBuffer(0, *l_vertex_buffer);
+      p_rast.setState(l_state);
 
-        p_rast.submit(0, l_program_rast_handles->m_program);
-      }
+      p_rast.submit(0, l_program_rast_handles->m_program);
     });
   };
 
@@ -383,7 +368,6 @@ private:
     for (auto i = 0; i < m_heap.m_render_passes.count(); ++i) {
       render_pass &l_render_pass = m_heap.m_render_passes.at(i);
       p_cb(l_render_pass);
-      l_render_pass.free();
     }
     m_heap.m_render_passes.clear();
   };

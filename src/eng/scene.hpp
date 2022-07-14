@@ -296,13 +296,9 @@ template <typename Engine> struct scene {
         transform *l_transform;
         m_transforms.at(l_mesh_renderer.m_transform.m_idx, &l_transform,
                         none());
-        container::arr<m::mat<fix32, 4, 4>, 1> l_rendered_transforms = {
-            l_transform->m_local_to_world};
-        container::arr<ren::mesh_handle, 1> l_rendered_meshes = {
-            l_mesh_renderer.m_mesh};
         l_ren.draw(l_main_camera.m_camera, l_mesh_renderer.m_program,
-                   l_mesh_renderer.m_material, l_rendered_transforms.range(),
-                   l_rendered_meshes.range());
+                   l_mesh_renderer.m_material, l_transform->m_local_to_world,
+                   l_mesh_renderer.m_mesh);
       }
     }
   };

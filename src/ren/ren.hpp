@@ -110,12 +110,11 @@ template <typename Private> struct ren_api {
   // Pushes a render pass.
   // TODO -> this will evolve in the future ?
   // TODO -> have special allocations for buffer ?
-  FORCE_INLINE void
-  draw(camera_handle p_camera, program_handle p_shader,
-       material_handle p_material,
-       const container::range<m::mat<fix32, 4, 4>> &p_transforms,
-       const container::range<mesh_handle> &p_meshes) {
-    thiz.draw(p_camera, p_shader, p_material, p_transforms, p_meshes);
+  FORCE_INLINE void draw(camera_handle p_camera, program_handle p_shader,
+                         material_handle p_material,
+                         const m::mat<fix32, 4, 4> &p_transform,
+                         mesh_handle p_mesh) {
+    thiz.draw(p_camera, p_shader, p_material, p_transform, p_mesh);
   };
 
   template <typename Rasterizer>
