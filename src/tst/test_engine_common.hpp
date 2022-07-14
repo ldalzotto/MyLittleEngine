@@ -4,6 +4,7 @@
 #include <eng/scene.hpp>
 #include <rast/impl/rast_impl.hpp>
 #include <ren/algorithm.hpp>
+#include <ren/impl/ren_impl.hpp>
 #include <tst/test_common.hpp>
 
 struct BaseEngineTest {

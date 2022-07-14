@@ -2,6 +2,7 @@
 
 #include <cor/traits.hpp>
 #include <eng/engine.hpp>
+#include <m/geom.hpp>
 
 namespace eng {
 
