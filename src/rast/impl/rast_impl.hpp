@@ -71,6 +71,14 @@ struct rast_impl_software {
     };
   } m_command_temporary_stack;
 
+  /*
+    [m_values_heap_handle]
+    void** -> array of uniform values ptr
+    []
+    value0
+    value1
+    ...
+  */
   struct command_uniforms {
     uimax m_values_heap_handle;
     uimax m_count;
@@ -743,8 +751,6 @@ struct rast_impl_software {
       }
     }
 
-    l_draw_call.m_vertex_uniforms.m_count = l_vertex_shader_uniforms.count();
-
     proxy().RenderPass(p_id).value()->m_commands.push_back(l_draw_call);
   };
 
@@ -823,10 +829,13 @@ struct rast_impl_software {
         l_rasterizer_program.m_fragment =
             l_program.FragmentShader().m_shader->m_buffer->data;
 
-        rast::algorithm::program_uniforms l_vertex_uniforms =
-            heap.m_uniform_draw_call_values_buffer
+        rast::algorithm::program_uniforms l_vertex_uniforms;
+        l_vertex_uniforms.m_count =
+            l_draw_call.m_value->m_vertex_uniforms.m_count;
+        l_vertex_uniforms.m_begin =
+            (void **)heap.m_uniform_draw_call_values_buffer
                 .at(l_draw_call.m_value->m_vertex_uniforms.m_values_heap_handle)
-                .cast_to<void *>();
+                .m_begin;
 
         for (auto l_vertex_uniform_idx = 0;
              l_vertex_uniform_idx < l_vertex_uniforms.count();
