@@ -721,8 +721,6 @@ struct rast_impl_software {
         (ui8 *)l_rasterizer_program.m_vertex};
     rast::algorithm::program_uniforms l_vertex_uniforms;
     auto l_vertex_shader_uniforms = l_shader_vertex_view.uniforms();
-    uimax l_uniform_values_size =
-        l_shader_vertex_view.uniform_values_total_size();
 
     heap.m_uniform_draw_call_values_buffer.push_back(
         sizeof(void *) * l_vertex_shader_uniforms.count(), 1);
@@ -730,22 +728,18 @@ struct rast_impl_software {
         heap.m_uniform_draw_call_values_buffer.count() - 1;
     l_draw_call.m_vertex_uniforms.m_count = l_vertex_shader_uniforms.count();
 
-    container::range<void *> l_uniform_value_ptrs =
-        heap.m_uniform_draw_call_values_buffer
-            .at(l_draw_call.m_vertex_uniforms.m_values_heap_handle)
-            .cast_to<void *>();
-
-    assert_debug(l_uniform_value_ptrs.count() ==
-                 l_draw_call.m_vertex_uniforms.m_count);
-
     for (auto l_vertex_uniform_it = 0;
          l_vertex_uniform_it < l_vertex_shader_uniforms.count();
          ++l_vertex_uniform_it) {
       rast::shader_uniform &l_shader_uniform =
           l_vertex_shader_uniforms.at(l_vertex_uniform_it);
       if (l_shader_uniform.m_type == bgfx::UniformType::Vec4) {
-        l_uniform_value_ptrs.at(l_vertex_uniform_it) =
-            (void *)__get_uniform_vec4(l_shader_uniform.m_hash);
+        heap.m_uniform_draw_call_values_buffer.push_back(
+            sizeof(rast::uniform_vec4_t), 1);
+        heap.m_uniform_draw_call_values_buffer
+            .at(heap.m_uniform_draw_call_values_buffer.count() - 1)
+            .cast_to<rast::uniform_vec4_t>()
+            .at(0) = *__get_uniform_vec4(l_shader_uniform.m_hash);
       }
     }
 
@@ -830,12 +824,20 @@ struct rast_impl_software {
             l_program.FragmentShader().m_shader->m_buffer->data;
 
         rast::algorithm::program_uniforms l_vertex_uniforms =
-            l_vertex_uniforms.make(
-                (void **)heap.m_uniform_draw_call_values_buffer
-                    .at(l_draw_call.m_value->m_vertex_uniforms
-                            .m_values_heap_handle)
-                    .data(),
-                l_draw_call.m_value->m_vertex_uniforms.m_count);
+            heap.m_uniform_draw_call_values_buffer
+                .at(l_draw_call.m_value->m_vertex_uniforms.m_values_heap_handle)
+                .cast_to<void *>();
+
+        for (auto l_vertex_uniform_idx = 0;
+             l_vertex_uniform_idx < l_vertex_uniforms.count();
+             ++l_vertex_uniform_idx) {
+          l_vertex_uniforms.at(l_vertex_uniform_idx) =
+              (void *)heap.m_uniform_draw_call_values_buffer
+                  .at(l_draw_call.m_value->m_vertex_uniforms
+                          .m_values_heap_handle +
+                      1 + l_vertex_uniform_idx)
+                  .data();
+        }
 
         rast::algorithm::rasterize_unit(
             m_rasterize_heap, l_rasterizer_program,
