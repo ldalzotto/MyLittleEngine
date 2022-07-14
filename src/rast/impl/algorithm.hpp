@@ -870,24 +870,6 @@ private:
   };
 };
 
-static inline void rasterize(
-    rasterize_heap &p_heap, const program &p_program,
-    m::rect_point_extend<ui16> &p_rect, const m::mat<fix32, 4, 4> &p_proj,
-    const m::mat<fix32, 4, 4> &p_view, const m::mat<fix32, 4, 4> &p_transform,
-    const container::range<ui8> &p_index_buffer,
-    bgfx::VertexLayout p_vertex_layout,
-    const container::range<ui8> &p_vertex_buffer, program_uniforms &p_uniforms,
-    ui64 p_state, ui32 p_rgba, const bgfx::TextureInfo &p_target_info,
-    container::range<ui8> &p_target_buffer,
-    const bgfx::TextureInfo &p_depth_info,
-    container::range<ui8> &p_depth_buffer) {
-  rasterize_unit(p_heap, p_program, p_rect, p_proj, p_view, p_transform,
-                 p_index_buffer, p_vertex_layout, p_vertex_buffer, p_uniforms,
-                 p_state, p_rgba, p_target_info, p_target_buffer, p_depth_info,
-                 p_depth_buffer)
-      .rasterize();
-};
-
 } // namespace algorithm
 } // namespace rast
 
