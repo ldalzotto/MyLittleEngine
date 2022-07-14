@@ -289,6 +289,18 @@ struct shader_vertex_bytes {
       return l_range;
     };
 
+    uimax uniform_values_total_size() {
+      uimax l_size = 0;
+      auto l_uniforms = uniforms();
+      for (auto i = 0; i < l_uniforms.count(); ++i) {
+        auto l_uniform_type = l_uniforms.at(i).m_type;
+        if (l_uniform_type == bgfx::UniformType::Enum::Vec4) {
+          l_size += sizeof(rast::uniform_vec4_t);
+        }
+      }
+      return l_size;
+    };
+
     shader_vertex_function function() {
       byte_header *l_byte_header = (byte_header *)m_data;
       return *(shader_vertex_function *)(m_data +
