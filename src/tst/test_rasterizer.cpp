@@ -1,4 +1,5 @@
 
+#include <ren/shader_definition.hpp>
 #include <tst/test_engine_common.hpp>
 
 inline static constexpr auto TEST_RAST_RELATIVE_FOLDER =
@@ -234,6 +235,17 @@ f 4/2 5/2 6/2
   l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
+PROGRAM_DECLARE_BEGIN(rast_uniform_vertex_shader_v2)
+
+PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "test_vertex_uniform_0");
+PROGRAM_UNIFORM(1, bgfx::UniformType::Vec4, "test_vertex_uniform_1");
+PROGRAM_UNIFORM(2, bgfx::UniformType::Vec4, "test_vertex_uniform_2");
+
+PROGRAM_VERTEX{};
+PROGRAM_FRAGMENT{};
+
+PROGRAM_DECLARE_END
+
 struct rast_uniform_vertex_shader {
   inline static const auto s_param_0 =
       container::arr_literal<i8>("test_vertex_uniform_0\0");
@@ -258,9 +270,7 @@ struct rast_uniform_vertex_shader {
                  rast::shader_uniform::make(s_param_2.range(),
                                             bgfx::UniformType::Vec4)}};
 
-  static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, ui8 **p_uniforms,
-                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
+  PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
@@ -277,7 +287,7 @@ struct rast_uniform_vertex_shader {
     (*l_vertex_color) = rgbf_t{1.0f, 1.0f, 1.0f};
   };
 
-  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
+  PROGRAM_FRAGMENT {
     rgbf_t *l_vertex_color = (position_t *)p_vertex_output_interpolated[0];
     out_color = *l_vertex_color;
   };
