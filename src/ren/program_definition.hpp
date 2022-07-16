@@ -65,91 +65,6 @@ struct program_definition_meta {
 
 private:
   template <typename ProgramDefinitionType, ui8 Index>
-  struct get_uniform_name_from_index {};
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_name_from_index<ProgramDefinitionType, 0> {
-    constexpr container::range<char> operator()() {
-      return ProgramDefinitionType::s_param_0.range();
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_name_from_index<ProgramDefinitionType, 1> {
-    constexpr container::range<char> operator()() {
-      return ProgramDefinitionType::s_param_1.range();
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_name_from_index<ProgramDefinitionType, 2> {
-    constexpr container::range<char> operator()() {
-      return ProgramDefinitionType::s_param_2.range();
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_name_from_index<ProgramDefinitionType, 3> {
-    constexpr container::range<char> operator()() {
-      return ProgramDefinitionType::s_param_3.range();
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_name_from_index<ProgramDefinitionType, 4> {
-    constexpr container::range<char> operator()() {
-      return ProgramDefinitionType::s_param_4.range();
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_name_from_index<ProgramDefinitionType, 5> {
-    constexpr container::range<char> operator()() {
-      return ProgramDefinitionType::s_param_5.range();
-    };
-  };
-
-  template <typename ProgramDefinitionType, ui8 Index>
-  struct get_uniform_type_from_index {};
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_type_from_index<ProgramDefinitionType, 0> {
-    constexpr bgfx::UniformType::Enum operator()() {
-      return ProgramDefinitionType::s_param_type_0;
-    };
-  };
-  template <typename ProgramDefinitionType>
-  struct get_uniform_type_from_index<ProgramDefinitionType, 1> {
-    constexpr bgfx::UniformType::Enum operator()() {
-      return ProgramDefinitionType::s_param_type_1;
-    };
-  };
-  template <typename ProgramDefinitionType>
-  struct get_uniform_type_from_index<ProgramDefinitionType, 2> {
-    constexpr bgfx::UniformType::Enum operator()() {
-      return ProgramDefinitionType::s_param_type_2;
-    };
-  };
-  template <typename ProgramDefinitionType>
-  struct get_uniform_type_from_index<ProgramDefinitionType, 3> {
-    constexpr bgfx::UniformType::Enum operator()() {
-      return ProgramDefinitionType::s_param_type_3;
-    };
-  };
-  template <typename ProgramDefinitionType>
-  struct get_uniform_type_from_index<ProgramDefinitionType, 4> {
-    constexpr bgfx::UniformType::Enum operator()() {
-      return ProgramDefinitionType::s_param_type_4;
-    };
-  };
-  template <typename ProgramDefinitionType>
-  struct get_uniform_type_from_index<ProgramDefinitionType, 5> {
-    constexpr bgfx::UniformType::Enum operator()() {
-      return ProgramDefinitionType::s_param_type_5;
-    };
-  };
-
-  template <typename ProgramDefinitionType, ui8 Index>
   struct get_vertex_out_from_index {};
 
   template <typename ProgramDefinitionType>
@@ -160,157 +75,58 @@ private:
   };
 
   template <typename ProgramDefinitionType, ui8 Count>
-  struct get_uniform_names {};
+  struct get_uniform_names {
+    auto operator()() {
+      return container::arr<const ui8 *, Count>::concat(
+          get_uniform_names<ProgramDefinitionType, Count - 1>{}(),
+          container::arr<const ui8 *, 1>{
+              (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType,
+                                                       Count - 1>{}()
+                  .data()});
+    };
+  };
 
   template <typename ProgramDefinitionType>
   struct get_uniform_names<ProgramDefinitionType, 0> {
     auto operator()() { return container::arr<const ui8 *, 0>{}; };
   };
 
-  template <typename ProgramDefinitionType>
-  struct get_uniform_names<ProgramDefinitionType, 1> {
+  template <typename ProgramDefinitionType, ui8 Count> struct get_uniforms {
     auto operator()() {
-      return container::arr<const ui8 *, 1>{
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 0>{}()
-              .data()};
+      return container::arr<rast::shader_uniform, Count>::concat(
+          get_uniforms<ProgramDefinitionType, Count - 1>{}(),
+          container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
+              get_uniform_name_from_index<ProgramDefinitionType, Count - 1>{}(),
+              get_uniform_type_from_index<ProgramDefinitionType,
+                                          Count - 1>{}())});
     };
   };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_names<ProgramDefinitionType, 3> {
-    auto operator()() {
-      return container::arr<const ui8 *, 3>{
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 0>{}()
-              .data(),
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 1>{}()
-              .data(),
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 2>{}()
-              .data()};
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniform_names<ProgramDefinitionType, 6> {
-    auto operator()() {
-      return container::arr<const ui8 *, 6>{
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 0>{}()
-              .data(),
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 1>{}()
-              .data(),
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 2>{}()
-              .data(),
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 3>{}()
-              .data(),
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 4>{}()
-              .data(),
-          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 5>{}()
-              .data()};
-    };
-  };
-
-  template <typename ProgramDefinitionType, ui8 Count> struct get_uniforms {};
 
   template <typename ProgramDefinitionType>
   struct get_uniforms<ProgramDefinitionType, 0> {
     auto operator()() { return container::arr<rast::shader_uniform, 0>{}; };
   };
 
-  template <typename ProgramDefinitionType>
-  struct get_uniforms<ProgramDefinitionType, 1> {
-    auto operator()() {
-      return container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
-          get_uniform_name_from_index<ProgramDefinitionType, 0>{}(),
-          get_uniform_type_from_index<ProgramDefinitionType, 0>{}())};
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_uniforms<ProgramDefinitionType, 3> {
-    auto operator()() {
-      return container::arr<rast::shader_uniform, 3>{
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 0>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 0>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 1>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 1>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 2>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 2>{}())};
-    };
-  };
-  template <typename ProgramDefinitionType>
-  struct get_uniforms<ProgramDefinitionType, 6> {
-    auto operator()() {
-      return container::arr<rast::shader_uniform, 6>{
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 0>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 0>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 1>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 1>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 2>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 2>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 3>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 3>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 4>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 4>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<ProgramDefinitionType, 5>{}(),
-              get_uniform_type_from_index<ProgramDefinitionType, 5>{}())};
-    };
-  };
-
   template <typename ProgramDefinitionType, ui8 Count>
-  struct get_vertex_uniforms {};
+  struct get_vertex_uniforms {
+    auto operator()() {
+      return container::arr<rast::shader_uniform, Count>::concat(
+          get_vertex_uniforms<ProgramDefinitionType, Count - 1>{}(),
+          container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
+              get_uniform_name_from_index<
+                  ProgramDefinitionType,
+                  get_uniform_vertex_index<ProgramDefinitionType,
+                                           Count - 1>{}()>{}(),
+              get_uniform_type_from_index<
+                  ProgramDefinitionType,
+                  get_uniform_vertex_index<ProgramDefinitionType,
+                                           Count - 1>{}()>{}())});
+    };
+  };
 
   template <typename ProgramDefinitionType>
   struct get_vertex_uniforms<ProgramDefinitionType, 0> {
     auto operator()() { return container::arr<rast::shader_uniform, 0>{}; };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_vertex_uniforms<ProgramDefinitionType, 1> {
-    auto operator()() {
-      return container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
-          get_uniform_name_from_index<
-              ProgramDefinitionType,
-              ProgramDefinitionType::s_uniform_vertex_0>{}(),
-          get_uniform_type_from_index<
-              ProgramDefinitionType,
-              ProgramDefinitionType::s_uniform_vertex_0>{}())};
-    };
-  };
-
-  template <typename ProgramDefinitionType>
-  struct get_vertex_uniforms<ProgramDefinitionType, 3> {
-    auto operator()() {
-      return container::arr<rast::shader_uniform, 3>{
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_vertex_0>{}(),
-              get_uniform_type_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_vertex_0>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_vertex_1>{}(),
-              get_uniform_type_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_vertex_1>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_vertex_2>{}(),
-              get_uniform_type_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_vertex_2>{}())};
-    };
   };
 
   template <typename ProgramDefinitionType, ui8 Count> struct get_vertex_out {};
@@ -331,53 +147,108 @@ private:
   };
 
   template <typename ProgramDefinitionType, ui8 Count>
-  struct get_fragment_uniforms {};
+  struct get_fragment_uniforms {
+    auto operator()() {
+      return container::arr<rast::shader_uniform, Count>::concat(
+          get_fragment_uniforms<ProgramDefinitionType, Count - 1>{}(),
+          container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
+              get_uniform_name_from_index<
+                  ProgramDefinitionType,
+                  get_uniform_fragment_index<ProgramDefinitionType,
+                                             Count - 1>{}()>{}(),
+              get_uniform_type_from_index<
+                  ProgramDefinitionType,
+                  get_uniform_fragment_index<ProgramDefinitionType,
+                                             Count - 1>{}()>{}())});
+    };
+  };
 
   template <typename ProgramDefinitionType>
   struct get_fragment_uniforms<ProgramDefinitionType, 0> {
     auto operator()() { return container::arr<rast::shader_uniform, 0>{}; };
   };
 
-  template <typename ProgramDefinitionType>
-  struct get_fragment_uniforms<ProgramDefinitionType, 1> {
-    auto operator()() {
-      return container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
-          get_uniform_name_from_index<
-              ProgramDefinitionType,
-              ProgramDefinitionType::s_uniform_fragment_0>{}(),
-          get_uniform_type_from_index<
-              ProgramDefinitionType,
-              ProgramDefinitionType::s_uniform_fragment_0>{}())};
-    };
+  // trivial specialisations
+
+  template <typename ProgramDefinitionType, ui8 Index>
+  struct get_uniform_name_from_index {};
+
+#define declare_get_uniform_name_from_index(p_count)                           \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_name_from_index<ProgramDefinitionType, p_count> {         \
+    constexpr container::range<char> operator()() {                            \
+      return ProgramDefinitionType::s_param_##p_count.range();                 \
+    };                                                                         \
   };
 
-  template <typename ProgramDefinitionType>
-  struct get_fragment_uniforms<ProgramDefinitionType, 3> {
-    auto operator()() {
-      return container::arr<rast::shader_uniform, 3>{
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_fragment_0>{}(),
-              get_uniform_type_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_fragment_0>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_fragment_1>{}(),
-              get_uniform_type_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_fragment_1>{}()),
-          rast::shader_uniform::make(
-              get_uniform_name_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_fragment_2>{}(),
-              get_uniform_type_from_index<
-                  ProgramDefinitionType,
-                  ProgramDefinitionType::s_uniform_fragment_2>{}())};
-    };
+  declare_get_uniform_name_from_index(0);
+  declare_get_uniform_name_from_index(1);
+  declare_get_uniform_name_from_index(2);
+  declare_get_uniform_name_from_index(3);
+  declare_get_uniform_name_from_index(4);
+  declare_get_uniform_name_from_index(5);
+
+#undef declare_get_uniform_name_from_index
+
+  template <typename ProgramDefinitionType, ui8 Index>
+  struct get_uniform_type_from_index {};
+
+#define declare_get_uniform_type_from_index(p_count)                           \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_type_from_index<ProgramDefinitionType, p_count> {         \
+    constexpr bgfx::UniformType::Enum operator()() {                           \
+      return ProgramDefinitionType::s_param_type_##p_count;                    \
+    };                                                                         \
   };
+
+  declare_get_uniform_type_from_index(0);
+  declare_get_uniform_type_from_index(1);
+  declare_get_uniform_type_from_index(2);
+  declare_get_uniform_type_from_index(3);
+  declare_get_uniform_type_from_index(4);
+  declare_get_uniform_type_from_index(5);
+
+#undef declare_get_uniform_type_from_index
+
+  template <typename ProgramDefinitionType, ui8 Index>
+  struct get_uniform_vertex_index {};
+
+#define declare_get_uniform_vertex_index(p_count)                              \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_vertex_index<ProgramDefinitionType, p_count> {            \
+    constexpr auto operator()() {                                              \
+      return ProgramDefinitionType::s_uniform_vertex_##p_count;                \
+    };                                                                         \
+  };
+
+  declare_get_uniform_vertex_index(0);
+  declare_get_uniform_vertex_index(1);
+  declare_get_uniform_vertex_index(2);
+  declare_get_uniform_vertex_index(3);
+  declare_get_uniform_vertex_index(4);
+  declare_get_uniform_vertex_index(5);
+
+#undef declare_get_uniform_vertex_index
+
+  template <typename ProgramDefinitionType, ui8 Count>
+  struct get_uniform_fragment_index {};
+
+#define declare_get_uniform_fragment_index(p_count)                            \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_fragment_index<ProgramDefinitionType, p_count> {          \
+    constexpr auto operator()() {                                              \
+      return ProgramDefinitionType::s_uniform_fragment_##p_count;              \
+    };                                                                         \
+  };
+
+  declare_get_uniform_fragment_index(0);
+  declare_get_uniform_fragment_index(1);
+  declare_get_uniform_fragment_index(2);
+  declare_get_uniform_fragment_index(3);
+  declare_get_uniform_fragment_index(4);
+  declare_get_uniform_fragment_index(5);
+
+#undef declare_get_uniform_fragment_index
 };
 
 }; // namespace ren
