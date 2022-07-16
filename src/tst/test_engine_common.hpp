@@ -190,7 +190,7 @@ struct BaseEngineTest {
 
 struct WhiteShader {
 
-  PROGRAM_META(WhiteShader, 0, 0, 0);
+  PROGRAM_META(WhiteShader, 0, 0, 0, 0);
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
@@ -207,7 +207,7 @@ struct ColorInterpolationShader {
 
   PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
 
-  PROGRAM_META(ColorInterpolationShader, 0, 1, 0);
+  PROGRAM_META(ColorInterpolationShader, 0, 0, 1, 0);
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};

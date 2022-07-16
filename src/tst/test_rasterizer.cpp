@@ -245,7 +245,7 @@ struct rast_uniform_vertex_shader {
 
   PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
 
-  PROGRAM_META(rast_uniform_vertex_shader, 3, 1, 0);
+  PROGRAM_META(rast_uniform_vertex_shader, 3, 3, 1, 0);
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
@@ -336,6 +336,103 @@ f 1 2 3
 
   auto l_tmp_path =
       container::arr_literal<ui8>("rast.uniform.vertex.reuse.png");
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
+}
+
+struct rast_uniform_fragment_shader {
+  PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "test_fragment_uniform_0");
+  PROGRAM_UNIFORM(1, bgfx::UniformType::Vec4, "test_fragment_uniform_1");
+  PROGRAM_UNIFORM(2, bgfx::UniformType::Vec4, "test_fragment_uniform_2");
+
+  PROGRAM_UNIFORM_FRAGMENT(0, 0);
+  PROGRAM_UNIFORM_FRAGMENT(1, 1);
+  PROGRAM_UNIFORM_FRAGMENT(2, 2);
+
+  PROGRAM_META(rast_uniform_fragment_shader, 3, 0, 0, 3);
+
+  PROGRAM_VERTEX {
+    rast::shader_vertex l_shader = {p_ctx};
+    const auto &l_vertex_pos =
+        l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
+    out_screen_position =
+        p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
+  };
+
+  PROGRAM_FRAGMENT {
+    auto *l_color_0 = (rast::uniform_vec4_t *)p_uniforms[0];
+    auto *l_color_1 = (rast::uniform_vec4_t *)p_uniforms[1];
+    auto *l_color_2 = (rast::uniform_vec4_t *)p_uniforms[2];
+    out_color = rgbf_t::make(*l_color_0 + *l_color_1 + *l_color_2);
+  };
+};
+
+TEST_CASE("rast.uniform.fragment") {
+
+  constexpr ui16 l_width = 8, l_height = 8;
+  auto l_mesh_raw_str = container::arr_literal<ui8>(R""""(
+v 0.0 0.0 0.0
+v 0.0 1.0 0.0
+v 1.0 0.0 0.0
+f 1 2 3
+  )"""");
+
+  BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
+  auto l_camera = l_test.create_orthographic_camera(2, 2);
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
+
+  auto l_material = l_test.create_material<rast_uniform_fragment_shader>();
+  l_test.material_set_vec4(l_material, 0, {0.5f, 0, 0, 0});
+  l_test.material_set_vec4(l_material, 1, {0, 0, 0.5f, 0});
+  l_test.material_set_vec4(l_material, 2, {0, 0.5f, 0, 0});
+
+  auto l_mesh_renderer = l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_fragment_shader>(), l_material);
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("rast.uniform.fragment.png");
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
+}
+
+TEST_CASE("rast.uniform.fragment.reuse") {
+
+  constexpr ui16 l_width = 8, l_height = 8;
+  auto l_mesh_raw_str = container::arr_literal<ui8>(R""""(
+v 0.0 0.0 0.0
+v 0.0 1.0 0.0
+v 1.0 0.0 0.0
+f 1 2 3
+  )"""");
+
+  BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
+  auto l_camera = l_test.create_orthographic_camera(2, 2);
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
+
+  auto l_material_grey = l_test.create_material<rast_uniform_fragment_shader>();
+  l_test.material_set_vec4(l_material_grey, 0, {0.5f, 0, 0, 0});
+  l_test.material_set_vec4(l_material_grey, 1, {0, 0, 0.5f, 0});
+  l_test.material_set_vec4(l_material_grey, 2, {0, 0.5f, 0, 0});
+
+  auto l_material_white =
+      l_test.create_material<rast_uniform_fragment_shader>();
+  l_test.material_set_vec4(l_material_white, 0, {1.0f, 0, 0, 0});
+  l_test.material_set_vec4(l_material_white, 1, {0, 0, 1.0f, 0});
+  l_test.material_set_vec4(l_material_white, 2, {0, 1.0f, 0, 0});
+
+  l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_fragment_shader>(), l_material_grey);
+
+  auto l_white_object = l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_fragment_shader>(), l_material_white);
+  l_test.l_scene.mesh_renderer(l_white_object).set_local_position({-1, -1, 0});
+
+  l_test.update();
+
+  auto l_tmp_path =
+      container::arr_literal<ui8>("rast.uniform.fragment.reuse.png");
   l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
