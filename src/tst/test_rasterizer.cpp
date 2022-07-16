@@ -436,4 +436,81 @@ f 1 2 3
   l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
+struct rast_uniform_vertex_fragment_shader {
+  PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "test_vertex_uniform_0");
+  PROGRAM_UNIFORM(1, bgfx::UniformType::Vec4, "test_fragment_uniform_0");
+  PROGRAM_UNIFORM(2, bgfx::UniformType::Vec4, "test_vertex_uniform_1");
+  PROGRAM_UNIFORM(3, bgfx::UniformType::Vec4, "test_fragment_uniform_1");
+  PROGRAM_UNIFORM(4, bgfx::UniformType::Vec4, "test_vertex_uniform_2");
+  PROGRAM_UNIFORM(5, bgfx::UniformType::Vec4, "test_fragment_uniform_2");
+
+  PROGRAM_UNIFORM_VERTEX(0, 0);
+  PROGRAM_UNIFORM_VERTEX(1, 2);
+  PROGRAM_UNIFORM_VERTEX(2, 4);
+
+  PROGRAM_UNIFORM_FRAGMENT(0, 1);
+  PROGRAM_UNIFORM_FRAGMENT(1, 3);
+  PROGRAM_UNIFORM_FRAGMENT(2, 5);
+
+  PROGRAM_META(rast_uniform_vertex_fragment_shader, 6, 3, 0, 3);
+
+  PROGRAM_VERTEX {
+    rast::shader_vertex l_shader = {p_ctx};
+    const auto &l_vertex_pos =
+        l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
+    rast::uniform_vec4_t *l_delta_pos_x = (rast::uniform_vec4_t *)p_uniforms[0];
+    rast::uniform_vec4_t *l_delta_pos_y = (rast::uniform_vec4_t *)p_uniforms[1];
+    rast::uniform_vec4_t *l_delta_pos_z = (rast::uniform_vec4_t *)p_uniforms[2];
+    out_screen_position =
+        p_ctx.m_local_to_unit *
+        m::vec<fix32, 4>::make(l_vertex_pos + position_t::make(*l_delta_pos_x +
+                                                               *l_delta_pos_y +
+                                                               *l_delta_pos_z),
+                               1);
+  };
+
+  PROGRAM_FRAGMENT {
+    auto *l_color_0 = (rast::uniform_vec4_t *)p_uniforms[0];
+    auto *l_color_1 = (rast::uniform_vec4_t *)p_uniforms[1];
+    auto *l_color_2 = (rast::uniform_vec4_t *)p_uniforms[2];
+    out_color = rgbf_t::make(*l_color_0 + *l_color_1 + *l_color_2);
+  };
+};
+
+TEST_CASE("rast.uniform.vertex.fragment") {
+
+  constexpr ui16 l_width = 8, l_height = 8;
+  auto l_mesh_raw_str = container::arr_literal<ui8>(R""""(
+v 0.0 0.0 0.0
+v 0.0 1.0 0.0
+v 1.0 0.0 0.0
+f 1 2 3
+  )"""");
+
+  BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
+  auto l_camera = l_test.create_orthographic_camera(2, 2);
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
+
+  auto l_material =
+      l_test.create_material<rast_uniform_vertex_fragment_shader>();
+  // position
+  l_test.material_set_vec4(l_material, 0, {-1, 0, 0, 0});
+  l_test.material_set_vec4(l_material, 2, {0, 0, -1, 0});
+  l_test.material_set_vec4(l_material, 4, {0, -1, 0, 0});
+
+  // color
+  l_test.material_set_vec4(l_material, 1, {0.5f, 0, 0, 0});
+  l_test.material_set_vec4(l_material, 3, {0, 0, 0.5f, 0});
+  l_test.material_set_vec4(l_material, 5, {0, 0.5f, 0, 0});
+
+  auto l_mesh_renderer = l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_vertex_fragment_shader>(), l_material);
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("rast.uniform.vertex.fragment.png");
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
+}
+
 #include <sys/sys_impl.hpp>

@@ -88,6 +88,27 @@ private:
     };
   };
 
+  template <typename ProgramDefinitionType>
+  struct get_uniform_name_from_index<ProgramDefinitionType, 3> {
+    constexpr container::range<char> operator()() {
+      return ProgramDefinitionType::s_param_3.range();
+    };
+  };
+
+  template <typename ProgramDefinitionType>
+  struct get_uniform_name_from_index<ProgramDefinitionType, 4> {
+    constexpr container::range<char> operator()() {
+      return ProgramDefinitionType::s_param_4.range();
+    };
+  };
+
+  template <typename ProgramDefinitionType>
+  struct get_uniform_name_from_index<ProgramDefinitionType, 5> {
+    constexpr container::range<char> operator()() {
+      return ProgramDefinitionType::s_param_5.range();
+    };
+  };
+
   template <typename ProgramDefinitionType, ui8 Index>
   struct get_uniform_type_from_index {};
 
@@ -107,6 +128,24 @@ private:
   struct get_uniform_type_from_index<ProgramDefinitionType, 2> {
     constexpr bgfx::UniformType::Enum operator()() {
       return ProgramDefinitionType::s_param_type_2;
+    };
+  };
+  template <typename ProgramDefinitionType>
+  struct get_uniform_type_from_index<ProgramDefinitionType, 3> {
+    constexpr bgfx::UniformType::Enum operator()() {
+      return ProgramDefinitionType::s_param_type_3;
+    };
+  };
+  template <typename ProgramDefinitionType>
+  struct get_uniform_type_from_index<ProgramDefinitionType, 4> {
+    constexpr bgfx::UniformType::Enum operator()() {
+      return ProgramDefinitionType::s_param_type_4;
+    };
+  };
+  template <typename ProgramDefinitionType>
+  struct get_uniform_type_from_index<ProgramDefinitionType, 5> {
+    constexpr bgfx::UniformType::Enum operator()() {
+      return ProgramDefinitionType::s_param_type_5;
     };
   };
 
@@ -150,6 +189,25 @@ private:
     };
   };
 
+  template <typename ProgramDefinitionType>
+  struct get_uniform_names<ProgramDefinitionType, 6> {
+    auto operator()() {
+      return container::arr<const ui8 *, 6>{
+          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 0>{}()
+              .data(),
+          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 1>{}()
+              .data(),
+          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 2>{}()
+              .data(),
+          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 3>{}()
+              .data(),
+          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 4>{}()
+              .data(),
+          (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType, 5>{}()
+              .data()};
+    };
+  };
+
   template <typename ProgramDefinitionType, ui8 Count> struct get_uniforms {};
 
   template <typename ProgramDefinitionType>
@@ -170,6 +228,30 @@ private:
           rast::shader_uniform::make(
               get_uniform_name_from_index<ProgramDefinitionType, 2>{}(),
               get_uniform_type_from_index<ProgramDefinitionType, 2>{}())};
+    };
+  };
+  template <typename ProgramDefinitionType>
+  struct get_uniforms<ProgramDefinitionType, 6> {
+    auto operator()() {
+      return container::arr<rast::shader_uniform, 6>{
+          rast::shader_uniform::make(
+              get_uniform_name_from_index<ProgramDefinitionType, 0>{}(),
+              get_uniform_type_from_index<ProgramDefinitionType, 0>{}()),
+          rast::shader_uniform::make(
+              get_uniform_name_from_index<ProgramDefinitionType, 1>{}(),
+              get_uniform_type_from_index<ProgramDefinitionType, 1>{}()),
+          rast::shader_uniform::make(
+              get_uniform_name_from_index<ProgramDefinitionType, 2>{}(),
+              get_uniform_type_from_index<ProgramDefinitionType, 2>{}()),
+          rast::shader_uniform::make(
+              get_uniform_name_from_index<ProgramDefinitionType, 3>{}(),
+              get_uniform_type_from_index<ProgramDefinitionType, 3>{}()),
+          rast::shader_uniform::make(
+              get_uniform_name_from_index<ProgramDefinitionType, 4>{}(),
+              get_uniform_type_from_index<ProgramDefinitionType, 4>{}()),
+          rast::shader_uniform::make(
+              get_uniform_name_from_index<ProgramDefinitionType, 5>{}(),
+              get_uniform_type_from_index<ProgramDefinitionType, 5>{}())};
     };
   };
 
