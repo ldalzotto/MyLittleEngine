@@ -208,9 +208,10 @@ private:
   program_create(eng::engine_api<Engine> p_engine,
                  const ren::program_meta &p_meta) {
     ren::program_meta l_meta = l_meta.get_default();
-    return program_create(
-        p_engine, p_meta, Shader::s_meta.m_vertex_uniforms.range(),
-        Shader::s_vertex_output.range(), Shader::vertex, Shader::fragment);
+    return program_create(p_engine, p_meta,
+                          Shader::s_meta.m_vertex_uniforms.range(),
+                          Shader::s_meta.m_vertex_output.range(),
+                          Shader::vertex, Shader::fragment);
   };
 };
 
@@ -219,7 +220,7 @@ struct WhiteShader {
   inline static container::arr<rast::shader_vertex_output_parameter, 0>
       s_vertex_output = {};
 
-  PROGRAM_META(WhiteShader, 0);
+  PROGRAM_META(WhiteShader, 0, 0);
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
@@ -237,11 +238,10 @@ struct WhiteShader {
 };
 
 struct ColorInterpolationShader {
-  inline static container::arr<rast::shader_vertex_output_parameter, 1>
-      s_vertex_output = {
-          rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-  PROGRAM_META(ColorInterpolationShader, 0);
+  PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
+
+  PROGRAM_META(ColorInterpolationShader, 0, 1);
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,

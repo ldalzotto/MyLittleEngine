@@ -12,9 +12,15 @@
 #define PROGRAM_UNIFORM_VERTEX(p_count, p_uniform_index)                       \
   inline static constexpr auto s_uniform_vertex_##p_count = p_uniform_index;
 
-#define PROGRAM_META(ProgramType, p_vertex_uniform_count)                      \
-  inline static ren::program_definition_meta<p_vertex_uniform_count> s_meta =  \
-      s_meta.make<ProgramType>();
+#define PROGRAM_VERTEX_OUT(p_count, p_type, p_element_count)                   \
+  inline static const rast::shader_vertex_output_parameter                     \
+      s_vertex_out_##p_count =                                                 \
+          rast::shader_vertex_output_parameter(p_type, p_element_count)
+
+#define PROGRAM_META(ProgramType, p_vertex_uniform_count, p_vertex_out_count)  \
+  inline static ren::program_definition_meta<p_vertex_uniform_count,           \
+                                             p_vertex_out_count>               \
+      s_meta = s_meta.make<ProgramType>();
 
 #define PROGRAM_VERTEX                                                         \
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,             \
@@ -26,9 +32,12 @@
 
 namespace ren {
 
-template <ui8 VertexUniformCount> struct program_definition_meta {
+template <ui8 VertexUniformCount, ui8 VertexOutCount>
+struct program_definition_meta {
   container::arr<const ui8 *, VertexUniformCount> m_vertex_uniform_names;
   container::arr<rast::shader_uniform, VertexUniformCount> m_vertex_uniforms;
+  container::arr<rast::shader_vertex_output_parameter, VertexOutCount>
+      m_vertex_output;
 
   template <typename ProgramDefinitionType>
   inline static program_definition_meta make() {
@@ -37,7 +46,9 @@ template <ui8 VertexUniformCount> struct program_definition_meta {
             get_vertex_uniform_names<ProgramDefinitionType,
                                      VertexUniformCount>{}(),
         .m_vertex_uniforms =
-            get_vertex_uniforms<ProgramDefinitionType, VertexUniformCount>{}()};
+            get_vertex_uniforms<ProgramDefinitionType, VertexUniformCount>{}(),
+        .m_vertex_output =
+            get_vertex_out<ProgramDefinitionType, VertexOutCount>{}()};
   };
 
 private:
@@ -84,6 +95,16 @@ private:
   struct get_uniform_type_from_index<ProgramDefinitionType, 2> {
     constexpr bgfx::UniformType::Enum operator()() {
       return ProgramDefinitionType::s_param_type_2;
+    };
+  };
+
+  template <typename ProgramDefinitionType, ui8 Index>
+  struct get_vertex_out_from_index {};
+
+  template <typename ProgramDefinitionType>
+  struct get_vertex_out_from_index<ProgramDefinitionType, 0> {
+    constexpr rast::shader_vertex_output_parameter operator()() {
+      return ProgramDefinitionType::s_vertex_out_0;
     };
   };
 
@@ -147,6 +168,23 @@ private:
               get_uniform_type_from_index<
                   ProgramDefinitionType,
                   ProgramDefinitionType::s_uniform_vertex_2>{}())};
+    };
+  };
+
+  template <typename ProgramDefinitionType, ui8 Count> struct get_vertex_out {};
+
+  template <typename ProgramDefinitionType>
+  struct get_vertex_out<ProgramDefinitionType, 0> {
+    auto operator()() {
+      return container::arr<rast::shader_vertex_output_parameter, 0>{};
+    };
+  };
+
+  template <typename ProgramDefinitionType>
+  struct get_vertex_out<ProgramDefinitionType, 1> {
+    auto operator()() {
+      return container::arr<rast::shader_vertex_output_parameter, 1>{
+          get_vertex_out_from_index<ProgramDefinitionType, 0>{}()};
     };
   };
 };

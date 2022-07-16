@@ -244,11 +244,9 @@ struct rast_uniform_vertex_shader {
   PROGRAM_UNIFORM_VERTEX(1, 1);
   PROGRAM_UNIFORM_VERTEX(2, 2);
 
-  inline static container::arr<rast::shader_vertex_output_parameter, 1>
-      s_vertex_output = {
-          rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
+  PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
 
-  PROGRAM_META(rast_uniform_vertex_shader, 3);
+  PROGRAM_META(rast_uniform_vertex_shader, 3, 1);
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
