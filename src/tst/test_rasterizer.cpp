@@ -235,32 +235,19 @@ f 4/2 5/2 6/2
 }
 
 struct rast_uniform_vertex_shader {
-  inline static const auto s_param_0 =
-      container::arr_literal<i8>("test_vertex_uniform_0\0");
-  inline static const auto s_param_1 =
-      container::arr_literal<i8>("test_vertex_uniform_1\0");
-  inline static const auto s_param_2 =
-      container::arr_literal<i8>("test_vertex_uniform_2\0");
+  PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "test_vertex_uniform_0");
+  PROGRAM_UNIFORM(1, bgfx::UniformType::Vec4, "test_vertex_uniform_1");
+  PROGRAM_UNIFORM(2, bgfx::UniformType::Vec4, "test_vertex_uniform_2");
 
-  inline static container::arr<rast::shader_vertex_output_parameter, 1>
-      s_vertex_output = {
-          rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
+  PROGRAM_UNIFORM_VERTEX(0, 0);
+  PROGRAM_UNIFORM_VERTEX(1, 1);
+  PROGRAM_UNIFORM_VERTEX(2, 2);
 
-  inline static container::arr<const ui8 *, 3> s_vertex_uniform_names = {
-      (const ui8 *)s_param_0.data(), (const ui8 *)s_param_1.data(),
-      (const ui8 *)s_param_2.data()};
+  PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
 
-  inline static container::arr<rast::shader_uniform, 3> s_vertex_uniforms = {
-      .m_data = {rast::shader_uniform::make(s_param_0.range(),
-                                            bgfx::UniformType::Vec4),
-                 rast::shader_uniform::make(s_param_1.range(),
-                                            bgfx::UniformType::Vec4),
-                 rast::shader_uniform::make(s_param_2.range(),
-                                            bgfx::UniformType::Vec4)}};
+  PROGRAM_META(rast_uniform_vertex_shader, 3, 1);
 
-  static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, ui8 **p_uniforms,
-                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
+  PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
@@ -277,7 +264,7 @@ struct rast_uniform_vertex_shader {
     (*l_vertex_color) = rgbf_t{1.0f, 1.0f, 1.0f};
   };
 
-  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
+  PROGRAM_FRAGMENT {
     rgbf_t *l_vertex_color = (position_t *)p_vertex_output_interpolated[0];
     out_color = *l_vertex_color;
   };

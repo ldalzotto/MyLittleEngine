@@ -5,6 +5,7 @@
 #include <rast/impl/rast_impl.hpp>
 #include <ren/algorithm.hpp>
 #include <ren/impl/ren_impl.hpp>
+#include <ren/program_definition.hpp>
 #include <tst/test_common.hpp>
 
 struct BaseEngineTest {
@@ -109,7 +110,9 @@ struct BaseEngineTest {
   ren::program_handle create_shader(
       const ren::program_meta &p_meta = ren::program_meta::get_default()) {
     api_decltype(eng::engine_api, l_engine, __engine);
-    ren::program_handle l_shader = program_create<ShaderType>(l_engine, p_meta);
+    ren::program_handle l_shader =
+        ren::algorithm::program_create_from_shaderdefinition<ShaderType>(
+            l_engine.renderer_api(), l_engine.rasterizer_api(), p_meta);
     m_shader_handles.push_back(l_shader);
     return l_shader;
   };
@@ -130,10 +133,8 @@ struct BaseEngineTest {
   template <typename ShaderType> ren::material_handle create_material() {
     api_decltype(eng::engine_api, l_engine, __engine);
     ren::material_handle l_material =
-        ren::algorithm::create_material_from_shader(
-            l_engine.renderer_api(), l_engine.rasterizer_api(),
-            ShaderType::s_vertex_uniform_names.range(),
-            ShaderType::s_vertex_uniforms.range());
+        ren::algorithm::material_create_from_shaderdefinition<ShaderType>(
+            l_engine.renderer_api(), l_engine.rasterizer_api());
     m_material_handles.push_back(l_material);
     return l_material;
   };
@@ -185,40 +186,11 @@ struct BaseEngineTest {
                                    eng::engine_api{__engine}, m_width, m_height,
                                    p_resource_config);
   };
-
-private:
-  template <typename Engine>
-  inline static ren::program_handle program_create(
-      eng::engine_api<Engine> p_engine, const ren::program_meta &p_program_meta,
-      const container::range<rast::shader_uniform> &p_vertex_uniforms,
-      const container::range<rast::shader_vertex_output_parameter>
-          &p_vertex_output,
-      rast::shader_vertex_function p_vertex,
-      rast::shader_fragment_function p_fragment) {
-
-    api_decltype(rast_api, l_rast, p_engine.rasterizer());
-    api_decltype(ren::ren_api, l_ren, p_engine.renderer());
-    return l_ren.program_create(p_program_meta, p_vertex_uniforms,
-                                p_vertex_output, p_vertex, p_fragment, l_rast);
-  };
-
-  template <typename Shader, typename Engine>
-  inline static ren::program_handle
-  program_create(eng::engine_api<Engine> p_engine,
-                 const ren::program_meta &p_meta) {
-    ren::program_meta l_meta = l_meta.get_default();
-    return program_create(p_engine, p_meta, Shader::s_vertex_uniforms.range(),
-                          Shader::s_vertex_output.range(), Shader::vertex,
-                          Shader::fragment);
-  };
 };
 
 struct WhiteShader {
 
-  inline static container::arr<rast::shader_vertex_output_parameter, 0>
-      s_vertex_output = {};
-
-  inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
+  PROGRAM_META(WhiteShader, 0, 0);
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
@@ -236,10 +208,11 @@ struct WhiteShader {
 };
 
 struct ColorInterpolationShader {
-  inline static container::arr<rast::shader_vertex_output_parameter, 1>
-      s_vertex_output = {
-          rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
-  inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
+
+  PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
+
+  PROGRAM_META(ColorInterpolationShader, 0, 1);
+
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
                      m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {

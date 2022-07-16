@@ -3,7 +3,7 @@
 #include <m/number.hpp>
 
 struct clock_time {
-  using clock_time_t = long int;
+  using clock_time_t = long long;
   static const clock_time_t MAX_MICRO = 1000000;
   clock_time_t m_seconds;
   clock_time_t m_micros;
