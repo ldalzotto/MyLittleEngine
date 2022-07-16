@@ -117,6 +117,17 @@ private:
   };
 
   template <typename ProgramDefinitionType>
+  struct get_vertex_uniform_names<ProgramDefinitionType, 1> {
+    auto operator()() {
+      return container::arr<const ui8 *, 1>{
+          (const ui8 *)get_uniform_name_from_index<
+              ProgramDefinitionType,
+              ProgramDefinitionType::s_uniform_vertex_0>{}()
+              .data()};
+    };
+  };
+
+  template <typename ProgramDefinitionType>
   struct get_vertex_uniform_names<ProgramDefinitionType, 3> {
     auto operator()() {
       return container::arr<const ui8 *, 3>{
@@ -141,6 +152,19 @@ private:
   template <typename ProgramDefinitionType>
   struct get_vertex_uniforms<ProgramDefinitionType, 0> {
     auto operator()() { return container::arr<rast::shader_uniform, 0>{}; };
+  };
+
+  template <typename ProgramDefinitionType>
+  struct get_vertex_uniforms<ProgramDefinitionType, 1> {
+    auto operator()() {
+      return container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
+          get_uniform_name_from_index<
+              ProgramDefinitionType,
+              ProgramDefinitionType::s_uniform_vertex_0>{}(),
+          get_uniform_type_from_index<
+              ProgramDefinitionType,
+              ProgramDefinitionType::s_uniform_vertex_0>{}())};
+    };
   };
 
   template <typename ProgramDefinitionType>

@@ -110,7 +110,9 @@ struct BaseEngineTest {
   ren::program_handle create_shader(
       const ren::program_meta &p_meta = ren::program_meta::get_default()) {
     api_decltype(eng::engine_api, l_engine, __engine);
-    ren::program_handle l_shader = program_create<ShaderType>(l_engine, p_meta);
+    ren::program_handle l_shader =
+        ren::algorithm::program_create_from_shaderdefinition<ShaderType>(
+            l_engine.renderer_api(), l_engine.rasterizer_api(), p_meta);
     m_shader_handles.push_back(l_shader);
     return l_shader;
   };
@@ -131,10 +133,8 @@ struct BaseEngineTest {
   template <typename ShaderType> ren::material_handle create_material() {
     api_decltype(eng::engine_api, l_engine, __engine);
     ren::material_handle l_material =
-        ren::algorithm::create_material_from_shader(
-            l_engine.renderer_api(), l_engine.rasterizer_api(),
-            ShaderType::s_meta.m_vertex_uniform_names.range(),
-            ShaderType::s_meta.m_vertex_uniforms.range());
+        ren::algorithm::material_create_from_shaderdefinition<ShaderType>(
+            l_engine.renderer_api(), l_engine.rasterizer_api());
     m_material_handles.push_back(l_material);
     return l_material;
   };
@@ -185,33 +185,6 @@ struct BaseEngineTest {
     TestUtils::assert_frame_equals(p_image_relative_path,
                                    eng::engine_api{__engine}, m_width, m_height,
                                    p_resource_config);
-  };
-
-private:
-  template <typename Engine>
-  inline static ren::program_handle program_create(
-      eng::engine_api<Engine> p_engine, const ren::program_meta &p_program_meta,
-      const container::range<rast::shader_uniform> &p_vertex_uniforms,
-      const container::range<rast::shader_vertex_output_parameter>
-          &p_vertex_output,
-      rast::shader_vertex_function p_vertex,
-      rast::shader_fragment_function p_fragment) {
-
-    api_decltype(rast_api, l_rast, p_engine.rasterizer());
-    api_decltype(ren::ren_api, l_ren, p_engine.renderer());
-    return l_ren.program_create(p_program_meta, p_vertex_uniforms,
-                                p_vertex_output, p_vertex, p_fragment, l_rast);
-  };
-
-  template <typename Shader, typename Engine>
-  inline static ren::program_handle
-  program_create(eng::engine_api<Engine> p_engine,
-                 const ren::program_meta &p_meta) {
-    ren::program_meta l_meta = l_meta.get_default();
-    return program_create(p_engine, p_meta,
-                          Shader::s_meta.m_vertex_uniforms.range(),
-                          Shader::s_meta.m_vertex_output.range(),
-                          Shader::vertex, Shader::fragment);
   };
 };
 

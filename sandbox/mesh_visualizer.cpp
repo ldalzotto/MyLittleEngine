@@ -6,6 +6,7 @@
 #include <rast/impl/rast_impl.hpp>
 #include <ren/algorithm.hpp>
 #include <ren/impl/ren_impl.hpp>
+#include <ren/shader_definition.hpp>
 
 template <typename EngineImpl> struct mesh_visualizer {
 
@@ -129,16 +130,12 @@ f 5/5 1/1 2/2
 
     m_mesh_renderer = m_scene.mesh_renderer_create();
 
-    m_material = ren::algorithm::create_material_from_shader(
-        l_ren, l_rast, ColorInterpolationShader::s_vertex_uniform_names.range(),
-        ColorInterpolationShader::s_vertex_uniforms.range());
+    m_material = ren::algorithm::material_create_from_shaderdefinition<
+        ColorInterpolationShader>(l_ren, l_rast);
 
-    m_program = l_ren.program_create(
-        ren::program_meta::get_default(),
-        ColorInterpolationShader::s_vertex_uniforms.range(),
-        ColorInterpolationShader::s_vertex_output.range(),
-        &ColorInterpolationShader::vertex, &ColorInterpolationShader::fragment,
-        l_rast);
+    m_program = ren::algorithm::program_create_from_shaderdefinition<
+        ColorInterpolationShader>(l_ren, l_rast,
+                                  ren::program_meta::get_default());
 
     eng::mesh_renderer_view<scene_t> l_mesh_renderer =
         m_scene.mesh_renderer(m_mesh_renderer);
@@ -200,18 +197,14 @@ f 5/5 1/1 2/2
 
 private:
   struct ColorInterpolationShader {
-    inline static container::arr<rast::shader_vertex_output_parameter, 1>
-        s_vertex_output = {
-            rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-    inline static auto s_time = container::arr_literal<ui8>("u_time\0");
+    PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "u_time");
 
-    inline static container::arr<const ui8 *, 1> s_vertex_uniform_names = {
-        s_time.data()};
+    PROGRAM_UNIFORM_VERTEX(0, 0);
 
-    inline static container::arr<rast::shader_uniform, 1> s_vertex_uniforms = {
-        rast::shader_uniform::make(s_time.range(),
-                                   bgfx::UniformType::Enum::Vec4)};
+    PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
+
+    PROGRAM_META(ColorInterpolationShader, 1, 1);
 
     static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                        const ui8 *p_vertex, ui8 **p_uniforms,
