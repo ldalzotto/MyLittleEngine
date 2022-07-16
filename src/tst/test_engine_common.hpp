@@ -5,7 +5,7 @@
 #include <rast/impl/rast_impl.hpp>
 #include <ren/algorithm.hpp>
 #include <ren/impl/ren_impl.hpp>
-#include <ren/shader_definition.hpp>
+#include <ren/program_definition.hpp>
 #include <tst/test_common.hpp>
 
 struct BaseEngineTest {

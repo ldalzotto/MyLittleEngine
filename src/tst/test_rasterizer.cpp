@@ -1,5 +1,4 @@
 
-#include <ren/shader_definition.hpp>
 #include <tst/test_engine_common.hpp>
 
 inline static constexpr auto TEST_RAST_RELATIVE_FOLDER =
