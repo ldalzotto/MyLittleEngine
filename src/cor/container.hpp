@@ -104,10 +104,10 @@ template <typename T, int N> struct arr {
   constexpr container::range<T> range() const {
     return container::range<T>::make((T *)m_data, N);
   };
+
   T *data() { return m_data; };
   const T *data() const { return m_data; };
-  constexpr uimax count() { return N; }
-  constexpr uimax count() const { return N; }
+  static constexpr uimax count() { return N; }
   const T &at(uimax p_index) const {
     assert_debug(p_index < N);
     return m_data[p_index];
@@ -124,6 +124,30 @@ template <typename T, int N> struct arr {
       }
     }
     return 1;
+  };
+
+  template <typename... ArrTypes>
+  static arr<T, N> make(const ArrTypes &...p_arrs) {
+    return arr_multiple_accumulate<0, ArrTypes...>{}(p_arrs...);
+  };
+
+private:
+  template <ui8 Count, typename ArrFirst, typename... Arrs>
+  struct arr_multiple_accumulate {
+    auto operator()(const ArrFirst &p_arr_first, const Arrs &...p_arrs) {
+      if constexpr (Count < sizeof...(Arrs)) {
+        auto l_next_arrs =
+            arr_multiple_accumulate<Count + 1, const Arrs &...>{}(p_arrs...);
+        arr<T, ArrFirst::count() + l_next_arrs.count()> l_new_arr;
+        l_new_arr.range().copy_from(p_arr_first.range());
+        l_new_arr.range()
+            .slide(ArrFirst::count())
+            .copy_from(l_next_arrs.range());
+        return l_new_arr;
+      } else {
+        return p_arr_first;
+      }
+    };
   };
 };
 
