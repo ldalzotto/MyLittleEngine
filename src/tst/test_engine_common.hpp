@@ -190,11 +190,9 @@ struct BaseEngineTest {
 
 struct WhiteShader {
 
-  PROGRAM_META(WhiteShader, 0, 0);
+  PROGRAM_META(WhiteShader, 0, 0, 0, 0);
 
-  static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, ui8 **p_uniforms,
-                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
+  PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
@@ -202,20 +200,16 @@ struct WhiteShader {
         p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
   };
 
-  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
-    out_color = {1, 1, 1};
-  };
+  PROGRAM_FRAGMENT { out_color = {1, 1, 1}; };
 };
 
 struct ColorInterpolationShader {
 
   PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
 
-  PROGRAM_META(ColorInterpolationShader, 0, 1);
+  PROGRAM_META(ColorInterpolationShader, 0, 0, 1, 0);
 
-  static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                     const ui8 *p_vertex, ui8 **p_uniforms,
-                     m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {
+  PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
@@ -228,7 +222,7 @@ struct ColorInterpolationShader {
     (*l_vertex_color) = l_color.cast<fix32>() / 255;
   };
 
-  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color) {
+  PROGRAM_FRAGMENT {
     rgbf_t *l_vertex_color = (position_t *)p_vertex_output_interpolated[0];
     out_color = *l_vertex_color;
   };

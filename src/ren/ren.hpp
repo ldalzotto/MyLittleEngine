@@ -96,9 +96,11 @@ template <typename Private> struct ren_api {
       const container::range<rast::shader_vertex_output_parameter>
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
+      const container::range<rast::shader_uniform> &p_fragment_uniforms,
       rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
     return thiz.program_create(p_program_meta, p_vertex_uniforms,
-                               p_vertex_output, p_vertex, p_fragment, p_rast);
+                               p_vertex_output, p_vertex, p_fragment_uniforms,
+                               p_fragment, p_rast);
   };
 
   template <typename Rasterizer>

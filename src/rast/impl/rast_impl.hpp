@@ -82,6 +82,7 @@ struct rast_impl_software {
     bgfx::IndexBufferHandle m_index_buffer;
     bgfx::VertexBufferHandle m_vertex_buffer;
     command_uniforms m_vertex_uniforms;
+    command_uniforms m_fragment_uniforms;
     ui64 m_state;
     ui32 m_rgba;
 
@@ -719,10 +720,14 @@ struct rast_impl_software {
 
     rast::shader_vertex_bytes::view l_shader_vertex_view = {
         (ui8 *)l_rasterizer_program.m_vertex};
-    rast::algorithm::program_uniforms l_vertex_uniforms;
+    rast::shader_fragment_bytes::view l_shader_fragment_view = {
+        (ui8 *)l_rasterizer_program.m_fragment};
 
     l_draw_call.m_vertex_uniforms =
         __copy_uniform_values_to_command(l_shader_vertex_view.uniforms());
+
+    l_draw_call.m_fragment_uniforms =
+        __copy_uniform_values_to_command(l_shader_fragment_view.uniforms());
 
     proxy().RenderPass(p_id).value()->m_commands.push_back(l_draw_call);
   };
@@ -806,12 +811,16 @@ struct rast_impl_software {
             __prepare_algorithm_uniforms(
                 l_draw_call.m_value->m_vertex_uniforms);
 
+        rast::algorithm::program_uniforms l_fragment_uniforms =
+            __prepare_algorithm_uniforms(
+                l_draw_call.m_value->m_fragment_uniforms);
+
         rast::algorithm::rasterize_unit(
             m_rasterize_heap, l_rasterizer_program,
             p_render_pass.value()->m_rect, p_render_pass.value()->m_proj,
             p_render_pass.value()->m_view, l_draw_call.value()->m_transform,
             l_index_buffer->range(), l_vertex_buffer->layout,
-            l_vertex_buffer->range(), l_vertex_uniforms,
+            l_vertex_buffer->range(), l_vertex_uniforms, l_fragment_uniforms,
             l_draw_call.value()->m_state, l_draw_call.value()->m_rgba,
             l_frame_rgb_texture.value()->m_info, l_frame_rgb_texture_range,
             l_frame_depth_texture_info, l_frame_depth_texture_range)

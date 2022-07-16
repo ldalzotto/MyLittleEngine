@@ -161,7 +161,7 @@ using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         ui8 **out_vertex);
 
 using shader_fragment_function = void (*)(ui8 **p_vertex_output_interpolated,
-                                          rgbf_t &out_color);
+                                          ui8 **p_uniforms, rgbf_t &out_color);
 
 struct shader_vertex {
   const shader_vertex_runtime_ctx &m_ctx;
@@ -298,17 +298,61 @@ struct shader_vertex_bytes {
 
 struct shader_fragment_bytes {
 
-  static uimax byte_size() { return sizeof(shader_fragment_function); };
+  struct byte_header {
+    uimax m_uniform_count;
+    uimax m_uniform_array;
+    uimax m_fragment_function;
+    uimax m_end;
+
+    uimax size_of() { return m_end; };
+  };
+
+  static byte_header build_byte_header(uimax p_uniform_count) {
+    byte_header l_byte_header;
+    l_byte_header.m_uniform_count = sizeof(byte_header);
+    l_byte_header.m_uniform_array =
+        l_byte_header.m_uniform_count + sizeof(uimax);
+    l_byte_header.m_fragment_function =
+        l_byte_header.m_uniform_array +
+        (p_uniform_count * sizeof(shader_uniform));
+    l_byte_header.m_fragment_function +=
+        algorithm::alignment_offset(l_byte_header.m_fragment_function, 8);
+    l_byte_header.m_end =
+        l_byte_header.m_fragment_function + sizeof(shader_fragment_function);
+    return l_byte_header;
+  };
 
   struct view {
     ui8 *m_data;
 
-    void fill(shader_fragment_function p_function) {
-      *(shader_fragment_function *)m_data = p_function;
+    void fill(const byte_header &p_header,
+              const container::range<shader_uniform> &p_uniforms,
+              shader_fragment_function p_function) {
+      *(byte_header *)(m_data) = p_header;
+      *(uimax *)(m_data + p_header.m_uniform_count) = p_uniforms.count();
+      if (p_uniforms.count() > 0) {
+        container::range<ui8>::make(m_data + p_header.m_uniform_array,
+                                    sizeof(shader_uniform) * p_uniforms.count())
+            .copy_from(p_uniforms);
+      }
+
+      *(shader_fragment_function *)(m_data + p_header.m_fragment_function) =
+          p_function;
     };
 
     shader_fragment_function fonction() {
-      return *(shader_fragment_function *)m_data;
+      byte_header *l_byte_header = (byte_header *)m_data;
+      return *(shader_fragment_function *)(m_data +
+                                           l_byte_header->m_fragment_function);
+    };
+
+    container::range<shader_uniform> uniforms() {
+      byte_header *l_byte_header = (byte_header *)m_data;
+      container::range<shader_uniform> l_range;
+      l_range.m_begin =
+          (shader_uniform *)(m_data + l_byte_header->m_uniform_array);
+      l_range.m_count = *(uimax *)(m_data + l_byte_header->m_uniform_count);
+      return l_range;
     };
   };
 };
