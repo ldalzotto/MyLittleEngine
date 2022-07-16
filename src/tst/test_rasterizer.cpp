@@ -235,32 +235,25 @@ f 4/2 5/2 6/2
   l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 
-PROGRAM_DECLARE_BEGIN(rast_uniform_vertex_shader_v2)
-
-PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "test_vertex_uniform_0");
-PROGRAM_UNIFORM(1, bgfx::UniformType::Vec4, "test_vertex_uniform_1");
-PROGRAM_UNIFORM(2, bgfx::UniformType::Vec4, "test_vertex_uniform_2");
-
-PROGRAM_VERTEX{};
-PROGRAM_FRAGMENT{};
-
-PROGRAM_DECLARE_END
-
 struct rast_uniform_vertex_shader {
-  inline static const auto s_param_0 =
-      container::arr_literal<i8>("test_vertex_uniform_0\0");
-  inline static const auto s_param_1 =
-      container::arr_literal<i8>("test_vertex_uniform_1\0");
-  inline static const auto s_param_2 =
-      container::arr_literal<i8>("test_vertex_uniform_2\0");
+  PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "test_vertex_uniform_0");
+  PROGRAM_UNIFORM(1, bgfx::UniformType::Vec4, "test_vertex_uniform_1");
+  PROGRAM_UNIFORM(2, bgfx::UniformType::Vec4, "test_vertex_uniform_2");
+
+  PROGRAM_UNIFORM_VERTEX(0, 0);
+  PROGRAM_UNIFORM_VERTEX(1, 1);
+  PROGRAM_UNIFORM_VERTEX(2, 2);
 
   inline static container::arr<rast::shader_vertex_output_parameter, 1>
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-  inline static container::arr<const ui8 *, 3> s_vertex_uniform_names = {
-      (const ui8 *)s_param_0.data(), (const ui8 *)s_param_1.data(),
-      (const ui8 *)s_param_2.data()};
+  inline static ren::program_definition_meta<3> s_meta =
+      s_meta.make<rast_uniform_vertex_shader>();
+
+  // TODO -> remove this
+  inline static container::arr<const ui8 *, 3> s_vertex_uniform_names =
+      s_meta.m_vertex_uniform_names;
 
   inline static container::arr<rast::shader_uniform, 3> s_vertex_uniforms = {
       .m_data = {rast::shader_uniform::make(s_param_0.range(),
