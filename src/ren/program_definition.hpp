@@ -77,7 +77,7 @@ private:
   template <typename ProgramDefinitionType, ui8 Count>
   struct get_uniform_names {
     auto operator()() {
-      return container::arr<const ui8 *, Count>::make(
+      return container::arr<const ui8 *, Count>::concat(
           get_uniform_names<ProgramDefinitionType, Count - 1>{}(),
           container::arr<const ui8 *, 1>{
               (const ui8 *)get_uniform_name_from_index<ProgramDefinitionType,
@@ -93,7 +93,7 @@ private:
 
   template <typename ProgramDefinitionType, ui8 Count> struct get_uniforms {
     auto operator()() {
-      return container::arr<rast::shader_uniform, Count>::make(
+      return container::arr<rast::shader_uniform, Count>::concat(
           get_uniforms<ProgramDefinitionType, Count - 1>{}(),
           container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
               get_uniform_name_from_index<ProgramDefinitionType, Count - 1>{}(),
@@ -110,7 +110,7 @@ private:
   template <typename ProgramDefinitionType, ui8 Count>
   struct get_vertex_uniforms {
     auto operator()() {
-      return container::arr<rast::shader_uniform, Count>::make(
+      return container::arr<rast::shader_uniform, Count>::concat(
           get_vertex_uniforms<ProgramDefinitionType, Count - 1>{}(),
           container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
               get_uniform_name_from_index<
@@ -149,7 +149,7 @@ private:
   template <typename ProgramDefinitionType, ui8 Count>
   struct get_fragment_uniforms {
     auto operator()() {
-      return container::arr<rast::shader_uniform, Count>::make(
+      return container::arr<rast::shader_uniform, Count>::concat(
           get_fragment_uniforms<ProgramDefinitionType, Count - 1>{}(),
           container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
               get_uniform_name_from_index<

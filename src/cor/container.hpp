@@ -127,7 +127,7 @@ template <typename T, int N> struct arr {
   };
 
   template <typename... ArrTypes>
-  static arr<T, N> make(const ArrTypes &...p_arrs) {
+  static arr<T, N> concat(const ArrTypes &...p_arrs) {
     return arr_multiple_accumulate<0, ArrTypes...>{}(p_arrs...);
   };
 
