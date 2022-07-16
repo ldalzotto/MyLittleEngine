@@ -65,86 +65,6 @@ struct program_definition_meta {
 
 private:
   template <typename ProgramDefinitionType, ui8 Index>
-  struct get_uniform_name_from_index {};
-
-#define declare_get_uniform_name_from_index(p_count)                           \
-  template <typename ProgramDefinitionType>                                    \
-  struct get_uniform_name_from_index<ProgramDefinitionType, p_count> {         \
-    constexpr container::range<char> operator()() {                            \
-      return ProgramDefinitionType::s_param_##p_count.range();                 \
-    };                                                                         \
-  };
-
-  declare_get_uniform_name_from_index(0);
-  declare_get_uniform_name_from_index(1);
-  declare_get_uniform_name_from_index(2);
-  declare_get_uniform_name_from_index(3);
-  declare_get_uniform_name_from_index(4);
-  declare_get_uniform_name_from_index(5);
-
-#undef declare_get_uniform_name_from_index
-
-  template <typename ProgramDefinitionType, ui8 Index>
-  struct get_uniform_type_from_index {};
-
-#define declare_get_uniform_type_from_index(p_count)                           \
-  template <typename ProgramDefinitionType>                                    \
-  struct get_uniform_type_from_index<ProgramDefinitionType, p_count> {         \
-    constexpr bgfx::UniformType::Enum operator()() {                           \
-      return ProgramDefinitionType::s_param_type_##p_count;                    \
-    };                                                                         \
-  };
-
-  declare_get_uniform_type_from_index(0);
-  declare_get_uniform_type_from_index(1);
-  declare_get_uniform_type_from_index(2);
-  declare_get_uniform_type_from_index(3);
-  declare_get_uniform_type_from_index(4);
-  declare_get_uniform_type_from_index(5);
-
-#undef declare_get_uniform_type_from_index
-
-  template <typename ProgramDefinitionType, ui8 Index>
-  struct get_uniform_vertex_index {};
-
-#define declare_get_uniform_vertex_index(p_count)                              \
-  template <typename ProgramDefinitionType>                                    \
-  struct get_uniform_vertex_index<ProgramDefinitionType, p_count> {            \
-    constexpr auto operator()() {                                              \
-      return ProgramDefinitionType::s_uniform_vertex_##p_count;                \
-    };                                                                         \
-  };
-
-  declare_get_uniform_vertex_index(0);
-  declare_get_uniform_vertex_index(1);
-  declare_get_uniform_vertex_index(2);
-  declare_get_uniform_vertex_index(3);
-  declare_get_uniform_vertex_index(4);
-  declare_get_uniform_vertex_index(5);
-
-#undef declare_get_uniform_vertex_index
-
-  template <typename ProgramDefinitionType, ui8 Count>
-  struct get_uniform_fragment_index {};
-
-#define declare_get_uniform_fragment_index(p_count)                            \
-  template <typename ProgramDefinitionType>                                    \
-  struct get_uniform_fragment_index<ProgramDefinitionType, p_count> {          \
-    constexpr auto operator()() {                                              \
-      return ProgramDefinitionType::s_uniform_fragment_##p_count;              \
-    };                                                                         \
-  };
-
-  declare_get_uniform_fragment_index(0);
-  declare_get_uniform_fragment_index(1);
-  declare_get_uniform_fragment_index(2);
-  declare_get_uniform_fragment_index(3);
-  declare_get_uniform_fragment_index(4);
-  declare_get_uniform_fragment_index(5);
-
-#undef declare_get_uniform_fragment_index
-
-  template <typename ProgramDefinitionType, ui8 Index>
   struct get_vertex_out_from_index {};
 
   template <typename ProgramDefinitionType>
@@ -247,6 +167,88 @@ private:
   struct get_fragment_uniforms<ProgramDefinitionType, 0> {
     auto operator()() { return container::arr<rast::shader_uniform, 0>{}; };
   };
+
+  // trivial specialisations
+
+  template <typename ProgramDefinitionType, ui8 Index>
+  struct get_uniform_name_from_index {};
+
+#define declare_get_uniform_name_from_index(p_count)                           \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_name_from_index<ProgramDefinitionType, p_count> {         \
+    constexpr container::range<char> operator()() {                            \
+      return ProgramDefinitionType::s_param_##p_count.range();                 \
+    };                                                                         \
+  };
+
+  declare_get_uniform_name_from_index(0);
+  declare_get_uniform_name_from_index(1);
+  declare_get_uniform_name_from_index(2);
+  declare_get_uniform_name_from_index(3);
+  declare_get_uniform_name_from_index(4);
+  declare_get_uniform_name_from_index(5);
+
+#undef declare_get_uniform_name_from_index
+
+  template <typename ProgramDefinitionType, ui8 Index>
+  struct get_uniform_type_from_index {};
+
+#define declare_get_uniform_type_from_index(p_count)                           \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_type_from_index<ProgramDefinitionType, p_count> {         \
+    constexpr bgfx::UniformType::Enum operator()() {                           \
+      return ProgramDefinitionType::s_param_type_##p_count;                    \
+    };                                                                         \
+  };
+
+  declare_get_uniform_type_from_index(0);
+  declare_get_uniform_type_from_index(1);
+  declare_get_uniform_type_from_index(2);
+  declare_get_uniform_type_from_index(3);
+  declare_get_uniform_type_from_index(4);
+  declare_get_uniform_type_from_index(5);
+
+#undef declare_get_uniform_type_from_index
+
+  template <typename ProgramDefinitionType, ui8 Index>
+  struct get_uniform_vertex_index {};
+
+#define declare_get_uniform_vertex_index(p_count)                              \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_vertex_index<ProgramDefinitionType, p_count> {            \
+    constexpr auto operator()() {                                              \
+      return ProgramDefinitionType::s_uniform_vertex_##p_count;                \
+    };                                                                         \
+  };
+
+  declare_get_uniform_vertex_index(0);
+  declare_get_uniform_vertex_index(1);
+  declare_get_uniform_vertex_index(2);
+  declare_get_uniform_vertex_index(3);
+  declare_get_uniform_vertex_index(4);
+  declare_get_uniform_vertex_index(5);
+
+#undef declare_get_uniform_vertex_index
+
+  template <typename ProgramDefinitionType, ui8 Count>
+  struct get_uniform_fragment_index {};
+
+#define declare_get_uniform_fragment_index(p_count)                            \
+  template <typename ProgramDefinitionType>                                    \
+  struct get_uniform_fragment_index<ProgramDefinitionType, p_count> {          \
+    constexpr auto operator()() {                                              \
+      return ProgramDefinitionType::s_uniform_fragment_##p_count;              \
+    };                                                                         \
+  };
+
+  declare_get_uniform_fragment_index(0);
+  declare_get_uniform_fragment_index(1);
+  declare_get_uniform_fragment_index(2);
+  declare_get_uniform_fragment_index(3);
+  declare_get_uniform_fragment_index(4);
+  declare_get_uniform_fragment_index(5);
+
+#undef declare_get_uniform_fragment_index
 };
 
 }; // namespace ren
