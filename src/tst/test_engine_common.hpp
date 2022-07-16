@@ -5,6 +5,7 @@
 #include <rast/impl/rast_impl.hpp>
 #include <ren/algorithm.hpp>
 #include <ren/impl/ren_impl.hpp>
+#include <ren/shader_definition.hpp>
 #include <tst/test_common.hpp>
 
 struct BaseEngineTest {
@@ -132,8 +133,8 @@ struct BaseEngineTest {
     ren::material_handle l_material =
         ren::algorithm::create_material_from_shader(
             l_engine.renderer_api(), l_engine.rasterizer_api(),
-            ShaderType::s_vertex_uniform_names.range(),
-            ShaderType::s_vertex_uniforms.range());
+            ShaderType::s_meta.m_vertex_uniform_names.range(),
+            ShaderType::s_meta.m_vertex_uniforms.range());
     m_material_handles.push_back(l_material);
     return l_material;
   };
@@ -207,9 +208,9 @@ private:
   program_create(eng::engine_api<Engine> p_engine,
                  const ren::program_meta &p_meta) {
     ren::program_meta l_meta = l_meta.get_default();
-    return program_create(p_engine, p_meta, Shader::s_vertex_uniforms.range(),
-                          Shader::s_vertex_output.range(), Shader::vertex,
-                          Shader::fragment);
+    return program_create(
+        p_engine, p_meta, Shader::s_meta.m_vertex_uniforms.range(),
+        Shader::s_vertex_output.range(), Shader::vertex, Shader::fragment);
   };
 };
 
@@ -218,7 +219,7 @@ struct WhiteShader {
   inline static container::arr<rast::shader_vertex_output_parameter, 0>
       s_vertex_output = {};
 
-  inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
+  PROGRAM_META(WhiteShader, 0);
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
@@ -239,7 +240,9 @@ struct ColorInterpolationShader {
   inline static container::arr<rast::shader_vertex_output_parameter, 1>
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
-  inline static container::arr<rast::shader_uniform, 0> s_vertex_uniforms = {};
+
+  PROGRAM_META(ColorInterpolationShader, 0);
+
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
                      const ui8 *p_vertex, ui8 **p_uniforms,
                      m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex) {

@@ -248,12 +248,7 @@ struct rast_uniform_vertex_shader {
       s_vertex_output = {
           rast::shader_vertex_output_parameter(bgfx::AttribType::Float, 3)};
 
-  inline static ren::program_definition_meta<3> s_meta =
-      s_meta.make<rast_uniform_vertex_shader>();
-
-  // TODO -> remove this
-  inline static auto s_vertex_uniform_names = s_meta.m_vertex_uniform_names;
-  inline static auto s_vertex_uniforms = s_meta.m_vertex_uniforms;
+  PROGRAM_META(rast_uniform_vertex_shader, 3);
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
