@@ -190,9 +190,6 @@ struct BaseEngineTest {
 
 struct WhiteShader {
 
-  inline static container::arr<rast::shader_vertex_output_parameter, 0>
-      s_vertex_output = {};
-
   PROGRAM_META(WhiteShader, 0, 0);
 
   static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
