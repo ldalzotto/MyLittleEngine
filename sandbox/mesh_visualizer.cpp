@@ -201,10 +201,11 @@ private:
     PROGRAM_UNIFORM(0, bgfx::UniformType::Vec4, "u_time");
 
     PROGRAM_UNIFORM_VERTEX(0, 0);
+    PROGRAM_UNIFORM_FRAGMENT(0, 0);
 
     PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
 
-    PROGRAM_META(ColorInterpolationShader, 1, 1);
+    PROGRAM_META(ColorInterpolationShader, 1, 1, 1, 1);
 
     PROGRAM_VERTEX {
       rast::shader_vertex l_shader = {p_ctx};
@@ -227,7 +228,8 @@ private:
 
     PROGRAM_FRAGMENT {
       rgbf_t *l_vertex_color = (rgbf_t *)p_vertex_output_interpolated[0];
-      out_color = *l_vertex_color;
+      rast::uniform_vec4_t *l_time = (rast::uniform_vec4_t *)p_uniforms[0];
+      out_color = *l_vertex_color * m::sin(l_time->x());
     };
   };
 };

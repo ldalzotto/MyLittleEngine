@@ -216,6 +216,15 @@ private:
   };
 
   template <typename ProgramDefinitionType>
+  struct get_uniforms<ProgramDefinitionType, 1> {
+    auto operator()() {
+      return container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
+          get_uniform_name_from_index<ProgramDefinitionType, 0>{}(),
+          get_uniform_type_from_index<ProgramDefinitionType, 0>{}())};
+    };
+  };
+
+  template <typename ProgramDefinitionType>
   struct get_uniforms<ProgramDefinitionType, 3> {
     auto operator()() {
       return container::arr<rast::shader_uniform, 3>{
