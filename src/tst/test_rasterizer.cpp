@@ -252,16 +252,8 @@ struct rast_uniform_vertex_shader {
       s_meta.make<rast_uniform_vertex_shader>();
 
   // TODO -> remove this
-  inline static container::arr<const ui8 *, 3> s_vertex_uniform_names =
-      s_meta.m_vertex_uniform_names;
-
-  inline static container::arr<rast::shader_uniform, 3> s_vertex_uniforms = {
-      .m_data = {rast::shader_uniform::make(s_param_0.range(),
-                                            bgfx::UniformType::Vec4),
-                 rast::shader_uniform::make(s_param_1.range(),
-                                            bgfx::UniformType::Vec4),
-                 rast::shader_uniform::make(s_param_2.range(),
-                                            bgfx::UniformType::Vec4)}};
+  inline static auto s_vertex_uniform_names = s_meta.m_vertex_uniform_names;
+  inline static auto s_vertex_uniforms = s_meta.m_vertex_uniforms;
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
