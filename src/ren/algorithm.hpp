@@ -38,7 +38,9 @@ program_create_from_shaderdefinition(ren_api<Renderer> p_ren,
   return p_ren.program_create(
       p_meta, ShaderDefinitionType::s_meta.m_vertex_uniforms.range(),
       ShaderDefinitionType::s_meta.m_vertex_output.range(),
-      ShaderDefinitionType::vertex, ShaderDefinitionType::fragment, p_rast);
+      ShaderDefinitionType::vertex,
+      ShaderDefinitionType::s_meta.m_fragment_uniforms.range(),
+      ShaderDefinitionType::fragment, p_rast);
 };
 
 } // namespace algorithm

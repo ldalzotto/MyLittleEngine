@@ -260,6 +260,7 @@ struct ren_impl {
       const container::range<rast::shader_vertex_output_parameter>
           &p_vertex_output,
       rast::shader_vertex_function p_vertex,
+      const container::range<rast::shader_uniform> &p_fragment_uniforms,
       rast::shader_fragment_function p_fragment, rast_api<Rasterizer> p_rast) {
     auto l_vertex_shader_table = rast::shader_vertex_bytes::build_byte_header(
         p_vertex_uniforms.count(), p_vertex_output.count());
@@ -268,10 +269,14 @@ struct ren_impl {
     rast::shader_vertex_bytes::view{l_vertex_shader_memory->data}.fill(
         l_vertex_shader_table, p_vertex_uniforms, p_vertex_output, p_vertex);
 
+    auto l_fragment_shader_header =
+        rast::shader_fragment_bytes::build_byte_header(
+            p_fragment_uniforms.count());
     const bgfx::Memory *l_fragment_shader_memory =
-        p_rast.alloc(rast::shader_fragment_bytes::byte_size(), 8);
+        p_rast.alloc(l_fragment_shader_header.size_of(), 8);
+
     rast::shader_fragment_bytes::view{l_fragment_shader_memory->data}.fill(
-        p_fragment);
+        l_fragment_shader_header, p_fragment_uniforms, p_fragment);
 
     program_rasterizer_handles l_program_rast_handles;
     l_program_rast_handles.m_vertex =

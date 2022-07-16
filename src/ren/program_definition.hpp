@@ -17,9 +17,13 @@
       s_vertex_out_##p_count =                                                 \
           rast::shader_vertex_output_parameter(p_type, p_element_count)
 
-#define PROGRAM_META(ProgramType, p_vertex_uniform_count, p_vertex_out_count)  \
-  inline static ren::program_definition_meta<p_vertex_uniform_count,           \
-                                             p_vertex_out_count>               \
+#define PROGRAM_UNIFORM_FRAGMENT(p_count, p_uniform_index)                     \
+  inline static constexpr auto s_uniform_fragment_##p_count = p_uniform_index;
+
+#define PROGRAM_META(ProgramType, p_vertex_uniform_count, p_vertex_out_count,  \
+                     p_fragment_uniform_count)                                 \
+  inline static ren::program_definition_meta<                                  \
+      p_vertex_uniform_count, p_vertex_out_count, p_fragment_uniform_count>    \
       s_meta = s_meta.make<ProgramType>();
 
 #define PROGRAM_VERTEX                                                         \
@@ -28,16 +32,19 @@
                      m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex)
 
 #define PROGRAM_FRAGMENT                                                       \
-  static void fragment(ui8 **p_vertex_output_interpolated, rgbf_t &out_color)
+  static void fragment(ui8 **p_vertex_output_interpolated, ui8 **p_uniforms,   \
+                       rgbf_t &out_color)
 
 namespace ren {
 
-template <ui8 VertexUniformCount, ui8 VertexOutCount>
+template <ui8 VertexUniformCount, ui8 VertexOutCount, ui8 FragmentUniformCount>
 struct program_definition_meta {
   container::arr<const ui8 *, VertexUniformCount> m_vertex_uniform_names;
   container::arr<rast::shader_uniform, VertexUniformCount> m_vertex_uniforms;
   container::arr<rast::shader_vertex_output_parameter, VertexOutCount>
       m_vertex_output;
+  container::arr<rast::shader_uniform, FragmentUniformCount>
+      m_fragment_uniforms;
 
   template <typename ProgramDefinitionType>
   inline static program_definition_meta make() {
@@ -48,7 +55,9 @@ struct program_definition_meta {
         .m_vertex_uniforms =
             get_vertex_uniforms<ProgramDefinitionType, VertexUniformCount>{}(),
         .m_vertex_output =
-            get_vertex_out<ProgramDefinitionType, VertexOutCount>{}()};
+            get_vertex_out<ProgramDefinitionType, VertexOutCount>{}(),
+        .m_fragment_uniforms = get_fragment_uniforms<ProgramDefinitionType,
+                                                     FragmentUniformCount>{}()};
   };
 
 private:
@@ -209,6 +218,27 @@ private:
     auto operator()() {
       return container::arr<rast::shader_vertex_output_parameter, 1>{
           get_vertex_out_from_index<ProgramDefinitionType, 0>{}()};
+    };
+  };
+
+  template <typename ProgramDefinitionType, ui8 Count>
+  struct get_fragment_uniforms {};
+
+  template <typename ProgramDefinitionType>
+  struct get_fragment_uniforms<ProgramDefinitionType, 0> {
+    auto operator()() { return container::arr<rast::shader_uniform, 0>{}; };
+  };
+
+  template <typename ProgramDefinitionType>
+  struct get_fragment_uniforms<ProgramDefinitionType, 1> {
+    auto operator()() {
+      return container::arr<rast::shader_uniform, 1>{rast::shader_uniform::make(
+          get_uniform_name_from_index<
+              ProgramDefinitionType,
+              ProgramDefinitionType::s_uniform_fragment_0>{}(),
+          get_uniform_type_from_index<
+              ProgramDefinitionType,
+              ProgramDefinitionType::s_uniform_fragment_0>{}())};
     };
   };
 };

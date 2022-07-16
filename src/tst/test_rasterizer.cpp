@@ -245,7 +245,7 @@ struct rast_uniform_vertex_shader {
 
   PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 3);
 
-  PROGRAM_META(rast_uniform_vertex_shader, 3, 1);
+  PROGRAM_META(rast_uniform_vertex_shader, 3, 1, 0);
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};

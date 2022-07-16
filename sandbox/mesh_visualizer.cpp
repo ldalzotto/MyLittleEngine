@@ -206,9 +206,7 @@ private:
 
     PROGRAM_META(ColorInterpolationShader, 1, 1);
 
-    static void vertex(const rast::shader_vertex_runtime_ctx &p_ctx,
-                       const ui8 *p_vertex, ui8 **p_uniforms,
-                       rgbaf_t &out_screen_position, ui8 **out_vertex) {
+    PROGRAM_VERTEX {
       rast::shader_vertex l_shader = {p_ctx};
       const position_t &l_vertex_pos = l_shader.get_vertex<position_t>(
           bgfx::Attrib::Enum::Position, p_vertex);
@@ -227,8 +225,7 @@ private:
       (*l_vertex_color) = l_color.cast<fix32>() / 255;
     };
 
-    static void fragment(ui8 **p_vertex_output_interpolated,
-                         rgbf_t &out_color) {
+    PROGRAM_FRAGMENT {
       rgbf_t *l_vertex_color = (rgbf_t *)p_vertex_output_interpolated[0];
       out_color = *l_vertex_color;
     };
