@@ -78,9 +78,11 @@ struct ren_impl {
 
   struct material {
 
+  private:
     container::heap_stacked m_heap;
     container::vector<bgfx::UniformHandle> m_rast_handles;
 
+  public:
     void allocate() {
       m_heap.allocate(0);
       m_rast_handles.allocate(0);
@@ -97,6 +99,19 @@ struct ren_impl {
     };
 
     container::range<ui8> at(uimax p_index) { return m_heap.at(p_index); };
+
+    template <typename Callback> void for_each_handle(const Callback &p_cb) {
+      for (auto i = 0; i < m_rast_handles.count(); ++i) {
+        p_cb(m_rast_handles.at(i));
+      }
+    };
+
+    template <typename Callback>
+    void for_each_handle_and_range(const Callback &p_cb) {
+      for (auto i = 0; i < m_rast_handles.count(); ++i) {
+        p_cb(m_rast_handles.at(i), m_heap.at(i));
+      }
+    };
   };
 
   struct heap {
@@ -224,9 +239,9 @@ struct ren_impl {
                         rast_api<Rasterizer> p_rast) {
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
-    for (auto i = 0; i < l_material->m_rast_handles.count(); ++i) {
-      p_rast.destroy(l_material->m_rast_handles.at(i));
-    }
+    l_material->for_each_handle(
+        [&](const bgfx::UniformHandle &p_handle) { p_rast.destroy(p_handle); });
+
     l_material->free();
     m_heap.m_materials.remove_at(p_material.m_idx);
   };
@@ -338,14 +353,10 @@ struct ren_impl {
 
       material *l_material;
       m_heap.m_materials.at(p_render_pass.m_material.m_idx, &l_material);
-
-      for (auto l_material_parameter_idx = 0;
-           l_material_parameter_idx < l_material->m_heap.count();
-           ++l_material_parameter_idx) {
-        p_rast.setUniform(
-            l_material->m_rast_handles.at(l_material_parameter_idx),
-            l_material->m_heap.at(l_material_parameter_idx).data());
-      }
+      l_material->for_each_handle_and_range(
+          [&](auto &p_handle, container::range<ui8> p_range) {
+            p_rast.setUniform(p_handle, p_range.data());
+          });
 
       program_meta *l_program_meta;
       program_rasterizer_handles *l_program_rast_handles;
