@@ -6,21 +6,59 @@
 
 namespace orm {
 
-template <typename T> struct heap_index {};
+template <typename T> struct heap_index_tag { using type = T; };
 
 namespace details {
 
 namespace traits {
 
+template <typename ColType> struct has_heap_index_tag {
+  inline static constexpr ui8 value = 0;
+};
+template <typename T> struct has_heap_index_tag<heap_index_tag<T>> {
+  inline static constexpr ui8 value = 1;
+};
+
+template <typename T> struct heap_index_col {
+  using type = T;
+  T *m_data;
+
+  void malloc(uimax p_count) {
+    m_data = (T *)sys::malloc(p_count * sizeof(T));
+  };
+
+  void free() { sys::free(m_data); };
+  void realloc(uimax p_count) {
+    m_data = (T *)sys::realloc(m_data, sizeof(T) * p_count);
+  };
+
+  T &at(uimax p_index) { return *(m_data + p_index); };
+};
+
 template <typename T> struct any_col {
-  using type = T *;
-  /*
-   ::traits::conditional_t<traits::is_one_to_many_col<T>::value,
-                                       one_to_many_col, T *>;
-  */
+
+private:
+  inline static constexpr auto col_type() {
+    if constexpr (traits::has_heap_index_tag<T>::value) {
+      return heap_index_col<typename T::type>{};
+    } else {
+      return (T *)0;
+    }
+  };
+
+public:
+  using type = decltype(col_type());
 };
 
 template <typename T> using any_col_t = typename any_col<T>::type;
+
+template <typename ColType> struct is_heap_index_col {
+  inline static constexpr ui8 value = 0;
+};
+
+template <typename T> struct is_heap_index_col<heap_index_col<T>> {
+  inline static constexpr ui8 value = 1;
+};
 
 } // namespace traits
 
@@ -611,6 +649,8 @@ template <typename... Types> struct table_heap_stacked {
     table_heap_stacked_free<0>{}(*this);
   };
 
+  uimax count() { return m_meta.count(); };
+
   void push_back(uimax p_size, uimax p_alignment) {
     uimax l_chunk_index = -1;
     if (!m_meta.find_next_chunk(p_size, p_alignment, &l_chunk_index)) {
@@ -627,10 +667,10 @@ template <typename... Types> struct table_heap_stacked {
     assert_debug(l_chunk_index != -1);
   };
 
-  template <typename... Input> void range(uimax p_index, Input... out_ranges) {
+  template <typename... Input> void at(uimax p_index, Input... out_ranges) {
     const container::heap_chunk &l_chunk =
         m_meta.m_allocated_chunks.at(p_index);
-    table_heap_stacked_map_to_range<0, Input...>{}(*this, l_chunk,
+    table_heap_stacked_map_to_range<0, Input...>{}(*this, p_index, l_chunk,
                                                    out_ranges...);
   };
 
@@ -639,8 +679,12 @@ private:
     void operator()(table_heap_stacked &thiz, uimax p_capacity) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col = (T *)sys::malloc(p_capacity * sizeof(T));
+        using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        if constexpr (details::traits::is_heap_index_col<col_t>::value) {
+          l_col.malloc(p_capacity);
+        } else {
+          l_col = (col_t *)sys::malloc(p_capacity * sizeof(col_t));
+        }
         table_heap_stacked_allocate<Col + 1>{}(thiz, p_capacity);
       }
     };
@@ -650,8 +694,12 @@ private:
     void operator()(table_heap_stacked &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        sys::free(l_col);
+        using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        if constexpr (details::traits::is_heap_index_col<col_t>::value) {
+          l_col.free();
+        } else {
+          sys::free(l_col);
+        }
         table_heap_stacked_free<Col + 1>{}(thiz);
       }
     };
@@ -661,28 +709,38 @@ private:
     void operator()(table_heap_stacked &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col = (T *)sys::realloc(l_col, thiz.m_meta.m_capacity * sizeof(T));
-        table_heap_stacked_free<Col + 1>{}(thiz);
+
+        using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        if constexpr (details::traits::is_heap_index_col<col_t>::value) {
+          l_col.realloc(thiz.m_meta.m_capacity);
+        } else {
+          l_col = (col_t *)sys::realloc(l_col,
+                                        thiz.m_meta.m_capacity * sizeof(col_t));
+        }
+
+        table_heap_stacked_realloc<Col + 1>{}(thiz);
       }
     };
   };
 
   template <ui8 Col, typename FirstRange, typename... Input>
   struct table_heap_stacked_map_to_range {
-    void operator()(table_heap_stacked &thiz,
+    void operator()(table_heap_stacked &thiz, uimax p_index,
                     const container::heap_chunk &p_chunk, FirstRange out_range,
                     Input... out_ranges) {
       if constexpr (!::traits::is_none<FirstRange>::value) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-
-        *out_range =
-            container::range<T>::make(l_col + p_chunk.m_begin, p_chunk.m_size);
+        using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        if constexpr (details::traits::is_heap_index_col<col_t>::value) {
+          *out_range = &l_col.at(p_index);
+        } else {
+          *out_range = container::range<col_t>::make(l_col + p_chunk.m_begin,
+                                                     p_chunk.m_size);
+        }
       }
       if constexpr (sizeof...(Input) > 0) {
-        table_heap_stacked_map_to_range<Col + 1, Input...>{}(thiz, p_chunk,
-                                                             out_ranges...);
+        table_heap_stacked_map_to_range<Col + 1, Input...>{}(
+            thiz, p_index, p_chunk, out_ranges...);
       }
     };
   };

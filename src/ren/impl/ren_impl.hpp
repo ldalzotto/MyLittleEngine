@@ -79,48 +79,42 @@ struct ren_impl {
   struct material {
 
   private:
-    orm::table_heap_stacked<ui8> m_heap;
-    // container::heap_stacked m_heap;
-    // TODO -> there is an additional index here. The heap_stacked must be
-    // indexed
-    // We want something like
-    // orm::table_heap_stacked<ui8, orm::heap_index<bgfx::UniformHandle>> ;
-    container::vector<bgfx::UniformHandle> m_rast_handles;
+    orm::table_heap_stacked<ui8, orm::heap_index_tag<bgfx::UniformHandle>>
+        m_heap;
 
   public:
-    void allocate() {
-      m_heap.allocate(0);
-      m_rast_handles.allocate(0);
-    };
+    void allocate() { m_heap.allocate(0); };
 
-    void free() {
-      m_heap.free();
-      m_rast_handles.free();
-    };
+    void free() { m_heap.free(); };
 
     void push_back(bgfx::UniformHandle p_handle, const uimax p_size) {
       m_heap.push_back(p_size, 1);
-      m_rast_handles.push_back(p_handle);
+      bgfx::UniformHandle *l_handle;
+      m_heap.at(m_heap.count() - 1, none(), &l_handle);
+      *l_handle = p_handle;
     };
 
     container::range<ui8> at(uimax p_index) {
       container::range<ui8> l_range;
-      m_heap.range(p_index, &l_range);
+      m_heap.at(p_index, &l_range);
       return l_range;
     };
 
     template <typename Callback> void for_each_handle(const Callback &p_cb) {
-      for (auto i = 0; i < m_rast_handles.count(); ++i) {
-        p_cb(m_rast_handles.at(i));
+      for (auto i = 0; i < m_heap.count(); ++i) {
+        bgfx::UniformHandle *l_handle;
+        m_heap.at(i, none(), &l_handle);
+        p_cb(*l_handle);
       }
     };
 
     template <typename Callback>
     void for_each_handle_and_range(const Callback &p_cb) {
-      for (auto i = 0; i < m_rast_handles.count(); ++i) {
+      for (auto i = 0; i < m_heap.count(); ++i) {
+        bgfx::UniformHandle *l_handle;
         container::range<ui8> l_range;
-        m_heap.range(i, &l_range);
-        p_cb(m_rast_handles.at(i), l_range);
+        m_heap.at(i, &l_range, &l_handle);
+        p_cb(*l_handle, l_range);
       }
     };
   };
