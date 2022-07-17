@@ -35,6 +35,30 @@ template <typename T> struct heap_index_col {
   T &at(uimax p_index) { return *(m_data + p_index); };
 };
 
+template <typename T> struct ptr_col {
+  using type = T;
+  T *m_data;
+
+  void malloc(uimax p_count) {
+    m_data = (T *)sys::malloc(p_count * sizeof(T));
+  };
+
+  void free() { sys::free(m_data); };
+  void realloc(uimax p_count) {
+    m_data = (T *)sys::realloc(m_data, sizeof(T) * p_count);
+  };
+
+  T &at(uimax p_index) { return *(m_data + p_index); };
+  container::range<T> range(uimax p_begin, uimax p_count) {
+    return container::range<T>::make(m_data + p_begin, p_count);
+  };
+
+  void memmove_up(uimax p_break_index, uimax p_move_delta,
+                  uimax p_chunk_count) {
+    sys::memmove_up_t(m_data, p_break_index, p_move_delta, p_chunk_count);
+  };
+};
+
 template <typename T> struct any_col {
 
 private:
@@ -42,7 +66,7 @@ private:
     if constexpr (traits::has_heap_index_tag<T>::value) {
       return heap_index_col<typename T::type>{};
     } else {
-      return (T *)0;
+      return ptr_col<T>{};
     }
   };
 
@@ -234,8 +258,7 @@ private:
       void operator()(table_span_v2 &thiz, uimax p_count) {
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
-          using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-          l_col = (T *)default_allocator::malloc(p_count * sizeof(T));
+          l_col.malloc(p_count);
           allocate_col<Col + 1>{}(thiz, p_count);
         };
       };
@@ -250,8 +273,7 @@ private:
       void operator()(table_span_v2 &thiz) {
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
-          using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-          default_allocator::free(l_col);
+          l_col.free();
           free_col<Col + 1>{}(thiz);
         }
       };
@@ -262,7 +284,8 @@ private:
     void operator()(table_span_v2 &thiz, uimax p_index, InputFirst p_first,
                     Input... p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
-        *p_first = &(thiz.cols().template col<Col>())[p_index];
+        auto &l_col = thiz.cols().template col<Col>();
+        *p_first = &l_col.at(p_index);
       }
       if constexpr (sizeof...(Input) > 0) {
         __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
@@ -274,7 +297,8 @@ private:
     void operator()(table_span_v2 &thiz, uimax p_index,
                     const InputFirst &p_first, const Input &... p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
-        (thiz.cols().template col<Col>())[p_index] = p_first;
+        auto &l_col = thiz.cols().template col<Col>();
+        l_col.at(p_index) = p_first;
       }
 
       if constexpr (sizeof...(Input) > 0) {
@@ -293,8 +317,7 @@ private:
     void operator()(table_span_v2 &thiz, InputFirst p_first, Input... p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        *p_first = container::range<T>::make(l_col, thiz.count());
+        *p_first = l_col.range(0, thiz.count());
       }
       if constexpr (sizeof...(Input) > 0) {
         __range<Col + 1, Input...>{}(thiz, p_input...);
@@ -313,9 +336,7 @@ private:
       void operator()(table_span_v2 &thiz, uimax p_new_count) {
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
-          using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-          l_col =
-              (T *)default_allocator::realloc(l_col, sizeof(T) * p_new_count);
+          l_col.realloc(p_new_count);
           realloc_col<Col + 1>{}(thiz, p_new_count);
         }
       };
@@ -366,8 +387,7 @@ private:
     void operator()(table_vector_v2 &thiz, uimax p_capacity) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col = (T *)sys::malloc(p_capacity * sizeof(T));
+        l_col.malloc(p_capacity);
         table_vector_allocate<Col + 1>{}(thiz, p_capacity);
       }
     };
@@ -377,7 +397,7 @@ private:
     void operator()(table_vector_v2 &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        sys::free(l_col);
+        l_col.free();
         table_vector_free<Col + 1>{}(thiz);
       }
     };
@@ -387,8 +407,7 @@ private:
     void operator()(table_vector_v2 &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col = (T *)sys::realloc(l_col, thiz.m_meta.m_capacity * sizeof(T));
+        l_col.realloc(thiz.m_meta.m_capacity);
         __realloc<Col + 1>{}(thiz);
       }
     };
@@ -398,7 +417,8 @@ private:
     void operator()(table_vector_v2 &thiz, uimax p_index, InputFirst p_first,
                     Input... p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
-        *p_first = &(thiz.cols().template col<Col>())[p_index];
+        auto &l_col = thiz.cols().template col<Col>();
+        *p_first = &(l_col.at(p_index));
       }
       if constexpr (sizeof...(Input) > 0) {
         __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
@@ -412,7 +432,8 @@ private:
     void operator()(table_vector_v2 &thiz, const InputFirst &p_first,
                     const Input &... p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
-        thiz.cols().template col<Col>()[thiz.m_meta.m_count - 1] = p_first;
+        auto &l_col = thiz.cols().template col<Col>();
+        l_col.at(thiz.m_meta.m_count - 1) = p_first;
       }
 
       if constexpr (Col + 1 < COL_COUNT) {
@@ -426,7 +447,7 @@ private:
                     uimax p_move_delta, uimax p_chunk_count) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        sys::memmove_up_t(l_col, p_break_index, p_move_delta, p_chunk_count);
+        l_col.memmove_up(p_break_index, p_move_delta, p_chunk_count);
         table_vector_memmove_up<Col + 1>{}(thiz, p_break_index, p_move_delta,
                                            p_chunk_count);
       }
@@ -473,8 +494,7 @@ private:
     void operator()(table_pool_v2 &thiz, uimax p_capacity) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col = (T *)sys::malloc(p_capacity * sizeof(T));
+        l_col.malloc(p_capacity);
         table_pool_allocate<Col + 1>{}(thiz, p_capacity);
       }
     };
@@ -484,7 +504,7 @@ private:
     void operator()(table_pool_v2 &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        sys::free(l_col);
+        l_col.free();
         table_pool_free<Col + 1>{}(thiz);
       }
     };
@@ -494,8 +514,7 @@ private:
     void operator()(table_pool_v2 &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        l_col = (T *)sys::realloc(l_col, thiz.m_meta.m_capacity * sizeof(T));
+        l_col.realloc(thiz.m_meta.m_capacity);
         __realloc<Col + 1>{}(thiz);
       }
     };
@@ -508,7 +527,8 @@ private:
                     const InputFirst &p_first, const Input &... p_input) {
 
       if constexpr (!::traits::is_none<InputFirst>::value) {
-        thiz.cols().template col<Col>()[p_index] = p_first;
+        auto &l_col = thiz.cols().template col<Col>();
+        l_col.at(p_index) = p_first;
       }
 
       if constexpr (Col + 1 < COL_COUNT) {
@@ -522,7 +542,8 @@ private:
     void operator()(table_pool_v2 &thiz, uimax p_index, InputFirst p_first,
                     Input... p_input) {
       if constexpr (!::traits::is_none<InputFirst>::value) {
-        *p_first = &(thiz.cols().template col<Col>())[p_index];
+        auto &l_col = thiz.cols().template col<Col>();
+        *p_first = &(l_col.at(p_index));
       }
       if constexpr (sizeof...(Input) > 0) {
         __at<Col + 1, Input...>{}(thiz, p_index, p_input...);
@@ -679,12 +700,7 @@ private:
     void operator()(table_heap_stacked &thiz, uimax p_capacity) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        if constexpr (details::traits::is_heap_index_col<col_t>::value) {
-          l_col.malloc(p_capacity);
-        } else {
-          l_col = (col_t *)sys::malloc(p_capacity * sizeof(col_t));
-        }
+        l_col.malloc(p_capacity);
         table_heap_stacked_allocate<Col + 1>{}(thiz, p_capacity);
       }
     };
@@ -694,12 +710,7 @@ private:
     void operator()(table_heap_stacked &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-        using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        if constexpr (details::traits::is_heap_index_col<col_t>::value) {
-          l_col.free();
-        } else {
-          sys::free(l_col);
-        }
+        l_col.free();
         table_heap_stacked_free<Col + 1>{}(thiz);
       }
     };
@@ -709,15 +720,7 @@ private:
     void operator()(table_heap_stacked &thiz) {
       if constexpr (Col < COL_COUNT) {
         auto &l_col = thiz.cols().template col<Col>();
-
-        using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-        if constexpr (details::traits::is_heap_index_col<col_t>::value) {
-          l_col.realloc(thiz.m_meta.m_capacity);
-        } else {
-          l_col = (col_t *)sys::realloc(l_col,
-                                        thiz.m_meta.m_capacity * sizeof(col_t));
-        }
-
+        l_col.realloc(thiz.m_meta.m_capacity);
         table_heap_stacked_realloc<Col + 1>{}(thiz);
       }
     };
@@ -734,8 +737,7 @@ private:
         if constexpr (details::traits::is_heap_index_col<col_t>::value) {
           *out_range = &l_col.at(p_index);
         } else {
-          *out_range = container::range<col_t>::make(l_col + p_chunk.m_begin,
-                                                     p_chunk.m_size);
+          *out_range = l_col.range(p_chunk.m_begin, p_chunk.m_size);
         }
       }
       if constexpr (sizeof...(Input) > 0) {
