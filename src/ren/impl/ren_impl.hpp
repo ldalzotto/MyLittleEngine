@@ -262,16 +262,12 @@ struct ren_impl {
 
   template <typename Rasterizer>
   void material_push(material_handle p_material, const char *p_name,
-                     bgfx::UniformType::UniformType::Enum p_type,
+                     bgfx::UniformType::Enum p_type,
                      rast_api<Rasterizer> p_rast) {
     auto l_uniform = p_rast.createUniform(p_name, p_type);
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
-    if (p_type == bgfx::UniformType::UniformType::Vec4) {
-      l_material->push_back(l_uniform, sizeof(rast::uniform_vec4_t));
-    } else {
-      sys::abort();
-    }
+    l_material->push_back(l_uniform, rast::uniform_type_get_size(p_type));
   };
 
   template <typename Rasterizer>

@@ -850,10 +850,6 @@ struct rast_impl_software {
   };
 
 private:
-  const rast::uniform_vec4_t *__get_uniform_vec4(uimax p_hash) {
-    return __get_uniform(p_hash).cast_to<rast::uniform_vec4_t>().data();
-  }
-
   container::range<ui8> __get_uniform(uimax p_hash) {
     auto &l_uniform =
         heap.m_uniforms.by_index.at(heap.m_uniforms.by_key.at(p_hash));
@@ -895,13 +891,10 @@ private:
          ++l_vertex_uniform_it) {
       const rast::shader_uniform &l_shader_uniform =
           p_uniforms.at(l_vertex_uniform_it);
-      if (l_shader_uniform.m_type == bgfx::UniformType::Vec4) {
-        heap.m_uniform_command_stack.push_back(sizeof(rast::uniform_vec4_t), 1);
-        heap.m_uniform_command_stack
-            .at(heap.m_uniform_command_stack.count() - 1)
-            .cast_to<rast::uniform_vec4_t>()
-            .at(0) = *__get_uniform_vec4(l_shader_uniform.m_hash);
-      }
+      heap.m_uniform_command_stack.push_back(
+          rast::uniform_type_get_size(l_shader_uniform.m_type), 1);
+      heap.m_uniform_command_stack.at(heap.m_uniform_command_stack.count() - 1)
+          .copy_from(__get_uniform(l_shader_uniform.m_hash));
     }
 
     return l_command_uniforms;
