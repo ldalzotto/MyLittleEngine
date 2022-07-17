@@ -99,7 +99,7 @@ struct ren_impl {
     };
 
     void push_back(bgfx::UniformHandle p_handle, const uimax p_size) {
-      m_heap.push_back(p_size, sizeof(fix32));
+      m_heap.push_back(p_size, 1);
       m_rast_handles.push_back(p_handle);
     };
 

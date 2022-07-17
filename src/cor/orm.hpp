@@ -699,6 +699,7 @@ template <typename... Types> struct table_heap_stacked {
     uimax l_chunk_index = -1;
     if (!m_meta.find_next_chunk(p_size, p_alignment, &l_chunk_index)) {
       m_meta.increase_capacity(p_size);
+      table_heap_stacked_realloc<0>{}(*this);
       m_meta.find_next_chunk(p_size, p_alignment, &l_chunk_index);
     }
     assert_debug(l_chunk_index != -1);
@@ -735,6 +736,17 @@ private:
         auto &l_col = thiz.cols().template col<Col>();
         using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
         sys::free(l_col);
+        table_heap_stacked_free<Col + 1>{}(thiz);
+      }
+    };
+  };
+
+  template <ui8 Col> struct table_heap_stacked_realloc {
+    void operator()(table_heap_stacked &thiz) {
+      if constexpr (Col < COL_COUNT) {
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
+        l_col = (T *)sys::realloc(l_col, thiz.m_meta.m_capacity * sizeof(T));
         table_heap_stacked_free<Col + 1>{}(thiz);
       }
     };
