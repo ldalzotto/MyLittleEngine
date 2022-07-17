@@ -156,6 +156,8 @@ struct rast_impl_software {
 
     orm::table_heap_paged_v2<ui8> m_buffer_memory_table;
 
+    // TODO -> here, we just want an index of the buffer memory table. Not
+    // having a whole table_heap_paged orm.
     orm::table_heap_paged_v2<bgfx::Memory, memory_reference> m_buffers_table;
 
     using buffers_ptr_mapping_buffer_t = bgfx::Memory *;

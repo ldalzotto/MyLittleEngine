@@ -83,6 +83,8 @@ struct ren_impl {
     // container::heap_stacked m_heap;
     // TODO -> there is an additional index here. The heap_stacked must be
     // indexed
+    // We want something like
+    // orm::table_heap_stacked<ui8, orm::heap_index<bgfx::UniformHandle>> ;
     container::vector<bgfx::UniformHandle> m_rast_handles;
 
   public:
@@ -97,7 +99,6 @@ struct ren_impl {
     };
 
     void push_back(bgfx::UniformHandle p_handle, const uimax p_size) {
-      // m_heap.push_back_no_realloc(uimax p_size, uimax p_alignment)
       m_heap.push_back(p_size, sizeof(fix32));
       m_rast_handles.push_back(p_handle);
     };
