@@ -142,8 +142,13 @@ struct BaseEngineTest {
   void material_set_vec4(ren::material_handle p_material, uimax p_index,
                          const rast::uniform_vec4_t &p_value) {
     api_decltype(eng::engine_api, l_engine, __engine);
-    l_engine.renderer_api().material_set_vec4(p_material, p_index, p_value,
-                                              l_engine.rasterizer_api());
+    l_engine.renderer_api().material_set_vec4(p_material, p_index, p_value);
+  };
+
+  void material_set_sampler(ren::material_handle p_material, uimax p_index,
+                            const rast::uniform_sampler_t &p_value) {
+    api_decltype(eng::engine_api, l_engine, __engine);
+    l_engine.renderer_api().material_set_sampler(p_material, p_index, p_value);
   };
 
   eng::object_handle create_orthographic_camera(fix32 p_width, fix32 p_height) {

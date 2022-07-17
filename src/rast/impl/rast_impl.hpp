@@ -178,6 +178,7 @@ struct rast_impl_software {
 
     struct {
       container::pool<rast::uniform_vec4_t> vecs;
+      container::pool<rast::uniform_sampler_t> samplers;
     } m_uniform_values;
 
     struct {
@@ -202,6 +203,7 @@ struct rast_impl_software {
       m_program_table.allocate(0);
 
       m_uniform_values.vecs.allocate(0);
+      m_uniform_values.samplers.allocate(0);
       m_uniforms.by_index.allocate(0);
       m_uniforms.by_key.allocate();
       m_uniform_command_stack.allocate(0);
@@ -445,6 +447,8 @@ struct rast_impl_software {
         l_uniform.m_type = p_type;
         if (p_type == bgfx::UniformType::Enum::Vec4) {
           l_uniform.m_index = m_uniform_values.vecs.push_back({});
+        } else if (p_type == bgfx::UniformType::Enum::Sampler) {
+          l_uniform.m_index = m_uniform_values.samplers.push_back({});
         } else {
           sys::abort();
         }
@@ -752,6 +756,11 @@ struct rast_impl_software {
     m_command_temporary_stack.rgba = p_rgba;
   };
 
+  void set_texture(bgfx::UniformHandle p_uniform,
+                   bgfx::TextureHandle p_texture) {
+    heap.m_uniform_values.samplers.at(p_uniform.idx) = p_texture;
+  };
+
   void frame() {
 
     proxy().for_each_renderpass([&](renderpass_proxy &p_render_pass) {
@@ -892,10 +901,30 @@ private:
          ++l_vertex_uniform_it) {
       const rast::shader_uniform &l_shader_uniform =
           p_uniforms.at(l_vertex_uniform_it);
-      heap.m_uniform_command_stack.push_back(
-          rast::uniform_type_get_size(l_shader_uniform.m_type), 1);
-      heap.m_uniform_command_stack.at(heap.m_uniform_command_stack.count() - 1)
-          .copy_from(__get_uniform(l_shader_uniform.m_hash));
+
+      if (l_shader_uniform.m_type == bgfx::UniformType::Sampler) {
+        auto l_sampler = __get_uniform(l_shader_uniform.m_hash)
+                             .cast_to<rast::uniform_sampler_t>();
+        texture *l_texture;
+        heap.m_texture_table.at(l_sampler.m_begin->idx, &l_texture);
+        rast::uniform_texture l_uniform_texture;
+        l_uniform_texture.m_texture_info = &l_texture->m_info;
+        l_uniform_texture.m_memory = l_texture->m_buffer;
+
+        heap.m_uniform_command_stack.push_back(sizeof(rast::uniform_texture),
+                                               1);
+        heap.m_uniform_command_stack
+            .at(heap.m_uniform_command_stack.count() - 1)
+            .copy_from(container::range<rast::uniform_texture>::make(
+                &l_uniform_texture, 1));
+
+      } else {
+        heap.m_uniform_command_stack.push_back(
+            rast::uniform_type_get_size(l_shader_uniform.m_type), 1);
+        heap.m_uniform_command_stack
+            .at(heap.m_uniform_command_stack.count() - 1)
+            .copy_from(__get_uniform(l_shader_uniform.m_hash));
+      }
     }
 
     return l_command_uniforms;
@@ -1100,6 +1129,13 @@ FORCE_INLINE void rast_api_setIndexBuffer(rast_impl_software *thiz,
 FORCE_INLINE void rast_api_setState(rast_impl_software *thiz, uint64_t _state,
                                     uint32_t _rgba = 0) {
   thiz->set_state(_state, _rgba);
+};
+
+FORCE_INLINE void rast_api_setTexture(rast_impl_software *thiz, uint8_t _stage,
+                                      bgfx::UniformHandle _sampler,
+                                      bgfx::TextureHandle _handle,
+                                      uint32_t _flags) {
+  thiz->set_texture(_sampler, _handle);
 };
 
 FORCE_INLINE void rast_api_submit(rast_impl_software *thiz, bgfx::ViewId _id,

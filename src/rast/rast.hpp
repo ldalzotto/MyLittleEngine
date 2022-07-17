@@ -163,6 +163,12 @@ template <typename Private> struct rast_api {
     rast_api_setState(&thiz, _state, _rgba);
   };
 
+  FORCE_INLINE void setTexture(uint8_t _stage, bgfx::UniformHandle _sampler,
+                               bgfx::TextureHandle _handle,
+                               uint32_t _flags = UINT32_MAX) {
+    rast_api_setTexture(&thiz, _stage, _sampler, _handle, _flags);
+  };
+
   FORCE_INLINE void touch(bgfx::ViewId _id){/* bgfx_impl.view_submit(_id); */};
 
   FORCE_INLINE void submit(bgfx::ViewId _id, bgfx::ProgramHandle _program,

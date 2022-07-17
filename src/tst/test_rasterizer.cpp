@@ -509,7 +509,56 @@ f 1 2 3
 
   l_test.update();
 
-  auto l_tmp_path = container::arr_literal<ui8>("rast.uniform.vertex.fragment.png");
+  auto l_tmp_path =
+      container::arr_literal<ui8>("rast.uniform.vertex.fragment.png");
+  l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
+}
+
+struct rast_uniform_sampler_shader {
+  PROGRAM_UNIFORM(0, bgfx::UniformType::Sampler, "test_sampler_0");
+
+  PROGRAM_UNIFORM_FRAGMENT(0, 0);
+
+  PROGRAM_META(rast_uniform_sampler_shader, 1, 0, 0, 1);
+
+  PROGRAM_VERTEX {
+    rast::shader_vertex l_shader = {p_ctx};
+    const auto &l_vertex_pos =
+        l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
+    out_screen_position =
+        p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
+  };
+
+  PROGRAM_FRAGMENT { out_color = rgbf_t{1, 1, 1}; };
+};
+
+TEST_CASE("rast.uniform.sampler") {
+
+  constexpr ui16 l_width = 8, l_height = 8;
+  auto l_mesh_raw_str = container::arr_literal<ui8>(R""""(
+v 0.0 0.0 0.0
+v 0.0 1.0 0.0
+v 1.0 0.0 0.0
+f 1 2 3
+  )"""");
+
+  BaseEngineTest l_test = BaseEngineTest(l_width, l_height);
+  auto l_camera = l_test.create_orthographic_camera(2, 2);
+  l_test.l_scene.camera(l_camera).set_local_position({0, 0, -5});
+
+  auto l_texture = l_test.__engine.m_rasterizer.allocate_texture(
+      8, 8, 0, 0, bgfx::TextureFormat::RGB8, 0);
+
+  auto l_material = l_test.create_material<rast_uniform_sampler_shader>();
+  l_test.material_set_sampler(l_material, 0, l_texture);
+
+  auto l_mesh_renderer = l_test.create_mesh_renderer(
+      l_test.create_mesh_obj(l_mesh_raw_str.range()),
+      l_test.create_shader<rast_uniform_sampler_shader>(), l_material);
+
+  l_test.update();
+
+  auto l_tmp_path = container::arr_literal<ui8>("rast.uniform.sampler.png");
   l_test.assert_frame_equals(l_tmp_path.range(), s_resource_config);
 }
 

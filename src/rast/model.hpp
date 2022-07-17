@@ -122,10 +122,18 @@ struct image_view {
 };
 
 using uniform_vec4_t = m::vec<fix32, 4>;
+using uniform_sampler_t = bgfx::TextureHandle;
+
+struct uniform_texture {
+  bgfx::TextureInfo *m_texture_info;
+  bgfx::Memory *m_memory;
+};
 
 inline static uimax uniform_type_get_size(bgfx::UniformType::Enum p_type) {
   if (p_type == bgfx::UniformType::Vec4) {
     return sizeof(uniform_vec4_t);
+  } else if (p_type == bgfx::UniformType::Sampler) {
+    return sizeof(uniform_sampler_t);
   }
   return 0;
 };

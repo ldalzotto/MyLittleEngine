@@ -82,11 +82,14 @@ template <typename Private> struct ren_api {
     thiz.material_push(p_material, p_name, p_type, p_rast);
   };
 
-  template <typename Rasterizer>
   void material_set_vec4(material_handle p_material, uimax p_index,
-                         const rast::uniform_vec4_t &p_value,
-                         rast_api<Rasterizer> p_rast) {
-    thiz.material_set_vec4(p_material, p_index, p_value, p_rast);
+                         const rast::uniform_vec4_t &p_value) {
+    thiz.material_set_vec4(p_material, p_index, p_value);
+  };
+
+  void material_set_sampler(material_handle p_material, uimax p_index,
+                            const rast::uniform_sampler_t &p_value) {
+    thiz.material_set_sampler(p_material, p_index, p_value);
   };
 
   template <typename Rasterizer>
