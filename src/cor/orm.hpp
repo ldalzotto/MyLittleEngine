@@ -207,6 +207,22 @@ struct heap_paged_cols<Type0, Type1, Type2, Type3> {
   template <> auto &col<3>() { return m_col_3; };
 };
 
+template <typename FirstInput, typename... Input> struct has_range_input {
+  inline static constexpr ui8 compute() {
+    if constexpr (::traits::is_none<FirstInput>::value) {
+      return 0;
+    } else {
+      using pure_t = ::traits::remove_ptr_ref_t<FirstInput>;
+      constexpr ui8 l_is_range = container::traits::is_range<pure_t>::value;
+      if constexpr (sizeof...(Input) > 0) {
+        return l_is_range || has_range_input<Input...>::compute();
+      } else {
+        return l_is_range;
+      }
+    }
+  };
+};
+
 }; // namespace details
 
 template <typename... Types> struct table_span_v2 {
@@ -688,11 +704,16 @@ template <typename... Types> struct table_heap_stacked {
     assert_debug(l_chunk_index != -1);
   };
 
-  template <typename... Input> void at(uimax p_index, Input... out_ranges) {
-    const container::heap_chunk &l_chunk =
-        m_meta.m_allocated_chunks.at(p_index);
-    table_heap_stacked_map_to_range<0, Input...>{}(*this, p_index, l_chunk,
-                                                   out_ranges...);
+  template <typename... Input> void at(uimax p_index, Input &&... p_input) {
+    if constexpr (details::has_range_input<Input...>::compute()) {
+      // if input has range, then chunk is needed. We assume that we want to
+      // fetch from heap.
+      const container::heap_chunk &l_chunk =
+          m_meta.m_allocated_chunks.at(p_index);
+      table_heap_stacked_at<0, Input...>{}(*this, p_index, l_chunk, p_input...);
+    } else {
+      table_heap_stacked_at<0, Input...>{}(*this, p_index, p_input...);
+    }
   };
 
 private:
@@ -726,23 +747,34 @@ private:
     };
   };
 
-  template <ui8 Col, typename FirstRange, typename... Input>
-  struct table_heap_stacked_map_to_range {
+  template <ui8 Col, typename FirstInput, typename... Input>
+  struct table_heap_stacked_at {
     void operator()(table_heap_stacked &thiz, uimax p_index,
-                    const container::heap_chunk &p_chunk, FirstRange out_range,
-                    Input... out_ranges) {
-      if constexpr (!::traits::is_none<FirstRange>::value) {
+                    const container::heap_chunk &p_chunk, FirstInput p_input,
+                    Input... p_inputs) {
+      if constexpr (!::traits::is_none<FirstInput>::value) {
         auto &l_col = thiz.cols().template col<Col>();
         using col_t = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
         if constexpr (details::traits::is_heap_index_col<col_t>::value) {
-          *out_range = &l_col.at(p_index);
+          *p_input = &l_col.at(p_index);
         } else {
-          *out_range = l_col.range(p_chunk.m_begin, p_chunk.m_size);
+          *p_input = l_col.range(p_chunk.m_begin, p_chunk.m_size);
         }
       }
       if constexpr (sizeof...(Input) > 0) {
-        table_heap_stacked_map_to_range<Col + 1, Input...>{}(
-            thiz, p_index, p_chunk, out_ranges...);
+        table_heap_stacked_at<Col + 1, Input...>{}(thiz, p_index, p_chunk,
+                                                   p_inputs...);
+      }
+    };
+
+    void operator()(table_heap_stacked &thiz, uimax p_index, FirstInput p_input,
+                    Input... p_inputs) {
+      if constexpr (!::traits::is_none<FirstInput>::value) {
+        auto &l_col = thiz.cols().template col<Col>();
+        *p_input = &l_col.at(p_index);
+      }
+      if constexpr (sizeof...(Input) > 0) {
+        table_heap_stacked_at<Col + 1, Input...>{}(thiz, p_index, p_inputs...);
       }
     };
   };

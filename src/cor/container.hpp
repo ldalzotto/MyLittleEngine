@@ -98,6 +98,15 @@ template <typename T> struct range {
   };
 };
 
+namespace traits {
+template <typename T> struct is_range {
+  inline static constexpr ui8 value = 0;
+};
+template <typename T> struct is_range<range<T>> {
+  inline static constexpr ui8 value = 1;
+};
+}; // namespace traits
+
 template <typename T, int N> struct arr {
   T m_data[N];
   container::range<T> range() { return container::range<T>::make(m_data, N); };
