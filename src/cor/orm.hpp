@@ -6,79 +6,18 @@
 
 namespace orm {
 
-struct one_to_many {
-  container::vector<uimax> &m_rels;
-
-  one_to_many(container::vector<uimax> &p_rels)
-      : m_rels(p_rels){
-
-        };
-
-  void remove(uimax p_entry) { m_rels.remove_at(entry_index(p_entry)); };
-
-  void push(uimax p_entry) {
-    assert_debug(entry_index(p_entry) == uimax(-1));
-    m_rels.push_back(p_entry);
-  };
-
-private:
-  uimax entry_index(uimax p_entry) {
-    for (auto i = 0; i < m_rels.count(); ++i) {
-      if (m_rels.at(i) == p_entry) {
-        m_rels.remove_at(i);
-        return i;
-      }
-    }
-    return -1;
-  };
-};
+template <typename T> struct heap_index {};
 
 namespace details {
 
-struct one_to_many_col {
-  container::vector<uimax> *m_rels;
-  ui8 *m_is_allocated;
-
-  void allocate(uimax p_count) {
-    m_rels = (container::vector<uimax> *)sys::malloc(
-        sizeof(container::vector<uimax>) * p_count);
-    m_is_allocated = (ui8 *)sys::malloc(sizeof(ui8) * p_count);
-    sys::memset(m_is_allocated, 0, sizeof(ui8) * p_count);
-  };
-
-  void free(uimax p_count) {
-    for (auto i = 0; i < p_count; ++i) {
-      if (m_is_allocated[i]) {
-        m_rels[i].free();
-      }
-    }
-    sys::free(m_rels);
-    sys::free(m_is_allocated);
-  };
-
-  void allocate_rels(uimax p_index, uimax p_capacity) {
-    assert_debug(!m_is_allocated[p_index]);
-    m_is_allocated[p_index] = 1;
-    m_rels[p_index].allocate(p_capacity);
-  };
-};
-
 namespace traits {
-template <typename T> struct __is_one_to_many_col {
-  static constexpr ui8 value = 0;
-};
-template <> struct __is_one_to_many_col<one_to_many_col> {
-  static constexpr ui8 value = 1;
-};
-
-template <typename T> struct is_one_to_many_col {
-  static constexpr ui8 value =
-      __is_one_to_many_col<typename ::traits::remove_ptr_ref<T>::type>::value;
-};
 
 template <typename T> struct any_col {
-  using type = ::traits::conditional_t<traits::is_one_to_many_col<T>::value,
+  using type = T *;
+  /*
+   ::traits::conditional_t<traits::is_one_to_many_col<T>::value,
                                        one_to_many_col, T *>;
+  */
 };
 
 template <typename T> using any_col_t = typename any_col<T>::type;
@@ -241,19 +180,6 @@ template <typename... Types> struct table_span_v2 {
     __set<0, Input...>{}(*this, p_index, p_input...);
   };
 
-  template <ui8 Col> one_to_many rel(uimax p_index) {
-    details::one_to_many_col &l_col = m_cols.template col<Col>();
-    assert_debug(p_index < m_meta);
-    assert_debug(l_col.m_is_allocated[p_index]);
-    return one_to_many(l_col.m_rels[p_index]);
-  };
-
-  template <ui8 Col> one_to_many rel_allocate(uimax p_index, uimax p_capacity) {
-    details::one_to_many_col &l_col = m_cols.template col<Col>();
-    l_col.allocate_rels(p_index, p_capacity);
-    return rel<Col>(p_index);
-  };
-
   template <typename... Input> void range(Input... p_ranges) {
     __range<0, Input...>{}(*this, p_ranges...);
   };
@@ -271,12 +197,7 @@ private:
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
           using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-          if constexpr (details::traits::is_one_to_many_col<T>::value) {
-            details::one_to_many_col &l_one_to_may_col = l_col;
-            l_one_to_may_col.allocate(p_count);
-          } else {
-            l_col = (T *)default_allocator::malloc(p_count * sizeof(T));
-          }
+          l_col = (T *)default_allocator::malloc(p_count * sizeof(T));
           allocate_col<Col + 1>{}(thiz, p_count);
         };
       };
@@ -292,12 +213,7 @@ private:
         if constexpr (Col < COL_COUNT) {
           auto &l_col = thiz.cols().template col<Col>();
           using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
-          if constexpr (details::traits::is_one_to_many_col<T>::value) {
-            details::one_to_many_col &l_one_to_may_col = l_col;
-            l_one_to_may_col.free(thiz.m_meta);
-          } else {
-            default_allocator::free(l_col);
-          }
+          default_allocator::free(l_col);
           free_col<Col + 1>{}(thiz);
         }
       };
