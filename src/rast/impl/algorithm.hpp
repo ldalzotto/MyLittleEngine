@@ -553,7 +553,7 @@ private:
     } else {
       container::range<screen_polygon_bounding_box> l_polygon_rects =
           container::range<screen_polygon_bounding_box>::make(
-              m_heap.m_per_polygons.cols().m_col_2, m_polygon_count);
+              m_heap.m_per_polygons.cols().m_col_2.m_data, m_polygon_count);
       m::rect_min_max<screen_coord_t> l_rendered_rect =
           m::bounding_rect(l_polygon_rects);
 

@@ -1360,4 +1360,13 @@ private:
   };
 };
 
+namespace traits {
+template <typename T> struct is_range {
+  inline static constexpr ui8 value = 0;
+};
+template <typename T> struct is_range<range<T>> {
+  inline static constexpr ui8 value = 1;
+};
+}; // namespace traits
+
 } // namespace container
