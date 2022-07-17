@@ -156,9 +156,10 @@ struct rast_impl_software {
 
     orm::table_heap_paged_v2<ui8> m_buffer_memory_table;
 
-    // TODO -> here, we just want an index of the buffer memory table. Not
-    // having a whole table_heap_paged orm.
-    orm::table_heap_paged_v2<bgfx::Memory, memory_reference> m_buffers_table;
+    // Ensure validity of bgfx::Memory* which can be created either from the
+    // memory table or a ref.
+    orm::table_heap_paged_v2<bgfx::Memory, memory_reference>
+        m_buffer_reference_table;
 
     using buffers_ptr_mapping_buffer_t = bgfx::Memory *;
     using buffers_ptr_mapping_buffer_index_t = uimax;
@@ -191,7 +192,7 @@ struct rast_impl_software {
     void allocate() {
       m_renderpass_table.allocate(0);
       m_buffer_memory_table.allocate(4096 * 4096);
-      m_buffers_table.allocate(1024);
+      m_buffer_reference_table.allocate(1024);
       m_buffers_ptr_mapping_table.allocate(0);
       m_texture_table.allocate(0);
       m_framebuffer_table.allocate(0);
@@ -233,7 +234,7 @@ struct rast_impl_software {
       }
       m_renderpass_table.free();
       m_buffer_memory_table.free();
-      m_buffers_table.free();
+      m_buffer_reference_table.free();
       m_buffers_ptr_mapping_table.free();
       m_texture_table.free();
       m_vertexbuffer_table.free();
@@ -251,11 +252,11 @@ struct rast_impl_software {
       l_buffer.size = m_buffer_memory_table.at(l_buffer_index, &l_data);
       l_buffer.data = l_data;
 
-      uimax l_index = m_buffers_table.push_back(1);
+      uimax l_index = m_buffer_reference_table.push_back(1);
       bgfx::Memory *l_bgfx_memory;
       memory_reference *l_memory_refence;
-      uimax l_memory_count =
-          m_buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
+      uimax l_memory_count = m_buffer_reference_table.at(
+          l_index, &l_bgfx_memory, &l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = memory_reference(l_buffer_index);
@@ -273,11 +274,11 @@ struct rast_impl_software {
       l_buffer.size = m_buffer_memory_table.at(l_buffer_index, &l_data);
       l_buffer.data = l_data;
 
-      uimax l_index = m_buffers_table.push_back(1);
+      uimax l_index = m_buffer_reference_table.push_back(1);
       bgfx::Memory *l_bgfx_memory;
       memory_reference *l_memory_refence;
-      uimax l_memory_count =
-          m_buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
+      uimax l_memory_count = m_buffer_reference_table.at(
+          l_index, &l_bgfx_memory, &l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = memory_reference(l_buffer_index);
@@ -291,11 +292,11 @@ struct rast_impl_software {
       l_buffer.data = (ui8 *)p_ptr;
       l_buffer.size = p_size;
 
-      uimax l_index = m_buffers_table.push_back(1);
+      uimax l_index = m_buffer_reference_table.push_back(1);
       bgfx::Memory *l_bgfx_memory;
       memory_reference *l_memory_refence;
-      uimax l_memory_count =
-          m_buffers_table.at(l_index, &l_bgfx_memory, &l_memory_refence);
+      uimax l_memory_count = m_buffer_reference_table.at(
+          l_index, &l_bgfx_memory, &l_memory_refence);
       assert_debug(l_memory_count == 1);
       *l_bgfx_memory = l_buffer;
       *l_memory_refence = memory_reference(-1);
@@ -313,8 +314,8 @@ struct rast_impl_software {
           buffers_ptr_mapping_buffer_index_t *l_buffer_index;
           m_buffers_ptr_mapping_table.at(i, none(), &l_buffer_index);
           memory_reference *l_reference;
-          uimax l_buffers_table_count =
-              m_buffers_table.at(*l_buffer_index, none(), &l_reference);
+          uimax l_buffers_table_count = m_buffer_reference_table.at(
+              *l_buffer_index, none(), &l_reference);
           assert_debug(l_buffers_table_count == 1);
           if (!l_reference->is_ref()) {
             m_buffer_memory_table.remove_at(l_reference->m_buffer_index);
