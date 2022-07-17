@@ -123,6 +123,13 @@ struct image_view {
 
 using uniform_vec4_t = m::vec<fix32, 4>;
 
+inline static uimax uniform_type_get_size(bgfx::UniformType::Enum p_type) {
+  if (p_type == bgfx::UniformType::Vec4) {
+    return sizeof(uniform_vec4_t);
+  }
+  return 0;
+};
+
 struct shader_uniform {
   bgfx::UniformType::Enum m_type;
   uimax m_hash;

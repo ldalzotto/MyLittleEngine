@@ -77,15 +77,52 @@ struct ren_impl {
   };
 
   struct material {
-    struct parameter_value {
-      container::arr<ui8, sizeof(rast::uniform_vec4_t)> m_data;
-      container::range<ui8> range() { return m_data.range(); };
+
+  private:
+    orm::table_heap_stacked<ui8> m_heap;
+    // container::heap_stacked m_heap;
+    // TODO -> there is an additional index here. The heap_stacked must be
+    // indexed
+    // We want something like
+    // orm::table_heap_stacked<ui8, orm::heap_index<bgfx::UniformHandle>> ;
+    container::vector<bgfx::UniformHandle> m_rast_handles;
+
+  public:
+    void allocate() {
+      m_heap.allocate(0);
+      m_rast_handles.allocate(0);
     };
 
-    orm::table_vector_v2<bgfx::UniformHandle, parameter_value> m_parameters;
+    void free() {
+      m_heap.free();
+      m_rast_handles.free();
+    };
 
-    void allocate() { m_parameters.allocate(0); };
-    void free() { m_parameters.free(); };
+    void push_back(bgfx::UniformHandle p_handle, const uimax p_size) {
+      m_heap.push_back(p_size, 1);
+      m_rast_handles.push_back(p_handle);
+    };
+
+    container::range<ui8> at(uimax p_index) {
+      container::range<ui8> l_range;
+      m_heap.range(p_index, &l_range);
+      return l_range;
+    };
+
+    template <typename Callback> void for_each_handle(const Callback &p_cb) {
+      for (auto i = 0; i < m_rast_handles.count(); ++i) {
+        p_cb(m_rast_handles.at(i));
+      }
+    };
+
+    template <typename Callback>
+    void for_each_handle_and_range(const Callback &p_cb) {
+      for (auto i = 0; i < m_rast_handles.count(); ++i) {
+        container::range<ui8> l_range;
+        m_heap.range(i, &l_range);
+        p_cb(m_rast_handles.at(i), l_range);
+      }
+    };
   };
 
   struct heap {
@@ -201,6 +238,9 @@ struct ren_impl {
     m_heap.m_mesh_table.remove_at(p_mesh.m_idx);
   };
 
+  // TODO -> what we want here is to have a fixed capacity that is getting
+  // calculated in advance.
+  // Because we are not supposed to add parameters on the fly on a material.
   material_handle material_create() {
     material l_material;
     l_material.allocate();
@@ -213,23 +253,21 @@ struct ren_impl {
                         rast_api<Rasterizer> p_rast) {
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
-    for (auto i = 0; i < l_material->m_parameters.count(); ++i) {
-      bgfx::UniformHandle *l_uniform_handle;
-      l_material->m_parameters.at(i, &l_uniform_handle);
-      p_rast.destroy(*l_uniform_handle);
-    }
+    l_material->for_each_handle(
+        [&](const bgfx::UniformHandle &p_handle) { p_rast.destroy(p_handle); });
+
     l_material->free();
     m_heap.m_materials.remove_at(p_material.m_idx);
   };
 
   template <typename Rasterizer>
   void material_push(material_handle p_material, const char *p_name,
-                     bgfx::UniformType::UniformType::Enum p_type,
+                     bgfx::UniformType::Enum p_type,
                      rast_api<Rasterizer> p_rast) {
     auto l_uniform = p_rast.createUniform(p_name, p_type);
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
-    l_material->m_parameters.push_back(l_uniform, material::parameter_value{});
+    l_material->push_back(l_uniform, rast::uniform_type_get_size(p_type));
   };
 
   template <typename Rasterizer>
@@ -246,9 +284,7 @@ struct ren_impl {
           assert_debug(l_uniform_info.type == bgfx::UniformType::Vec4);
         });
     */
-    material::parameter_value *l_parameters;
-    l_material->m_parameters.at(p_index, none(), &l_parameters);
-    l_parameters->range().copy_from(
+    l_material->at(p_index).copy_from(
         container::range<traits::remove_ref<decltype(p_value)>::type>::make(
             &p_value, 1));
   };
@@ -327,17 +363,10 @@ struct ren_impl {
 
       material *l_material;
       m_heap.m_materials.at(p_render_pass.m_material.m_idx, &l_material);
-
-      for (auto l_material_parameter_idx = 0;
-           l_material_parameter_idx < l_material->m_parameters.count();
-           ++l_material_parameter_idx) {
-
-        bgfx::UniformHandle *l_uniform_handle;
-        material::parameter_value *l_parameters;
-        l_material->m_parameters.at(l_material_parameter_idx, &l_uniform_handle,
-                                    &l_parameters);
-        p_rast.setUniform(*l_uniform_handle, l_parameters->m_data.data());
-      }
+      l_material->for_each_handle_and_range(
+          [&](auto &p_handle, container::range<ui8> p_range) {
+            p_rast.setUniform(p_handle, p_range.data());
+          });
 
       program_meta *l_program_meta;
       program_rasterizer_handles *l_program_rast_handles;
