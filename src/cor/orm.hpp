@@ -695,19 +695,26 @@ template <typename... Types> struct table_heap_stacked {
     table_heap_stacked_free<0>{}(*this);
   };
 
-  uimax push_back_no_realloc(uimax p_size, uimax p_alignment) {
+  void push_back(uimax p_size, uimax p_alignment) {
+    uimax l_chunk_index = -1;
+    if (!m_meta.find_next_chunk(p_size, p_alignment, &l_chunk_index)) {
+      m_meta.increase_capacity(p_size);
+      m_meta.find_next_chunk(p_size, p_alignment, &l_chunk_index);
+    }
+    assert_debug(l_chunk_index != -1);
+  };
+
+  void push_back_no_realloc(uimax p_size, uimax p_alignment) {
     uimax l_chunk_index = -1;
     m_meta.find_next_chunk(p_size, p_alignment, &l_chunk_index);
     assert_debug(l_chunk_index != -1);
-    return l_chunk_index;
   };
 
-  template <typename... OutRanges>
-  void range(uimax p_index, OutRanges &... out_ranges) {
+  template <typename... Input> void range(uimax p_index, Input... out_ranges) {
     const container::heap_chunk &l_chunk =
         m_meta.m_allocated_chunks.at(p_index);
-    table_heap_stacked_map_to_range<0, OutRanges...>{}(*this, l_chunk,
-                                                       out_ranges...);
+    table_heap_stacked_map_to_range<0, Input...>{}(*this, l_chunk,
+                                                   out_ranges...);
   };
 
 private:
@@ -733,22 +740,21 @@ private:
     };
   };
 
-  template <ui8 Col, typename FirstRange, typename... OutRanges>
+  template <ui8 Col, typename FirstRange, typename... Input>
   struct table_heap_stacked_map_to_range {
     void operator()(table_heap_stacked &thiz,
-                    const container::heap_chunk &p_chunk, FirstRange &out_range,
-                    OutRanges &... out_ranges) {
+                    const container::heap_chunk &p_chunk, FirstRange out_range,
+                    Input... out_ranges) {
       if constexpr (!::traits::is_none<FirstRange>::value) {
-        using T = typename ::traits::remove_ptr_ref<
-            typename ::traits::remove_ptr_ref<FirstRange>::type>::type;
+        auto &l_col = thiz.cols().template col<Col>();
+        using T = typename ::traits::remove_ptr_ref<decltype(l_col)>::type;
 
-        T *l_col = thiz.cols().template col<Col>();
-        out_range =
+        *out_range =
             container::range<T>::make(l_col + p_chunk.m_begin, p_chunk.m_size);
       }
-      if constexpr (sizeof...(OutRanges) > 0) {
-        table_heap_stacked_map_to_range<Col + 1, OutRanges...>{}(thiz, p_chunk,
-                                                                 out_ranges...);
+      if constexpr (sizeof...(Input) > 0) {
+        table_heap_stacked_map_to_range<Col + 1, Input...>{}(thiz, p_chunk,
+                                                             out_ranges...);
       }
     };
   };

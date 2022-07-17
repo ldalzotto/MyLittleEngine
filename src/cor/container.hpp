@@ -127,14 +127,14 @@ template <typename T, int N> struct arr {
   };
 
   template <typename... ArrTypes>
-  static arr<T, N> concat(const ArrTypes &...p_arrs) {
+  static arr<T, N> concat(const ArrTypes &... p_arrs) {
     return arr_multiple_accumulate<0, ArrTypes...>{}(p_arrs...);
   };
 
 private:
   template <ui8 Count, typename ArrFirst, typename... Arrs>
   struct arr_multiple_accumulate {
-    auto operator()(const ArrFirst &p_arr_first, const Arrs &...p_arrs) {
+    auto operator()(const ArrFirst &p_arr_first, const Arrs &... p_arrs) {
       if constexpr (Count < sizeof...(Arrs)) {
         auto l_next_arrs =
             arr_multiple_accumulate<Count + 1, const Arrs &...>{}(p_arrs...);

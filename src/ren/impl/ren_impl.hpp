@@ -79,7 +79,8 @@ struct ren_impl {
   struct material {
 
   private:
-    container::heap_stacked m_heap;
+    orm::table_heap_stacked<ui8> m_heap;
+    // container::heap_stacked m_heap;
     // TODO -> there is an additional index here. The heap_stacked must be
     // indexed
     container::vector<bgfx::UniformHandle> m_rast_handles;
@@ -96,11 +97,16 @@ struct ren_impl {
     };
 
     void push_back(bgfx::UniformHandle p_handle, const uimax p_size) {
+      // m_heap.push_back_no_realloc(uimax p_size, uimax p_alignment)
       m_heap.push_back(p_size, sizeof(fix32));
       m_rast_handles.push_back(p_handle);
     };
 
-    container::range<ui8> at(uimax p_index) { return m_heap.at(p_index); };
+    container::range<ui8> at(uimax p_index) {
+      container::range<ui8> l_range;
+      m_heap.range(p_index, &l_range);
+      return l_range;
+    };
 
     template <typename Callback> void for_each_handle(const Callback &p_cb) {
       for (auto i = 0; i < m_rast_handles.count(); ++i) {
@@ -111,7 +117,9 @@ struct ren_impl {
     template <typename Callback>
     void for_each_handle_and_range(const Callback &p_cb) {
       for (auto i = 0; i < m_rast_handles.count(); ++i) {
-        p_cb(m_rast_handles.at(i), m_heap.at(i));
+        container::range<ui8> l_range;
+        m_heap.range(i, &l_range);
+        p_cb(m_rast_handles.at(i), l_range);
       }
     };
   };
