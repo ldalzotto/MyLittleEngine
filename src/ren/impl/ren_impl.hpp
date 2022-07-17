@@ -80,6 +80,8 @@ struct ren_impl {
 
   private:
     container::heap_stacked m_heap;
+    // TODO -> there is an additional index here. The heap_stacked must be
+    // indexed
     container::vector<bgfx::UniformHandle> m_rast_handles;
 
   public:
@@ -227,6 +229,9 @@ struct ren_impl {
     m_heap.m_mesh_table.remove_at(p_mesh.m_idx);
   };
 
+  // TODO -> what we want here is to have a fixed capacity that is getting
+  // calculated in advance.
+  // Because we are not supposed to add parameters on the fly on a material.
   material_handle material_create() {
     material l_material;
     l_material.allocate();
