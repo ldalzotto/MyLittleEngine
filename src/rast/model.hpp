@@ -1,5 +1,6 @@
 #pragma once
 
+#include "m/vec.hpp"
 #include <bgfx/bgfx.h>
 #include <cor/container.hpp>
 #include <m/mat.hpp>
@@ -104,6 +105,12 @@ struct image_view {
     *(rgb_t *)at(p) = p_pixel;
   };
 
+  template<typename SizeType>
+  rgb_t& get_pixel(SizeType x, SizeType y)
+  {
+    return *(rgb_t*)at(get_buffer_index(x,y));
+  };
+
   uimax size_of() { return stride() * m_height; };
   uimax pixel_count() { return m_height * m_width; };
 
@@ -175,8 +182,9 @@ using shader_vertex_function = void (*)(const shader_vertex_runtime_ctx &p_ctx,
                                         m::vec<fix32, 4> &out_screen_position,
                                         ui8 **out_vertex);
 
-using shader_fragment_function = void (*)(ui8 **p_vertex_output_interpolated,
-                                          ui8 **p_uniforms, rgbf_t &out_color);
+using shader_fragment_function = void (*)(
+    const m::vec<i16, 2> &p_pixel_coordinates,
+    ui8 **p_vertex_output_interpolated, ui8 **p_uniforms, rgbf_t &out_color);
 
 struct shader_vertex {
   const shader_vertex_runtime_ctx &m_ctx;

@@ -763,36 +763,45 @@ private:
 
     rgbf_t l_color_buffer;
 
-    __for_each_rendered_pixels([&](uimax p_pixel_index) {
-      visibility_bool_t *l_visibility_boolean;
-      m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
-                                    none(), none());
-      if (*l_visibility_boolean) {
+    __for_each_rendered_pixels<1>(
+        [&](uimax p_pixel_index, const pixel_coordinates &p_pixel_coordinates) {
+          visibility_bool_t *l_visibility_boolean;
+          m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
+                                        none(), none());
+          if (*l_visibility_boolean) {
 
-        for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
-             ++j) {
-          m_heap.m_vertex_output_interpolated_send_to_fragment_shader.at(j) =
-              m_heap.m_vertex_output_interpolated.at(j, p_pixel_index);
-        }
+            for (auto j = 0;
+                 j < m_heap.m_vertex_output_interpolated.m_col_count; ++j) {
+              m_heap.m_vertex_output_interpolated_send_to_fragment_shader.at(
+                  j) = m_heap.m_vertex_output_interpolated.at(j, p_pixel_index);
+            }
 
-        l_fragment(
-            m_heap.m_vertex_output_interpolated_send_to_fragment_shader.m_data,
-            (ui8 **)m_input.m_fragment_uniforms.data(), l_color_buffer);
+            l_fragment(
+                p_pixel_coordinates,
+                m_heap.m_vertex_output_interpolated_send_to_fragment_shader
+                    .m_data,
+                (ui8 **)m_input.m_fragment_uniforms.data(), l_color_buffer);
 
-        rgb_t l_color = (l_color_buffer * 255).cast<ui8>();
-        m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
-      }
-    });
+            rgb_t l_color = (l_color_buffer * 255).cast<ui8>();
+            m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
+          }
+        });
   };
 
-  template <typename CallbackFunc>
+  template <ui8 GetCoords = 0, typename CallbackFunc>
   void __for_each_rendered_pixels(const CallbackFunc &p_callback) {
     for (auto y = m_rendered_rect.min().y(); y < m_rendered_rect.max().y();
          ++y) {
       for (auto x = m_rendered_rect.min().x(); x < m_rendered_rect.max().x();
            ++x) {
         auto l_pixel_index = (m_input.m_target_image_view.m_width * y) + x;
-        p_callback(l_pixel_index);
+        if constexpr (GetCoords) {
+          pixel_coordinates l_pixel_coordinates = {screen_coord_t(x),
+                                                   screen_coord_t(y)};
+          p_callback(l_pixel_index, l_pixel_coordinates);
+        } else {
+          p_callback(l_pixel_index);
+        }
       }
     }
   };

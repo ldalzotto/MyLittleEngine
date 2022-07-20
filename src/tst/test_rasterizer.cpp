@@ -1,4 +1,7 @@
 
+#include "cor/container.hpp"
+#include "rast/model.hpp"
+#include "shared/types.hpp"
 #include <tst/test_engine_common.hpp>
 
 inline static constexpr auto TEST_RAST_RELATIVE_FOLDER =
@@ -529,7 +532,21 @@ struct rast_uniform_sampler_shader {
         p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
   };
 
-  PROGRAM_FRAGMENT { out_color = rgbf_t{1, 1, 1}; };
+  PROGRAM_FRAGMENT {
+    auto *l_texture = (rast::uniform_texture *)p_uniforms[0];
+    auto l_Image_view = rast::image_view(
+        l_texture->m_texture_info->width, l_texture->m_texture_info->height,
+        l_texture->m_texture_info->bitsPerPixel,
+        container::range<ui8>::make(l_texture->m_memory->data,
+                                    l_texture->m_memory->size));
+    /*
+auto l_tex =
+l_Image_view.get_pixel(p_pixel_coordinates.x(), p_pixel_coordinates.y())
+.cast<fix32>() /
+255;
+out_color = rgbf_t{l_tex.x(), l_tex.y(), l_tex.z()};*/
+    out_color = rgbf_t{1, 1, 1};
+  };
 };
 
 TEST_CASE("rast.uniform.sampler") {

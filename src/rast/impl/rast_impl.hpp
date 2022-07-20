@@ -1,5 +1,7 @@
 #pragma once
 
+#include "bgfx/bgfx.h"
+#include "cor/types.hpp"
 #include <m/color.hpp>
 #include <m/geom.hpp>
 #include <rast/impl/algorithm.hpp>
@@ -861,19 +863,17 @@ struct rast_impl_software {
 
 private:
   container::range<ui8> __get_uniform(uimax p_hash) {
-    auto &l_uniform =
-        heap.m_uniforms.by_index.at(heap.m_uniforms.by_key.at(p_hash));
-    if (l_uniform.m_type == bgfx::UniformType::Vec4) {
-      auto &l_value = heap.m_uniform_values.vecs.at(l_uniform.m_index);
-      return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
-    }
-    return container::range<ui8>::make(0, 0);
+    auto l_index = heap.m_uniforms.by_key.at(p_hash);
+    return __get_uniform(bgfx::UniformHandle{.idx = ui16(l_index)});
   };
 
   container::range<ui8> __get_uniform(bgfx::UniformHandle p_handle) {
     auto &l_uniform = heap.m_uniforms.by_index.at(p_handle.idx);
     if (l_uniform.m_type == bgfx::UniformType::Vec4) {
       auto &l_value = heap.m_uniform_values.vecs.at(l_uniform.m_index);
+      return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
+    } else if (l_uniform.m_type == bgfx::UniformType::Sampler) {
+      auto &l_value = heap.m_uniform_values.samplers.at(p_handle.idx);
       return container::range<ui8>::make((ui8 *)&l_value, sizeof(l_value));
     }
     return container::range<ui8>::make(0, 0);
