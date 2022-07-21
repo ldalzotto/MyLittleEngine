@@ -534,7 +534,7 @@ struct rast_uniform_sampler_shader {
 
   PROGRAM_FRAGMENT {
     auto *l_texture = (rast::uniform_texture *)p_uniforms[0];
-    auto l_Image_view = rast::image_view(
+    auto l_image_view = rast::image_view(
         l_texture->m_texture_info->width, l_texture->m_texture_info->height,
         l_texture->m_texture_info->bitsPerPixel,
         container::range<ui8>::make(l_texture->m_memory->data,

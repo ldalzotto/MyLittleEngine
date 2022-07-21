@@ -2,7 +2,7 @@
 
 #include <cor/orm.hpp>
 #include <cor/types.hpp>
-#include <rast/model.hpp>
+#include <rast/image_texture.hpp>
 #include <shared/types.hpp>
 #include <sys/win.hpp>
 

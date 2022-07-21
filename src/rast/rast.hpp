@@ -7,6 +7,7 @@
 #include <m/color.hpp>
 #include <m/mat.hpp>
 #include <m/vec.hpp>
+#include <rast/image_texture.hpp>
 #include <rast/model.hpp>
 
 template <typename Private> struct rast_api {
