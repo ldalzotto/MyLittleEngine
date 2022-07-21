@@ -522,30 +522,40 @@ struct rast_uniform_sampler_shader {
 
   PROGRAM_UNIFORM_FRAGMENT(0, 0);
 
-  PROGRAM_META(rast_uniform_sampler_shader, 1, 0, 0, 1);
+  PROGRAM_VERTEX_OUT(0, bgfx::AttribType::Float, 2);
+
+  PROGRAM_META(rast_uniform_sampler_shader, 1, 0, 1, 1);
 
   PROGRAM_VERTEX {
     rast::shader_vertex l_shader = {p_ctx};
     const auto &l_vertex_pos =
         l_shader.get_vertex<position_t>(bgfx::Attrib::Enum::Position, p_vertex);
+    const auto &l_vertex_uv =
+        l_shader.get_vertex<uv_t>(bgfx::Attrib::Enum::TexCoord0, p_vertex);
     out_screen_position =
         p_ctx.m_local_to_unit * m::vec<fix32, 4>::make(l_vertex_pos, 1);
+
+    uv_t *l_uv = (uv_t *)out_vertex[0];
+    *l_uv = l_vertex_uv;
   };
 
   PROGRAM_FRAGMENT {
     auto *l_texture = (rast::uniform_texture *)p_uniforms[0];
+    auto *l_uv = (uv_t *)p_vertex_output_interpolated[0];
     auto l_image_view = rast::image_view(
         l_texture->m_texture_info->width, l_texture->m_texture_info->height,
         l_texture->m_texture_info->bitsPerPixel,
         container::range<ui8>::make(l_texture->m_memory->data,
                                     l_texture->m_memory->size));
-    /*
-auto l_tex =
-l_Image_view.get_pixel(p_pixel_coordinates.x(), p_pixel_coordinates.y())
-.cast<fix32>() /
-255;
-out_color = rgbf_t{l_tex.x(), l_tex.y(), l_tex.z()};*/
-    out_color = rgbf_t{1, 1, 1};
+
+    uv_t l_mapped_uv_fix32 =
+        *l_uv * m::vec<ui16, 2>{l_image_view.m_width, l_image_view.m_height}
+                    .cast<fix32>();
+    auto l_mapped_uv = l_mapped_uv_fix32.cast<ui16>();
+    auto l_tex =
+        l_image_view.get_pixel(l_mapped_uv.x(), l_mapped_uv.y()).cast<fix32>() /
+        255;
+    out_color = rgbf_t{l_tex.x(), l_tex.y(), l_tex.z()};
   };
 };
 
@@ -556,6 +566,9 @@ TEST_CASE("rast.uniform.sampler") {
 v 0.0 0.0 0.0
 v 0.0 1.0 0.0
 v 1.0 0.0 0.0
+vt 0.0 0.0
+vt 0.0 1.0
+vt 1.0 0.0
 f 1 2 3
   )"""");
 

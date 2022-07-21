@@ -859,6 +859,13 @@ private:
             __interpolate(p_polygon_weight, *(m::vec<fix32, 3> *)l_0,
                           *(m::vec<fix32, 3> *)l_1, *(m::vec<fix32, 3> *)l_2);
 
+      } else if (l_output_parameter_meta.m_attrib_element_count == 2) {
+        m::vec<fix32, 2> *l_interpolated_vertex_output =
+            (m::vec<fix32, 2> *)m_heap.m_vertex_output_interpolated.at(
+                p_vertex_output_index, p_pixel_index);
+        *l_interpolated_vertex_output =
+            __interpolate(p_polygon_weight, *(m::vec<fix32, 2> *)l_0,
+                          *(m::vec<fix32, 2> *)l_1, *(m::vec<fix32, 2> *)l_2);
       } else if (l_output_parameter_meta.m_attrib_element_count == 1) {
         fix32 *l_interpolated_vertex_output =
             (fix32 *)m_heap.m_vertex_output_interpolated.at(
