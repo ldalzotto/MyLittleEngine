@@ -21,14 +21,15 @@ inline static void image_copy_stretch(rgb_t *p_from, ui16 p_from_width,
   }
 };
 
-struct image_view {
+struct image {
   ui16 m_width;
   ui16 m_height;
   ui8 m_bits_per_pixel;
   container::range<ui8> m_buffer;
 
-  image_view(const ui16 &p_width, const ui16 &p_height,
-             const ui8 &p_bits_per_pixel, const container::range<ui8> &p_buffer)
+  // FIXME -> container::range<ui8> m_buffer; should be ui8* m_buffer; instead
+  image(const ui16 &p_width, const ui16 &p_height, const ui8 &p_bits_per_pixel,
+        const container::range<ui8> &p_buffer)
       : m_width(p_width), m_height(p_height),
         m_bits_per_pixel(p_bits_per_pixel), m_buffer(p_buffer){};
 
@@ -84,9 +85,7 @@ struct image_view {
     }
   };
 
-  void copy_to(const image_view &p_other) {
-    m_buffer.copy_to(p_other.m_buffer);
-  };
+  void copy_to(const image &p_other) { m_buffer.copy_to(p_other.m_buffer); };
 };
 
 }; // namespace rast

@@ -125,7 +125,7 @@ template <typename Private> struct ren_api {
     thiz.frame(p_rast);
   };
 
-  FORCE_INLINE rast::image_view frame_view(camera_handle p_camera) {
+  FORCE_INLINE rast::image frame_view(camera_handle p_camera) {
     return thiz.frame_view(p_camera);
   };
 };

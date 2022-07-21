@@ -1,9 +1,9 @@
 #pragma once
 
 #include "bgfx/bgfx.h"
-#include "cor/types.hpp"
 #include <m/color.hpp>
 #include <m/geom.hpp>
+#include <rast/image_texture.hpp>
 #include <rast/impl/algorithm.hpp>
 #include <rast/model.hpp>
 
@@ -789,7 +789,7 @@ struct rast_impl_software {
         const clear_state &l_clear_state = p_render_pass.value()->m_clear;
         if (l_clear_state.m_flags.m_color) {
           texture *l_texture = l_frame_rgb_texture.value();
-          rast::image_view l_target_view(
+          rast::image l_target_view(
               l_texture->m_info.width, l_texture->m_info.height,
               l_texture->m_info.bitsPerPixel, l_frame_rgb_texture_range);
           l_target_view.for_each<rgb_t>([&](rgb_t &p_pixel) {
@@ -801,10 +801,10 @@ struct rast_impl_software {
 
         if (l_clear_state.m_flags.m_depth) {
           assert_debug(l_frame_buffer.m_value->has_depth());
-          rast::image_view l_depth_view(l_frame_depth_texture_info.width,
-                                        l_frame_depth_texture_info.height,
-                                        l_frame_depth_texture_info.bitsPerPixel,
-                                        l_frame_depth_texture_range);
+          rast::image l_depth_view(l_frame_depth_texture_info.width,
+                                   l_frame_depth_texture_info.height,
+                                   l_frame_depth_texture_info.bitsPerPixel,
+                                   l_frame_depth_texture_range);
           l_depth_view.for_each<fix32>(
               [&](fix32 &p_pixel) { p_pixel = l_clear_state.m_depth; });
         }

@@ -36,8 +36,8 @@ struct window_image_buffer {
     win::free_image(m_native);
   };
 
-  rast::image_view image_view() {
-    return rast::image_view(m_width, m_height, sizeof(ui8) * 4, m_data.range());
+  rast::image image() {
+    return rast::image(m_width, m_height, sizeof(ui8) * 4, m_data.range());
   };
 };
 
@@ -54,7 +54,7 @@ public:
 
   void open_window(window_handle p_window) { __open_window(p_window); };
   void close_window(window_handle p_window) { __close_window(p_window); };
-  void draw_window(window_handle p_window, const rast::image_view &p_image) {
+  void draw_window(window_handle p_window, const rast::image &p_image) {
     window_native_ptr *l_native_ptr;
     window_image_buffer *l_image_buffer;
     win::events *l_events;

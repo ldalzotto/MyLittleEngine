@@ -386,12 +386,12 @@ struct ren_impl {
   };
 
   template <typename Rasterizer>
-  rast::image_view frame_view(camera_handle p_camera,
+  rast::image frame_view(camera_handle p_camera,
                               rast_api<Rasterizer> p_rast) {
     camera *l_camera;
     bgfx::FrameBufferHandle *l_frame_buffer;
     m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, &l_frame_buffer);
-    return rast::image_view(
+    return rast::image(
         l_camera->m_width, l_camera->m_height,
         textureformat_to_pixel_size(s_camera_rgb_format),
         p_rast.fetchTextureSync(p_rast.getTexture(*l_frame_buffer)));

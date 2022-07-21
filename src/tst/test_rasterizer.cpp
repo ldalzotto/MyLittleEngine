@@ -542,19 +542,18 @@ struct rast_uniform_sampler_shader {
   PROGRAM_FRAGMENT {
     auto *l_texture = (rast::uniform_texture *)p_uniforms[0];
     auto *l_uv = (uv_t *)p_vertex_output_interpolated[0];
-    auto l_image_view = rast::image_view(
+    auto l_image = rast::image(
         l_texture->m_texture_info->width, l_texture->m_texture_info->height,
         l_texture->m_texture_info->bitsPerPixel,
         container::range<ui8>::make(l_texture->m_memory->data,
                                     l_texture->m_memory->size));
 
     uv_t l_mapped_uv_fix32 =
-        *l_uv * m::vec<ui16, 2>{l_image_view.m_width, l_image_view.m_height}
-                    .cast<fix32>();
+        *l_uv *
+        m::vec<ui16, 2>{l_image.m_width, l_image.m_height}.cast<fix32>();
     auto l_mapped_uv = l_mapped_uv_fix32.cast<ui16>();
     auto l_tex =
-        l_image_view.get_pixel(l_mapped_uv.x(), l_mapped_uv.y()).cast<fix32>() /
-        255;
+        l_image.get_pixel(l_mapped_uv.x(), l_mapped_uv.y()).cast<fix32>() / 255;
     out_color = rgbf_t{l_tex.x(), l_tex.y(), l_tex.z()};
   };
 };

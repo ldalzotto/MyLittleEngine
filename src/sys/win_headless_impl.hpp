@@ -1,3 +1,4 @@
+#include <rast/image_texture.hpp>
 #include <rast/model.hpp>
 #include <sys/win.hpp>
 
@@ -11,9 +12,8 @@ struct window_headless {
   ui16 m_width;
   ui16 m_height;
 
-  rast::image_view image_view() {
-    return rast::image_view(m_width, m_height, sizeof(ui8) * 3,
-                            m_buffer.range());
+  rast::image image() {
+    return rast::image(m_width, m_height, sizeof(ui8) * 3, m_buffer.range());
   };
 };
 
@@ -22,8 +22,8 @@ struct window_headless_image {
   ui32 m_width;
   ui32 m_height;
 
-  rast::image_view image_view() {
-    return rast::image_view(
+  rast::image image() {
+    return rast::image(
         m_width, m_height, sizeof(ui8) * 3,
         container::range<ui8>::make((ui8 *)m_buffer,
                                     m_width * m_height * sizeof(ui8) * 3));
@@ -61,7 +61,7 @@ void free_image(void *p_image) {
 void draw(void *p_window, void *p_image, ui32 p_width, ui32 p_height) {
   window_headless_image *l_image = (window_headless_image *)p_image;
   window_headless *l_window = (window_headless *)p_window;
-  l_image->image_view().copy_to(l_window->image_view());
+  l_image->image().copy_to(l_window->image());
 };
 
 void fetch_events(container::range<events> &in_out_events) {
@@ -72,7 +72,7 @@ void fetch_events(container::range<events> &in_out_events) {
   s_events_count = 0;
 };
 
-void debug_simulate_event(void* p_window, const event &p_event) {
+void debug_simulate_event(void *p_window, const event &p_event) {
   s_events.m_data[s_events_count] = p_event;
   s_events_count += 1;
 };
