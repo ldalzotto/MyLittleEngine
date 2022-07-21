@@ -7,6 +7,7 @@
 #include <m/color.hpp>
 #include <m/mat.hpp>
 #include <m/vec.hpp>
+#include <rast/image_texture.hpp>
 #include <rast/model.hpp>
 
 template <typename Private> struct rast_api {
@@ -161,6 +162,12 @@ template <typename Private> struct rast_api {
 
   FORCE_INLINE void setState(uint64_t _state, uint32_t _rgba = 0) {
     rast_api_setState(&thiz, _state, _rgba);
+  };
+
+  FORCE_INLINE void setTexture(uint8_t _stage, bgfx::UniformHandle _sampler,
+                               bgfx::TextureHandle _handle,
+                               uint32_t _flags = UINT32_MAX) {
+    rast_api_setTexture(&thiz, _stage, _sampler, _handle, _flags);
   };
 
   FORCE_INLINE void touch(bgfx::ViewId _id){/* bgfx_impl.view_submit(_id); */};

@@ -33,7 +33,8 @@
                      m::vec<fix32, 4> &out_screen_position, ui8 **out_vertex)
 
 #define PROGRAM_FRAGMENT                                                       \
-  static void fragment(ui8 **p_vertex_output_interpolated, ui8 **p_uniforms,   \
+  static void fragment(const m::vec<i16, 2> &p_pixel_coordinates,              \
+                       ui8 **p_vertex_output_interpolated, ui8 **p_uniforms,   \
                        rgbf_t &out_color)
 
 namespace ren {

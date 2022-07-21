@@ -6,6 +6,7 @@
 #include <m/geom.hpp>
 #include <m/polygon.hpp>
 #include <m/rect.hpp>
+#include <rast/image_texture.hpp>
 #include <rast/model.hpp>
 #include <shared/types.hpp>
 
@@ -259,8 +260,8 @@ struct rasterize_unit {
     ui64 m_state;
     ui32 m_rgba;
 
-    image_view m_target_image_view;
-    image_view m_target_depth_view;
+    rast::image m_target_image;
+    image m_target_depth_view;
 
     input(const program &p_program, m::rect_point_extend<ui16> &p_rect,
           const m::mat<fix32, 4, 4> &p_proj, const m::mat<fix32, 4, 4> &p_view,
@@ -280,7 +281,7 @@ struct rasterize_unit {
           m_vertex_uniforms(p_vertex_uniforms),
           m_fragment_uniforms(p_fragment_uniforms), m_state(p_state),
           m_rgba(p_rgba),
-          m_target_image_view(p_target_info.width, p_target_info.height,
+          m_target_image(p_target_info.width, p_target_info.height,
                               p_target_info.bitsPerPixel, p_target_buffer),
           m_target_depth_view(p_depth_info.width, p_depth_info.height,
                               p_depth_info.bitsPerPixel, p_depth_buffer){};
@@ -395,9 +396,9 @@ private:
     m_heap.m_per_polygons.resize(m_polygon_count);
 
     m_heap.m_visibility_buffer.resize(
-        m_input.m_target_image_view.pixel_count());
+        m_input.m_target_image.pixel_count());
     m_heap.m_rasterizationrect_visibility_buffer.resize(
-        m_input.m_target_image_view.pixel_count());
+        m_input.m_target_image.pixel_count());
 
     m_heap.m_vertex_output_interpolated.resize_col_capacity(
         m_heap.m_vertex_output_layout.m_col_count);
@@ -405,7 +406,7 @@ private:
     for (auto l_col_it = 0;
          l_col_it < m_heap.m_vertex_output_layout.m_col_count; ++l_col_it) {
       m_heap.m_vertex_output_interpolated.col(l_col_it).resize(
-          m_input.m_target_image_view.pixel_count(),
+          m_input.m_target_image.pixel_count(),
           m_heap.m_vertex_output_layout.m_layout.at(l_col_it).m_element_size);
     }
 
@@ -537,9 +538,9 @@ private:
 
       assert_debug(l_bounding_rect->is_valid());
       assert_debug(l_bounding_rect->max().x() <=
-                   m_input.m_target_image_view.m_width);
+                   m_input.m_target_image.m_width);
       assert_debug(l_bounding_rect->max().y() <=
-                   m_input.m_target_image_view.m_height);
+                   m_input.m_target_image.m_height);
 
     next:
       l_index_idx += 3;
@@ -563,16 +564,16 @@ private:
 
     assert_debug(m_rendered_rect.is_valid());
     assert_debug(m_rendered_rect.max().x() <=
-                 m_input.m_target_image_view.m_width);
+                 m_input.m_target_image.m_width);
     assert_debug(m_rendered_rect.max().y() <=
-                 m_input.m_target_image_view.m_height);
+                 m_input.m_target_image.m_height);
   };
 
   void __calculate_visibility_buffer() {
     container::range<ui8> l_visibility_range;
     m_heap.m_visibility_buffer.range(&l_visibility_range, none(), none());
     l_visibility_range =
-        l_visibility_range.shrink_to(m_input.m_target_image_view.pixel_count());
+        l_visibility_range.shrink_to(m_input.m_target_image.pixel_count());
     l_visibility_range.zero();
 
     for (auto l_polygon_it = 0; l_polygon_it < m_polygon_count;
@@ -589,7 +590,7 @@ private:
       m_heap.m_rasterizationrect_visibility_buffer.range(
           &l_boudingrect_visibility_range, none(), none());
       l_boudingrect_visibility_range = l_boudingrect_visibility_range.shrink_to(
-          m_input.m_target_image_view.pixel_count());
+          m_input.m_target_image.pixel_count());
 
       pixel_coordinates l_rasterization_rect_offset = l_bounding_rect->min();
       pixel_coordinates l_rasterization_rect_dimensions =
@@ -738,7 +739,7 @@ private:
         if (*l_boundingrect_visibility_boolean) {
 
           auto l_visibility_index = ((y + p_bounding_rect_offset.y()) *
-                                     m_input.m_target_image_view.m_width) +
+                                     m_input.m_target_image.m_width) +
                                     (x + p_bounding_rect_offset.x());
 
           p_callback(l_boundingrect_visibility_boolean,
@@ -763,36 +764,45 @@ private:
 
     rgbf_t l_color_buffer;
 
-    __for_each_rendered_pixels([&](uimax p_pixel_index) {
-      visibility_bool_t *l_visibility_boolean;
-      m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
-                                    none(), none());
-      if (*l_visibility_boolean) {
+    __for_each_rendered_pixels<1>(
+        [&](uimax p_pixel_index, const pixel_coordinates &p_pixel_coordinates) {
+          visibility_bool_t *l_visibility_boolean;
+          m_heap.m_visibility_buffer.at(p_pixel_index, &l_visibility_boolean,
+                                        none(), none());
+          if (*l_visibility_boolean) {
 
-        for (auto j = 0; j < m_heap.m_vertex_output_interpolated.m_col_count;
-             ++j) {
-          m_heap.m_vertex_output_interpolated_send_to_fragment_shader.at(j) =
-              m_heap.m_vertex_output_interpolated.at(j, p_pixel_index);
-        }
+            for (auto j = 0;
+                 j < m_heap.m_vertex_output_interpolated.m_col_count; ++j) {
+              m_heap.m_vertex_output_interpolated_send_to_fragment_shader.at(
+                  j) = m_heap.m_vertex_output_interpolated.at(j, p_pixel_index);
+            }
 
-        l_fragment(
-            m_heap.m_vertex_output_interpolated_send_to_fragment_shader.m_data,
-            (ui8 **)m_input.m_fragment_uniforms.data(), l_color_buffer);
+            l_fragment(
+                p_pixel_coordinates,
+                m_heap.m_vertex_output_interpolated_send_to_fragment_shader
+                    .m_data,
+                (ui8 **)m_input.m_fragment_uniforms.data(), l_color_buffer);
 
-        rgb_t l_color = (l_color_buffer * 255).cast<ui8>();
-        m_input.m_target_image_view.set_pixel(p_pixel_index, l_color);
-      }
-    });
+            rgb_t l_color = (l_color_buffer * 255).cast<ui8>();
+            m_input.m_target_image.set_pixel(p_pixel_index, l_color);
+          }
+        });
   };
 
-  template <typename CallbackFunc>
+  template <ui8 GetCoords = 0, typename CallbackFunc>
   void __for_each_rendered_pixels(const CallbackFunc &p_callback) {
     for (auto y = m_rendered_rect.min().y(); y < m_rendered_rect.max().y();
          ++y) {
       for (auto x = m_rendered_rect.min().x(); x < m_rendered_rect.max().x();
            ++x) {
-        auto l_pixel_index = (m_input.m_target_image_view.m_width * y) + x;
-        p_callback(l_pixel_index);
+        auto l_pixel_index = (m_input.m_target_image.m_width * y) + x;
+        if constexpr (GetCoords) {
+          pixel_coordinates l_pixel_coordinates = {screen_coord_t(x),
+                                                   screen_coord_t(y)};
+          p_callback(l_pixel_index, l_pixel_coordinates);
+        } else {
+          p_callback(l_pixel_index);
+        }
       }
     }
   };
@@ -850,6 +860,13 @@ private:
             __interpolate(p_polygon_weight, *(m::vec<fix32, 3> *)l_0,
                           *(m::vec<fix32, 3> *)l_1, *(m::vec<fix32, 3> *)l_2);
 
+      } else if (l_output_parameter_meta.m_attrib_element_count == 2) {
+        m::vec<fix32, 2> *l_interpolated_vertex_output =
+            (m::vec<fix32, 2> *)m_heap.m_vertex_output_interpolated.at(
+                p_vertex_output_index, p_pixel_index);
+        *l_interpolated_vertex_output =
+            __interpolate(p_polygon_weight, *(m::vec<fix32, 2> *)l_0,
+                          *(m::vec<fix32, 2> *)l_1, *(m::vec<fix32, 2> *)l_2);
       } else if (l_output_parameter_meta.m_attrib_element_count == 1) {
         fix32 *l_interpolated_vertex_output =
             (fix32 *)m_heap.m_vertex_output_interpolated.at(

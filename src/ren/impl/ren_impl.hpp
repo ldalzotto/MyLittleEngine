@@ -264,20 +264,21 @@ struct ren_impl {
     l_material->push_back(l_uniform, rast::uniform_type_get_size(p_type));
   };
 
-  template <typename Rasterizer>
   void material_set_vec4(material_handle p_material, uimax p_index,
-                         const rast::uniform_vec4_t &p_value,
-                         rast_api<Rasterizer> p_rast) {
+                         const rast::uniform_vec4_t &p_value) {
     material *l_material;
     m_heap.m_materials.at(p_material.m_idx, &l_material);
 
-    // TODO -> enable this
-    /*
-        block_debug([&]() {
-          auto l_uniform_info = p_rast.getUniformInfo();
-          assert_debug(l_uniform_info.type == bgfx::UniformType::Vec4);
-        });
-    */
+    l_material->at(p_index).copy_from(
+        container::range<traits::remove_ref<decltype(p_value)>::type>::make(
+            &p_value, 1));
+  };
+
+  void material_set_sampler(material_handle p_material, uimax p_index,
+                            const rast::uniform_sampler_t &p_value) {
+    material *l_material;
+    m_heap.m_materials.at(p_material.m_idx, &l_material);
+
     l_material->at(p_index).copy_from(
         container::range<traits::remove_ref<decltype(p_value)>::type>::make(
             &p_value, 1));
@@ -385,12 +386,12 @@ struct ren_impl {
   };
 
   template <typename Rasterizer>
-  rast::image_view frame_view(camera_handle p_camera,
+  rast::image frame_view(camera_handle p_camera,
                               rast_api<Rasterizer> p_rast) {
     camera *l_camera;
     bgfx::FrameBufferHandle *l_frame_buffer;
     m_heap.m_camera_table.at(p_camera.m_idx, &l_camera, &l_frame_buffer);
-    return rast::image_view(
+    return rast::image(
         l_camera->m_width, l_camera->m_height,
         textureformat_to_pixel_size(s_camera_rgb_format),
         p_rast.fetchTextureSync(p_rast.getTexture(*l_frame_buffer)));
