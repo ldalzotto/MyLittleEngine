@@ -4,7 +4,7 @@ enable_language(CXX)
 set(CMAKE_CXX_STANDARD 17)
 
 if(NOT DEFINED RUNTIME_CI)
-    # set(PROFILE_TEST true)
+    set(PROFILE_TEST true)
     if(PROFILE_TEST)
         set(ENABLE_SAFETY_CHECKS true)
         set(ENABLE_ADDRESS true)
@@ -90,12 +90,13 @@ target_link_libraries(ENGINE INTERFACE BGFX_API)
 add_executable(TESTS 
 ./src/tst/tests.cpp 
 ./src/tst/test_common.cpp 
-./src/tst/test_clock.cpp 
-./src/tst/test_assets.cpp 
-./src/tst/test_numbers.cpp 
-./src/tst/test_rasterizer.cpp
-./src/tst/test_ren_cube.cpp 
-./src/tst/test_window.cpp
+# ./src/tst/test_clock.cpp 
+# ./src/tst/test_assets.cpp 
+# ./src/tst/test_numbers.cpp 
+# ./src/tst/test_rasterizer.cpp
+# ./src/tst/test_ren_cube.cpp 
+# ./src/tst/test_window.cpp
+./src/tst/test_core.cpp
 )
 
 target_link_libraries(TESTS PUBLIC ENGINE)
