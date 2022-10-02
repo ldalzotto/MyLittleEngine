@@ -449,6 +449,8 @@ using pool_2 = pool_impl<tuple<2, T0 *, T1 *>>;
     return slice_##p_prefix{.m_slice = vector_to_slice(&thiz->m_vector)};      \
   };
 
+// region_begin algorithm
+
 template <typename TupleType, typename PredicateFunction>
 void slice_sort(slice_impl<TupleType> *thiz,
                 const PredicateFunction &p_predicate) {
@@ -467,5 +469,7 @@ void slice_sort(slice_impl<TupleType> *thiz,
     }
   }
 };
+
+// region_end algorithm
 
 }; // namespace v2
