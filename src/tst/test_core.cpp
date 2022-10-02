@@ -21,13 +21,19 @@ TEST_CASE("core") {
   slice_zero(&l_slice_2);
 
   vector_2<int, float> l_vector_2;
-  vector_allocate(&l_vector_2, 10);
+  vector_allocate(&l_vector_2, 0);
+  vector_insert_at(&l_vector_2, 0, 5);
+  vector_remove_at(&l_vector_2, 0, 5);
 
   auto l_vector_2_slice = vector_to_slice(&l_vector_2);
   slice_slide(&l_vector_2_slice, 0);
 
-  pool_impl<tuple<2, int *, float *>> l_pool;
-  pool_allocate(&l_pool, 10);
+  pool_2<int, float> l_pool;
+  pool_allocate(&l_pool, 0);
+  uimax l_index = pool_push(&l_pool);
+  l_pool.m_elements.m_data.m_0[l_index] = 10;
+  pool_remove(&l_pool, l_index);
+  l_index = pool_push(&l_pool);
   pool_free(&l_pool);
 
   span_free(&l_span_1);

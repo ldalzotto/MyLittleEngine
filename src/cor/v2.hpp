@@ -18,6 +18,10 @@ template <typename T> void array_zero(T *p_ptr, uimax p_count) {
   sys::memset(p_ptr, 0, sizeof(T) * p_count);
 };
 
+template <typename T> T *array_realloc(T *p_ptr, uimax p_new_count) {
+  return (T *)sys::realloc(p_ptr, sizeof(T) * p_new_count);
+};
+
 template <typename T> struct meta_remove_ptr { using Type = T; };
 template <typename T> struct meta_remove_ptr<T *> { using Type = T; };
 
@@ -121,6 +125,55 @@ void tuple_data_zero_loop(TupleType *thiz, uimax p_count) {
   }
 };
 
+template <i32 N, typename TupleType>
+void tuple_data_realloc_loop(TupleType *thiz, uimax p_count) {
+  constexpr i32 l_tuple_count = tuple_get_count<TupleType>{}();
+  if constexpr (N < l_tuple_count) {
+    using TPtr = typename tuple_get_element_type<TupleType, N>::Type;
+    using T = typename meta_remove_ptr<TPtr>::Type;
+
+    T **l_element = tuple_get_element<TupleType, N>{}(thiz);
+
+    *l_element = array_realloc(*l_element, p_count);
+
+    tuple_data_realloc_loop<N + 1>(thiz, p_count);
+  }
+};
+
+template <i32 N, typename TupleType>
+void tuple_data_memmovedown_loop(TupleType *thiz, uimax p_break_index,
+                                 uimax p_move_delta, uimax p_chunk_count) {
+  constexpr i32 l_tuple_count = tuple_get_count<TupleType>{}();
+  if constexpr (N < l_tuple_count) {
+    using TPtr = typename tuple_get_element_type<TupleType, N>::Type;
+    using T = typename meta_remove_ptr<TPtr>::Type;
+
+    T **l_element = tuple_get_element<TupleType, N>{}(thiz);
+
+    sys::memmove_down_t(*l_element, p_break_index, p_move_delta, p_chunk_count);
+
+    tuple_data_memmovedown_loop<N + 1>(thiz, p_break_index, p_move_delta,
+                                       p_chunk_count);
+  }
+};
+
+template <i32 N, typename TupleType>
+void tuple_data_memmoveup_loop(TupleType *thiz, uimax p_break_index,
+                               uimax p_move_delta, uimax p_chunk_count) {
+  constexpr i32 l_tuple_count = tuple_get_count<TupleType>{}();
+  if constexpr (N < l_tuple_count) {
+    using TPtr = typename tuple_get_element_type<TupleType, N>::Type;
+    using T = typename meta_remove_ptr<TPtr>::Type;
+
+    T **l_element = tuple_get_element<TupleType, N>{}(thiz);
+
+    sys::memmove_up_t(*l_element, p_break_index, p_move_delta, p_chunk_count);
+
+    tuple_data_memmoveup_loop<N + 1>(thiz, p_break_index, p_move_delta,
+                                     p_chunk_count);
+  }
+};
+
 template <typename TupleType> struct slice_impl {
   uimax m_count;
   TupleType m_data;
@@ -202,6 +255,55 @@ slice_impl<TupleType> vector_to_slice(vector_impl<TupleType> *thiz) {
                                .m_data = thiz->m_data};
 };
 
+template <typename TupleType>
+void vector_expand_delta(vector_impl<TupleType> *thiz, uimax p_delta_count) {
+  uimax l_new_capacity = thiz->m_capacity + p_delta_count;
+  uimax l_calculated_new_capacity = thiz->m_capacity;
+  if (l_calculated_new_capacity == 0) {
+    l_calculated_new_capacity = 1;
+  };
+  while (l_calculated_new_capacity < l_new_capacity) {
+    l_calculated_new_capacity *= 2;
+  }
+  thiz->m_capacity = l_calculated_new_capacity;
+
+  tuple_data_realloc_loop<0>(&thiz->m_data, thiz->m_capacity);
+};
+
+template <typename TupleType>
+void vector_insert_at(vector_impl<TupleType> *thiz, uimax p_index,
+                      uimax p_insert_count) {
+  assert_debug(p_index <= thiz->m_capacity);
+  if (thiz->m_count + p_insert_count > thiz->m_capacity) {
+    uimax l_delta = (p_index + p_insert_count) - thiz->m_capacity;
+    vector_expand_delta(thiz, l_delta);
+  }
+  uimax l_chunk_count = thiz->m_count - p_index;
+  tuple_data_memmovedown_loop<0>(&thiz->m_data, p_index, p_insert_count,
+                                 l_chunk_count);
+  thiz->m_count += p_insert_count;
+};
+
+template <typename TupleType>
+void vector_push(vector_impl<TupleType> *thiz, uimax p_delta_count) {
+  if ((thiz->m_count + p_delta_count) >= thiz->m_capacity) {
+    vector_expand_delta(thiz, p_delta_count);
+  }
+  thiz->m_count += p_delta_count;
+};
+
+template <typename TupleType>
+void vector_remove_at(vector_impl<TupleType> *thiz, uimax p_index,
+                      uimax p_remove_count) {
+  assert_debug(p_index < thiz->m_count && thiz->m_count > 0);
+  if (p_index < thiz->m_count - 1) {
+    tuple_data_memmoveup_loop<0>(&thiz->m_data, p_index + p_remove_count,
+                                 p_remove_count,
+                                 thiz->m_count - (p_index + p_remove_count));
+  }
+  thiz->m_count -= p_remove_count;
+};
+
 template <typename T0> using vector_1 = vector_impl<tuple<1, T0 *>>;
 template <typename T0, typename T1>
 using vector_2 = vector_impl<tuple<2, T0 *, T1 *>>;
@@ -221,5 +323,38 @@ template <typename TupleType> void pool_free(pool_impl<TupleType> *thiz) {
   vector_free(&thiz->m_elements);
   vector_free(&thiz->m_free_elements);
 };
+
+template <typename TupleType> uimax pool_push(pool_impl<TupleType> *thiz) {
+  if (thiz->m_free_elements.m_count > 0) {
+    uimax l_free_index =
+        thiz->m_free_elements.m_data.m_0[thiz->m_free_elements.m_count - 1];
+    thiz->m_free_elements.m_count -= 1;
+    return l_free_index;
+  } else {
+    vector_push(&thiz->m_elements, 1);
+    return thiz->m_elements.m_count - 1;
+  }
+};
+
+template <typename TupleType>
+i8 pool_is_element_allocated(pool_impl<TupleType> *thiz, uimax p_index) {
+  for (uimax i = 0; i < thiz->m_free_elements.m_count; ++i) {
+    if (thiz->m_free_elements.m_data.m_0[i] == p_index) {
+      return 0;
+    }
+  }
+  return 1;
+};
+
+template <typename TupleType>
+void pool_remove(pool_impl<TupleType> *thiz, uimax p_index) {
+  assert_debug(pool_is_element_allocated(thiz, p_index));
+  vector_push(&thiz->m_free_elements, 1);
+  thiz->m_free_elements.m_data.m_0[thiz->m_free_elements.m_count - 1] = p_index;
+};
+
+template <typename T0> using pool_1 = pool_impl<tuple<1, T0 *>>;
+template <typename T0, typename T1>
+using pool_2 = pool_impl<tuple<2, T0 *, T1 *>>;
 
 }; // namespace v2
