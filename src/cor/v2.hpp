@@ -95,6 +95,39 @@ void tuple_data_free_loop(TupleType *thiz) {
 };
 
 template <i32 N, typename TupleType>
+void tuple_data_at_loop(TupleType *thiz, uimax p_index, TupleType *out) {
+  constexpr i32 l_tuple_count = tuple_get_count<TupleType>{}();
+  if constexpr (N < l_tuple_count) {
+    using TPtr = typename tuple_get_element_type<TupleType, N>::Type;
+    using T = typename meta_remove_ptr<TPtr>::Type;
+
+    T **l_element = tuple_get_element<TupleType, N>{}(thiz);
+    T **l_out_element = tuple_get_element<TupleType, N>{}(out);
+
+    *l_out_element = (*l_element) + p_index;
+
+    tuple_data_at_loop<N + 1>(thiz, p_index, out);
+  }
+};
+
+template <i32 N, typename TupleType>
+void tuple_data_swap_loop(TupleType *left, TupleType *right) {
+  constexpr i32 l_tuple_count = tuple_get_count<TupleType>{}();
+  if constexpr (N < l_tuple_count) {
+    using TPtr = typename tuple_get_element_type<TupleType, N>::Type;
+    using T = typename meta_remove_ptr<TPtr>::Type;
+
+    T **l_left_element = tuple_get_element<TupleType, N>{}(left);
+    T **l_right_element = tuple_get_element<TupleType, N>{}(right);
+    T l_tmp = **l_left_element;
+    **l_left_element = **l_right_element;
+    **l_right_element = l_tmp;
+
+    tuple_data_swap_loop<N + 1>(left, right);
+  }
+};
+
+template <i32 N, typename TupleType>
 void tuple_data_copy_to_loop(TupleType *from, TupleType *to, uimax p_count) {
   constexpr i32 l_tuple_count = tuple_get_count<TupleType>{}();
   if constexpr (N < l_tuple_count) {
@@ -415,5 +448,24 @@ using pool_2 = pool_impl<tuple<2, T0 *, T1 *>>;
   slice_##p_prefix vector_##p_prefix##_to_slice(vector_##p_prefix *thiz) {     \
     return slice_##p_prefix{.m_slice = vector_to_slice(&thiz->m_vector)};      \
   };
+
+template <typename TupleType, typename PredicateFunction>
+void slice_sort(slice_impl<TupleType> *thiz,
+                const PredicateFunction &p_predicate) {
+  uimax l_count = thiz->m_count;
+  TupleType *l_tuple = &thiz->m_data;
+  for (uimax l_left_index = 0; l_left_index < l_count; ++l_left_index) {
+    TupleType l_left_tuple;
+    tuple_data_at_loop<0>(l_tuple, l_left_index, &l_left_tuple);
+    for (uimax l_right_index = l_left_index + 1; l_right_index < l_count;
+         ++l_right_index) {
+      TupleType l_right_tuple;
+      tuple_data_at_loop<0>(l_tuple, l_right_index, &l_right_tuple);
+      if (p_predicate(&l_left_tuple, &l_right_tuple)) {
+        tuple_data_swap_loop<0>(&l_left_tuple, &l_right_tuple);
+      }
+    }
+  }
+};
 
 }; // namespace v2

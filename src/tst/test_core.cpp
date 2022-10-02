@@ -20,7 +20,7 @@ TEST_CASE("core") {
   slice_copy_to(&l_slice_1, &l_slice_another);
   slice_zero(&l_slice_another);
 
-  auto l_slice_2 = span_to_slice(&l_span_2);
+  slice_2<int, float> l_slice_2 = span_to_slice(&l_span_2);
   slice_zero(&l_slice_2);
 
   vector_2<int, float> l_vector_2;
@@ -38,6 +38,16 @@ TEST_CASE("core") {
   pool_remove(&l_pool, l_index);
   l_index = pool_push(&l_pool);
   pool_free(&l_pool);
+
+  for (uimax i = 0; i < l_slice_2.m_count; ++i) {
+    l_slice_2.m_data.m_0[i] = i;
+    l_slice_2.m_data.m_1[i] = i;
+  }
+
+  slice_sort(&l_slice_2,
+             [&](tuple<2, i32 *, f32 *> *left, tuple<2, i32 *, f32 *> *right) {
+               return *left->m_0 <= *right->m_0;
+             });
 
   span_free(&l_span_1);
   span_free(&l_span_2);
