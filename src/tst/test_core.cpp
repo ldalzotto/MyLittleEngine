@@ -44,8 +44,17 @@ TEST_CASE("core") {
     l_slice_2.m_data.m_1[i] = i;
   }
 
+  static constexpr ui8 l_split_mask_arr[2] = {1, 0};
+  constexpr ui8 *l_split_mask = (ui8 *)l_split_mask_arr;
+  slice_1<i32> l_slice_split = slice_split<l_split_mask>(&l_slice_2);
+
   slice_sort(&l_slice_2,
              [&](tuple<2, i32 *, f32 *> *left, tuple<2, i32 *, f32 *> *right) {
+               return *left->m_0 <= *right->m_0;
+             });
+
+  slice_sort(&l_slice_split,
+             [&](tuple<1, i32 *> *left, tuple<1, i32 *> *right) {
                return *left->m_0 <= *right->m_0;
              });
 
