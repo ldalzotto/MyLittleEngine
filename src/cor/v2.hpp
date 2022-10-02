@@ -279,6 +279,13 @@ slice_impl<TupleType> span_to_slice(span_impl<TupleType> *thiz) {
                                .m_data = thiz->m_data};
 };
 
+template <typename TupleType>
+void span_expand_delta(span_impl<TupleType> *thiz, uimax p_delta_count) {
+  uimax l_new_count = thiz->m_count + p_delta_count;
+  tuple_data_realloc_loop<0>(&thiz->m_data, l_new_count);
+  thiz->m_count = l_new_count;
+};
+
 template <typename TupleType> struct vector_impl {
   uimax m_count;
   uimax m_capacity;
@@ -470,6 +477,179 @@ void slice_sort(slice_impl<TupleType> *thiz,
   }
 };
 
+static uimax algo_alignment_offset(uimax p_begin, uimax p_alignment) {
+  uimax l_chunk_alignment_offset = 0;
+  while ((p_begin + l_chunk_alignment_offset) % p_alignment != 0) {
+    l_chunk_alignment_offset += 1;
+  }
+  return l_chunk_alignment_offset;
+};
+
 // region_end algorithm
+
+struct heap_chunk {
+  uimax m_begin;
+  uimax m_size;
+};
+
+struct heap_paged_chunk {
+  uimax m_page_index;
+  heap_chunk m_chunk;
+};
+
+static ui8 heap_chunks_find_next_block(slice_1<heap_chunk> *p_chunks,
+                                       uimax p_size, uimax p_alignment,
+                                       uimax *out_chunk_index,
+                                       uimax *out_chunk_alignment_offset) {
+  assert_debug(p_size > 0);
+  assert_debug(p_alignment > 0);
+  for (auto l_chunk_it = 0; l_chunk_it < p_chunks->m_count; ++l_chunk_it) {
+    heap_chunk *l_chunk = &p_chunks->m_data.m_0[l_chunk_it];
+    uimax l_chunk_alignment_offset =
+        algo_alignment_offset(l_chunk->m_begin, p_alignment);
+    if ((l_chunk->m_size > l_chunk_alignment_offset) &&
+        ((l_chunk->m_size - l_chunk_alignment_offset) >= p_size)) {
+      *out_chunk_index = l_chunk_it;
+      *out_chunk_alignment_offset = l_chunk_alignment_offset;
+      return 1;
+    }
+  }
+  return 0;
+};
+
+static void heap_chunks_defragment(vector_1<heap_chunk> *p_chunks) {
+  if (p_chunks->m_count > 0) {
+    slice_1<heap_chunk> l_slice = vector_to_slice(p_chunks);
+    using HeapChunkTuple = tuple<1, heap_chunk *>;
+    slice_sort(&l_slice, [&](HeapChunkTuple *p_left, HeapChunkTuple *p_right) {
+      return p_left->m_0->m_begin < p_right->m_0->m_begin;
+    });
+
+    for (uimax l_range_reverse = p_chunks->m_count - 1; l_range_reverse >= 1;
+         l_range_reverse--) {
+      heap_chunk *l_next = &p_chunks->m_data.m_0[l_range_reverse];
+      heap_chunk *l_previous = &p_chunks->m_data.m_0[l_range_reverse - 1];
+      if (l_previous->m_begin + l_previous->m_size == l_next->m_begin) {
+        l_previous->m_size += l_next->m_size;
+        vector_pop(p_chunks, 1);
+        l_range_reverse -= 1;
+      }
+    }
+  }
+};
+
+template <typename TupleType> struct heap_impl {
+  vector_1<heap_chunk> m_free_chunks;
+  pool_1<heap_chunk> m_allocated_chunk;
+  span_impl<TupleType> m_buffers;
+};
+
+template <typename TupleType> void heap_allocate(heap_impl<TupleType> *thiz) {
+  vector_allocate(&thiz->m_free_chunks, 0);
+  pool_allocate(&thiz->m_allocated_chunk, 0);
+  span_allocate(&thiz->m_buffers, 0);
+};
+
+template <typename TupleType> void heap_free(heap_impl<TupleType> *thiz) {
+  vector_free(&thiz->m_free_chunks);
+  pool_free(&thiz->m_allocated_chunk);
+  span_free(&thiz->m_buffers);
+};
+
+template <typename TupleType>
+void heap_push_new_free_chunk(heap_impl<TupleType> *thiz, uimax p_chunk_size) {
+  heap_chunk l_chunk;
+  l_chunk.m_begin = thiz->m_buffers.m_count;
+  l_chunk.m_size = p_chunk_size;
+  vector_push(&thiz->m_free_chunks, 1);
+  thiz->m_free_chunks.m_data.m_0[thiz->m_free_chunks.m_count - 1] = l_chunk;
+  span_expand_delta(&thiz->m_buffers, l_chunk.m_size);
+};
+
+template <typename TupleType>
+uimax heap_push_new_allocated_chunk(heap_impl<TupleType> *thiz, uimax p_size,
+                                    uimax p_free_chunk_index) {
+
+  heap_chunk *l_free_chunk =
+      &thiz->m_free_chunks.m_data.m_0[p_free_chunk_index];
+  heap_chunk l_chunk;
+  l_chunk.m_begin = l_free_chunk->m_begin;
+  l_chunk.m_size = p_size;
+  uimax l_allocated_chunk_index = pool_push(&thiz->m_allocated_chunk);
+  thiz->m_allocated_chunk.m_elements.m_data.m_0[l_allocated_chunk_index] =
+      l_chunk;
+  if (l_free_chunk->m_size > p_size) {
+    l_free_chunk->m_size -= p_size;
+    l_free_chunk->m_begin += p_size;
+  } else {
+    vector_remove_at(&thiz->m_free_chunks, p_free_chunk_index, 1);
+  }
+  return l_allocated_chunk_index;
+};
+
+template <typename TupleType>
+void heap_split_free_chunk(heap_impl<TupleType> *thiz, uimax p_chunk_index,
+                           uimax p_relative_begin) {
+  heap_chunk *l_chunk_to_split = &thiz->m_free_chunks.m_data.m_0[p_chunk_index];
+  heap_chunk l_chunk_end = *l_chunk_to_split;
+  l_chunk_end.m_begin += p_relative_begin;
+  l_chunk_end.m_size -= p_relative_begin;
+
+  l_chunk_to_split->m_size = p_relative_begin;
+  vector_push(&thiz->m_free_chunks, 1);
+  thiz->m_free_chunks.m_data.m_0[thiz->m_free_chunks.m_count - 1] = l_chunk_end;
+};
+
+template <typename TupleType>
+uimax heap_allocate_chunk_aligned(heap_impl<TupleType> *thiz, uimax p_size,
+                                  uimax p_alignment) {
+  uimax l_free_chunk_index = -1;
+  uimax l_alignment_offset = -1;
+  slice_1<heap_chunk> l_free_chunks_slice =
+      vector_to_slice(&thiz->m_free_chunks);
+  if (!heap_chunks_find_next_block(&l_free_chunks_slice, p_size, p_alignment,
+                                   &l_free_chunk_index, &l_alignment_offset)) {
+    heap_chunks_defragment(&thiz->m_free_chunks);
+    l_free_chunks_slice = vector_to_slice(&thiz->m_free_chunks);
+    if (!heap_chunks_find_next_block(&l_free_chunks_slice, p_size, p_alignment,
+                                     &l_free_chunk_index,
+                                     &l_alignment_offset)) {
+      // TODO -> pushing a chunk by multiplying capacity by 2 like vector ?
+      heap_push_new_free_chunk(thiz, p_size);
+
+      l_free_chunks_slice = vector_to_slice(&thiz->m_free_chunks);
+      heap_chunks_find_next_block(&l_free_chunks_slice, p_size, p_alignment,
+                                  &l_free_chunk_index, &l_alignment_offset);
+    }
+  }
+  assert_debug(l_free_chunk_index != -1);
+
+  if (l_alignment_offset > 0) {
+    heap_split_free_chunk(thiz, l_free_chunk_index, l_alignment_offset);
+    l_free_chunk_index += 1;
+  }
+
+  uimax l_chunk_index =
+      heap_push_new_allocated_chunk(thiz, p_size, l_free_chunk_index);
+  return l_chunk_index;
+};
+
+template <typename TupleType>
+uimax heap_allocate_chunk(heap_impl<TupleType> *thiz, uimax p_size) {
+  return heap_allocate_chunk_aligned(thiz, p_size, 1);
+};
+
+template <typename TupleType>
+void heap_free_chunk(heap_impl<TupleType> *thiz, uimax p_chunk_index) {
+  heap_chunk *l_chunk =
+      &thiz->m_allocated_chunk.m_elements.m_data.m_0[p_chunk_index];
+  vector_push(&thiz->m_free_chunks, 1);
+  thiz->m_free_chunks.m_data.m_0[thiz->m_free_chunks.m_count - 1] = *l_chunk;
+  pool_remove(&thiz->m_allocated_chunk, p_chunk_index);
+};
+
+template <typename T0> using heap_1 = heap_impl<tuple<1, T0 *>>;
+template <typename T0, typename T1>
+using heap_2 = heap_impl<tuple<2, T0 *, T1 *>>;
 
 }; // namespace v2

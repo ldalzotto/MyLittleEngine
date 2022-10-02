@@ -53,9 +53,14 @@ TEST_CASE("core") {
   span_free(&l_span_2);
   vector_free(&l_vector_2);
 
-  vector_text_data l_td;
-  vector_text_data_allocate(&l_td, 10);
-  slice_text_data l_slice = vector_text_data_to_slice(&l_td);
+  heap_2<i32, f32> l_heap_2;
+  heap_allocate(&l_heap_2);
+  heap_push_new_free_chunk(&l_heap_2, 100);
+  uimax l_chunk_index = heap_allocate_chunk(&l_heap_2, 10);
+  uimax l_chunk_another_index = heap_allocate_chunk(&l_heap_2, 5);
+  heap_free_chunk(&l_heap_2, l_chunk_index);
+  heap_allocate_chunk(&l_heap_2, 10);
+  heap_free(&l_heap_2);
 }
 
 #include <sys/sys_impl.hpp>
