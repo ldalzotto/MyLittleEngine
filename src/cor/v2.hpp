@@ -6,6 +6,10 @@
 
 namespace v2 {
 
+template <ui8 *T> constexpr uimax cspr_size() {
+  return sizeof(T) / sizeof(T[0]);
+};
+
 template <typename T> T *array_allocate(uimax p_count) {
   return (T *)sys::malloc(p_count * sizeof(T));
 };
@@ -229,18 +233,8 @@ void tuple_data_memmoveup_loop(TupleType *thiz, uimax p_break_index,
   }
 };
 
-// template <ui32 TargetCount, ui32 SplitIndices[]> struct tuple_splitter {};
-
-/*
-template <ui8 *SplitMask, i32 SplitMaskIndex>
-auto tuple_split_loop() {
-
-};
-*/
-
 template <ui8 CurrentIndex, typename CurrentTupleType, typename SourceTupleType,
-          ui8 SourceTupleTypeCount,
-          ui8 SplitMask[tuple_get_count<SourceTupleType>{}()]>
+          ui8 SourceTupleTypeCount, ui8 *SplitMask>
 struct tuple_split_type_loop {
   using PromotedTupleType =
       typename tuple_promote<CurrentTupleType,
@@ -256,16 +250,13 @@ struct tuple_split_type_loop {
 };
 
 template <typename CurrentTupleType, typename SourceTupleType,
-          ui8 SourceTupleTypeCount,
-          ui8 SplitMask[tuple_get_count<SourceTupleType>{}()]>
+          ui8 SourceTupleTypeCount, ui8 *SplitMask>
 struct tuple_split_type_loop<SourceTupleTypeCount, CurrentTupleType,
                              SourceTupleType, SourceTupleTypeCount, SplitMask> {
   using Type = CurrentTupleType;
 };
 
-template <typename TupleType, ui32 TargetCount,
-          ui8 SplitMask[tuple_get_count<TupleType>{}()]>
-struct tuple_split_type {
+template <typename TupleType, ui8 *SplitMask> struct tuple_split_type {
   using Type = typename tuple_split_type_loop<
       0, tuple<0>, TupleType, tuple_get_count<TupleType>{}(), SplitMask>::Type;
 };
@@ -295,12 +286,10 @@ void tuple_split_copy_loop(SourceTupleType *p_source,
   }
 };
 
-template <typename TupleType, ui32 TargetCount,
-          ui8 SplitMask[tuple_get_count<TupleType>{}()]>
-typename tuple_split_type<TupleType, TargetCount, SplitMask>::Type
+template <typename TupleType, ui8 SplitMask[tuple_get_count<TupleType>{}()]>
+typename tuple_split_type<TupleType, SplitMask>::Type
 tuple_split(TupleType *thiz) {
-  using TargetTupleType =
-      typename tuple_split_type<TupleType, TargetCount, SplitMask>::Type;
+  using TargetTupleType = typename tuple_split_type<TupleType, SplitMask>::Type;
   TargetTupleType l_target_tuple;
   tuple_split_copy_loop<0, TupleType, 0, TargetTupleType, SplitMask>(
       thiz, &l_target_tuple);
@@ -355,16 +344,13 @@ template <typename TupleType> void slice_zero(slice_impl<TupleType> *thiz) {
 };
 
 template <ui8 *SplitMask, typename TupleType>
-slice_impl<typename tuple_split_type<
-    TupleType, sizeof(SplitMask) / sizeof(SplitMask[0]), SplitMask>::Type>
+slice_impl<typename tuple_split_type<TupleType, SplitMask>::Type>
 slice_split(slice_impl<TupleType> *thiz) {
-  using TargetSliceType = slice_impl<typename tuple_split_type<
-      TupleType, sizeof(SplitMask) / sizeof(SplitMask[0]), SplitMask>::Type>;
+  using TargetSliceType =
+      slice_impl<typename tuple_split_type<TupleType, SplitMask>::Type>;
   TargetSliceType l_slice;
   l_slice.m_count = thiz->m_count;
-  l_slice.m_data =
-      tuple_split<TupleType, sizeof(SplitMask) / sizeof(SplitMask[0]),
-                  SplitMask>(&thiz->m_data);
+  l_slice.m_data = tuple_split<TupleType, SplitMask>(&thiz->m_data);
   return l_slice;
 };
 
