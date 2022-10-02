@@ -203,6 +203,20 @@ slice_impl<TupleType> slice_slide(slice_impl<TupleType> *thiz, uimax p_count) {
   return l_return;
 };
 
+template <typename TupleType>
+void slice_shrink_self(slice_impl<TupleType> *thiz, uimax p_shrink_count) {
+  assert_debug(thiz->m_count >= p_shrink_count);
+  thiz->m_count -= p_shrink_count;
+};
+
+template <typename TupleType>
+slice_impl<TupleType> slice_shrink(slice_impl<TupleType> *thiz,
+                                   uimax p_shrink_count) {
+  slice_impl<TupleType> l_return = *thiz;
+  slice_shrink_self(&l_return, p_shrink_count);
+  return l_return;
+};
+
 template <typename TupleType> void slice_zero(slice_impl<TupleType> *thiz) {
   tuple_data_zero_loop<0>(&thiz->m_data, thiz->m_count);
 };
@@ -293,6 +307,12 @@ void vector_push(vector_impl<TupleType> *thiz, uimax p_delta_count) {
 };
 
 template <typename TupleType>
+void vector_pop(vector_impl<TupleType> *thiz, uimax p_delta_count) {
+  assert_debug(p_delta_count <= thiz->m_count);
+  thiz->m_count -= p_delta_count;
+};
+
+template <typename TupleType>
 void vector_remove_at(vector_impl<TupleType> *thiz, uimax p_index,
                       uimax p_remove_count) {
   assert_debug(p_index < thiz->m_count && thiz->m_count > 0);
@@ -328,7 +348,7 @@ template <typename TupleType> uimax pool_push(pool_impl<TupleType> *thiz) {
   if (thiz->m_free_elements.m_count > 0) {
     uimax l_free_index =
         thiz->m_free_elements.m_data.m_0[thiz->m_free_elements.m_count - 1];
-    thiz->m_free_elements.m_count -= 1;
+    vector_pop(&thiz->m_free_elements, 1);
     return l_free_index;
   } else {
     vector_push(&thiz->m_elements, 1);
@@ -356,5 +376,44 @@ void pool_remove(pool_impl<TupleType> *thiz, uimax p_index) {
 template <typename T0> using pool_1 = pool_impl<tuple<1, T0 *>>;
 template <typename T0, typename T1>
 using pool_2 = pool_impl<tuple<2, T0 *, T1 *>>;
+
+// TODO -> improve this macro
+#define container_declare_alias_2(p_prefix, type_0, name_0, type_1, name_1)    \
+  struct slice_##p_prefix {                                                    \
+    union {                                                                    \
+      slice_2<type_0, type_1> m_slice;                                         \
+      struct {                                                                 \
+        uimax m_count;                                                         \
+        struct {                                                               \
+          type_0 *name_0;                                                      \
+          type_1 *name_1;                                                      \
+        };                                                                     \
+      };                                                                       \
+    };                                                                         \
+  };                                                                           \
+  struct vector_##p_prefix {                                                   \
+    union {                                                                    \
+      vector_2<type_0, type_1> m_vector;                                       \
+      struct {                                                                 \
+        uimax m_count;                                                         \
+        uimax m_capacity;                                                      \
+        struct {                                                               \
+          type_0 *name_0;                                                      \
+          type_1 *name_1;                                                      \
+        };                                                                     \
+      };                                                                       \
+    };                                                                         \
+  };                                                                           \
+                                                                               \
+  void vector_##p_prefix##_allocate(vector_##p_prefix *thiz, uimax p_count) {  \
+    vector_allocate(&thiz->m_vector, p_count);                                 \
+  };                                                                           \
+                                                                               \
+  void vector_##p_prefix##_free(vector_##p_prefix *thiz) {                     \
+    vector_free(&thiz->m_vector);                                              \
+  };                                                                           \
+  slice_##p_prefix vector_##p_prefix##_to_slice(vector_##p_prefix *thiz) {     \
+    return slice_##p_prefix{.m_slice = vector_to_slice(&thiz->m_vector)};      \
+  };
 
 }; // namespace v2

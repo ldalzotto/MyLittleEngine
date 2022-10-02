@@ -2,8 +2,11 @@
 #include <cor/v2.hpp>
 #include <tst/test_common.hpp>
 
+using namespace v2;
+
+container_declare_alias_2(text_data, i32, m_ints, f32, m_flts);
+
 TEST_CASE("core") {
-  using namespace v2;
 
   span_1<int> l_span_1;
   span_allocate(&l_span_1, 10);
@@ -39,6 +42,10 @@ TEST_CASE("core") {
   span_free(&l_span_1);
   span_free(&l_span_2);
   vector_free(&l_vector_2);
+
+  vector_text_data l_td;
+  vector_text_data_allocate(&l_td, 10);
+  slice_text_data l_slice = vector_text_data_to_slice(&l_td);
 }
 
 #include <sys/sys_impl.hpp>
