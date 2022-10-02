@@ -6,10 +6,6 @@
 
 namespace v2 {
 
-template <ui8 *T> constexpr uimax cspr_size() {
-  return sizeof(T) / sizeof(T[0]);
-};
-
 template <typename T> T *array_allocate(uimax p_count) {
   return (T *)sys::malloc(p_count * sizeof(T));
 };
@@ -82,6 +78,24 @@ struct tuple_get_element_type<tuple<2, T0, T1>, 0> {
 template <typename T0, typename T1>
 struct tuple_get_element_type<tuple<2, T0, T1>, 1> {
   using Type = T1;
+};
+
+template <ui8 *Values> struct split_mask {
+  static constexpr ui8 *Val = Values;
+};
+
+template <i32 Index, typename SplitMaskType>
+constexpr ui8 split_mask_get_value() {
+  return SplitMaskType::Val[Index];
+};
+
+template <ui8 T0, ui8 T1> struct split_mask_array {
+  static constexpr ui8 s_split_mask_arr[] = {T0, T1};
+  static constexpr ui8 *s_split_mask = (ui8 *)s_split_mask_arr;
+};
+
+template <ui8 T0, ui8 T1> auto split_mask_make() {
+  return split_mask<split_mask_array<T0, T1>::s_split_mask>{};
 };
 
 template <typename TupleType, typename T> struct tuple_promote;
@@ -234,40 +248,42 @@ void tuple_data_memmoveup_loop(TupleType *thiz, uimax p_break_index,
 };
 
 template <ui8 CurrentIndex, typename CurrentTupleType, typename SourceTupleType,
-          ui8 SourceTupleTypeCount, ui8 *SplitMask>
+          ui8 SourceTupleTypeCount, typename SplitMaskType>
 struct tuple_split_type_loop {
   using PromotedTupleType =
       typename tuple_promote<CurrentTupleType,
                              typename tuple_get_element_type<
                                  SourceTupleType, CurrentIndex>::Type>::Type;
   using IntermediaryTupleType =
-      meta_if_t<SplitMask[CurrentIndex], PromotedTupleType, CurrentTupleType>;
+      meta_if_t<split_mask_get_value<CurrentIndex, SplitMaskType>(),
+                PromotedTupleType, CurrentTupleType>;
 
   using Type =
       typename tuple_split_type_loop<CurrentIndex + 1, IntermediaryTupleType,
                                      SourceTupleType, SourceTupleTypeCount,
-                                     SplitMask>::Type;
+                                     SplitMaskType>::Type;
 };
 
 template <typename CurrentTupleType, typename SourceTupleType,
-          ui8 SourceTupleTypeCount, ui8 *SplitMask>
+          ui8 SourceTupleTypeCount, typename SplitMaskType>
 struct tuple_split_type_loop<SourceTupleTypeCount, CurrentTupleType,
-                             SourceTupleType, SourceTupleTypeCount, SplitMask> {
+                             SourceTupleType, SourceTupleTypeCount,
+                             SplitMaskType> {
   using Type = CurrentTupleType;
 };
 
-template <typename TupleType, ui8 *SplitMask> struct tuple_split_type {
-  using Type = typename tuple_split_type_loop<
-      0, tuple<0>, TupleType, tuple_get_count<TupleType>{}(), SplitMask>::Type;
+template <typename TupleType, typename SplitMaskType> struct tuple_split_type {
+  using Type = typename tuple_split_type_loop<0, tuple<0>, TupleType,
+                                              tuple_get_count<TupleType>{}(),
+                                              SplitMaskType>::Type;
 };
 
 template <i32 SourceTupleIndex, typename SourceTupleType, i32 TargetTupleIndex,
-          typename TargetTupleType,
-          ui8 SplitMask[tuple_get_count<SourceTupleType>{}()]>
+          typename TargetTupleType, typename SplitMaskType>
 void tuple_split_copy_loop(SourceTupleType *p_source,
                            TargetTupleType *p_target) {
   if constexpr (SourceTupleIndex < tuple_get_count<SourceTupleType>{}()) {
-    if constexpr (SplitMask[SourceTupleIndex]) {
+    if constexpr (split_mask_get_value<SourceTupleIndex, SplitMaskType>()) {
       using T = typename tuple_get_element_type<SourceTupleType,
                                                 SourceTupleIndex>::Type;
       T *l_source_element =
@@ -276,22 +292,23 @@ void tuple_split_copy_loop(SourceTupleType *p_source,
           tuple_get_element<TargetTupleType, TargetTupleIndex>{}(p_target);
       *l_target_element = *l_source_element;
       tuple_split_copy_loop<SourceTupleIndex + 1, SourceTupleType,
-                            TargetTupleIndex + 1, TargetTupleType, SplitMask>(
-          p_source, p_target);
+                            TargetTupleIndex + 1, TargetTupleType,
+                            SplitMaskType>(p_source, p_target);
     } else {
       tuple_split_copy_loop<SourceTupleIndex + 1, SourceTupleType,
-                            TargetTupleIndex, TargetTupleType, SplitMask>(
+                            TargetTupleIndex, TargetTupleType, SplitMaskType>(
           p_source, p_target);
     }
   }
 };
 
-template <typename TupleType, ui8 SplitMask[tuple_get_count<TupleType>{}()]>
-typename tuple_split_type<TupleType, SplitMask>::Type
-tuple_split(TupleType *thiz) {
-  using TargetTupleType = typename tuple_split_type<TupleType, SplitMask>::Type;
+template <typename TupleType, typename SplitMaskType>
+typename tuple_split_type<TupleType, SplitMaskType>::Type
+tuple_split(TupleType *thiz, SplitMaskType) {
+  using TargetTupleType =
+      typename tuple_split_type<TupleType, SplitMaskType>::Type;
   TargetTupleType l_target_tuple;
-  tuple_split_copy_loop<0, TupleType, 0, TargetTupleType, SplitMask>(
+  tuple_split_copy_loop<0, TupleType, 0, TargetTupleType, SplitMaskType>(
       thiz, &l_target_tuple);
   return l_target_tuple;
 };
@@ -343,14 +360,14 @@ template <typename TupleType> void slice_zero(slice_impl<TupleType> *thiz) {
   tuple_data_zero_loop<0>(&thiz->m_data, thiz->m_count);
 };
 
-template <ui8 *SplitMask, typename TupleType>
-slice_impl<typename tuple_split_type<TupleType, SplitMask>::Type>
-slice_split(slice_impl<TupleType> *thiz) {
+template <typename TupleType, typename SplitMaskType>
+slice_impl<typename tuple_split_type<TupleType, SplitMaskType>::Type>
+slice_split(slice_impl<TupleType> *thiz, SplitMaskType) {
   using TargetSliceType =
-      slice_impl<typename tuple_split_type<TupleType, SplitMask>::Type>;
+      slice_impl<typename tuple_split_type<TupleType, SplitMaskType>::Type>;
   TargetSliceType l_slice;
   l_slice.m_count = thiz->m_count;
-  l_slice.m_data = tuple_split<TupleType, SplitMask>(&thiz->m_data);
+  l_slice.m_data = tuple_split(&thiz->m_data, SplitMaskType{});
   return l_slice;
 };
 
