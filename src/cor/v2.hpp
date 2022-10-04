@@ -80,7 +80,8 @@ struct tuple_get_element_type<tuple<2, T0, T1>, 1> {
   using Type = T1;
 };
 
-template <ui8 *Values> struct split_mask {
+template <uimax CountValue, ui8 *Values> struct split_mask {
+  static constexpr uimax Count = CountValue;
   static constexpr ui8 *Val = Values;
 };
 
@@ -89,13 +90,51 @@ constexpr ui8 split_mask_get_value() {
   return SplitMaskType::Val[Index];
 };
 
-template <ui8 T0, ui8 T1> struct split_mask_array {
+template <typename SplitMaskType> constexpr uimax split_mask_get_count() {
+  return SplitMaskType::Count;
+};
+
+template <uimax N, typename SplitMaskType>
+constexpr ui8 split_mask_is_one_loop() {
+  if constexpr (N == split_mask_get_count<SplitMaskType>()) {
+    return true;
+  } else {
+    return split_mask_get_value<N, SplitMaskType>() == 1 &&
+           split_mask_is_one_loop<N + 1, SplitMaskType>();
+  }
+};
+
+template <typename SplitMaskType> constexpr ui8 split_mask_is_one() {
+  return split_mask_is_one_loop<0, SplitMaskType>();
+};
+
+template <ui8...> struct split_mask_array;
+template <uimax Count> constexpr auto split_mask_one();
+
+template <ui8 T0> struct split_mask_array<T0> {
+  static constexpr ui8 s_split_mask_arr[] = {T0};
+  static constexpr ui8 *s_split_mask = (ui8 *)s_split_mask_arr;
+};
+
+template <ui8 T0> constexpr auto split_mask_make() {
+  return split_mask<1, split_mask_array<T0>::s_split_mask>{};
+};
+
+template <> constexpr auto split_mask_one<1>() {
+  return split_mask<1, split_mask_array<1>::s_split_mask>{};
+};
+
+template <ui8 T0, ui8 T1> struct split_mask_array<T0, T1> {
   static constexpr ui8 s_split_mask_arr[] = {T0, T1};
   static constexpr ui8 *s_split_mask = (ui8 *)s_split_mask_arr;
 };
 
-template <ui8 T0, ui8 T1> auto split_mask_make() {
-  return split_mask<split_mask_array<T0, T1>::s_split_mask>{};
+template <ui8 T0, ui8 T1> constexpr auto split_mask_make() {
+  return split_mask<2, split_mask_array<T0, T1>::s_split_mask>{};
+};
+
+template <> constexpr auto split_mask_one<2>() {
+  return split_mask<2, split_mask_array<1, 1>::s_split_mask>{};
 };
 
 template <typename TupleType, typename T> struct tuple_promote;
@@ -305,6 +344,7 @@ void tuple_split_copy_loop(SourceTupleType *p_source,
 template <typename TupleType, typename SplitMaskType>
 typename tuple_split_type<TupleType, SplitMaskType>::Type
 tuple_split(TupleType *thiz, SplitMaskType) {
+  static_assert(!split_mask_is_one<SplitMaskType>(), "Not needed tuple split");
   using TargetTupleType =
       typename tuple_split_type<TupleType, SplitMaskType>::Type;
   TargetTupleType l_target_tuple;
