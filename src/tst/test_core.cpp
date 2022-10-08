@@ -56,7 +56,7 @@ TEST_CASE("core") {
   vector_free(&l_vector_2);
 
   heap_2<i32, f32> l_heap_2;
-  heap_allocate(&l_heap_2);
+  heap_allocate(&l_heap_2, 0);
   heap_push_new_free_chunk(&l_heap_2, 100);
   uimax l_chunk_index = heap_allocate_chunk(&l_heap_2, 10);
   uimax l_chunk_another_index = heap_allocate_chunk(&l_heap_2, 5);
