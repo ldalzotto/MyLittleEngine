@@ -427,6 +427,10 @@ template <typename TupleType> void slice_zero(slice_impl<TupleType> *thiz) {
   tuple_data_zero_loop<0>(&thiz->m_data, thiz->m_count);
 };
 
+template <typename T0> uimax slice_byte_size(slice_1<T0> *thiz) {
+  return thiz->m_count * sizeof(T0);
+};
+
 template <typename TupleType, typename SplitMaskType>
 slice_impl<typename tuple_split_type<TupleType, SplitMaskType>::Type>
 slice_split(slice_impl<TupleType> *thiz, SplitMaskType) {
