@@ -286,6 +286,25 @@ void tuple_data_memmoveup_loop(TupleType *thiz, uimax p_break_index,
   }
 };
 
+template <i32 N, typename TupleType, typename TargetTupleType>
+void tuple_data_cast_loop(TupleType *thiz, TargetTupleType *p_to) {
+  constexpr i32 l_tuple_count = tuple_get_count<TupleType>{}();
+  if constexpr (N < l_tuple_count) {
+    using TPtr = typename tuple_get_element_type<TupleType, N>::Type;
+    using T = typename meta_remove_ptr<TPtr>::Type;
+
+    using TargetPtr = typename tuple_get_element_type<TargetTupleType, N>::Type;
+    using Target = typename meta_remove_ptr<TargetPtr>::Type;
+
+    T **l_element = tuple_get_element<TupleType, N>{}(thiz);
+    Target **l_target_element = tuple_get_element<TargetTupleType, N>{}(p_to);
+
+    *l_target_element = (Target *)*l_target_element;
+
+    tuple_data_cast_loop<N + 1>(thiz, p_to);
+  }
+};
+
 template <ui8 CurrentIndex, typename CurrentTupleType, typename SourceTupleType,
           ui8 SourceTupleTypeCount, typename SplitMaskType>
 struct tuple_split_type_loop {
@@ -393,6 +412,14 @@ slice_impl<TupleType> slice_shrink(slice_impl<TupleType> *thiz,
                                    uimax p_shrink_count) {
   slice_impl<TupleType> l_return = *thiz;
   slice_shrink_self(&l_return, p_shrink_count);
+  return l_return;
+};
+
+template <typename T, typename TT>
+slice_impl<tuple<1, TT *>> slice_reinterpret(slice_impl<tuple<1, T *>> *thiz) {
+  slice_impl<tuple<1, TT *>> l_return;
+  tuple_data_cast_loop<0>(&thiz->m_data, &l_return.m_data);
+  l_return.m_count = (thiz->m_count * sizeof(T)) / sizeof(TT);
   return l_return;
 };
 
@@ -701,10 +728,15 @@ template <typename TupleType> struct heap_impl {
   span_impl<TupleType> m_buffers;
 };
 
-template <typename TupleType> void heap_allocate(heap_impl<TupleType> *thiz) {
+template <typename TupleType>
+void heap_allocate(heap_impl<TupleType> *thiz, uimax p_initial_size) {
   vector_allocate(&thiz->m_free_chunks, 0);
   pool_allocate(&thiz->m_allocated_chunk, 0);
   span_allocate(&thiz->m_buffers, 0);
+
+  if (p_initial_size > 0) {
+    heap_push_new_free_chunk(thiz, p_initial_size);
+  }
 };
 
 template <typename TupleType> void heap_free(heap_impl<TupleType> *thiz) {
@@ -803,6 +835,20 @@ void heap_free_chunk(heap_impl<TupleType> *thiz, uimax p_chunk_index) {
   vector_push(&thiz->m_free_chunks, 1);
   thiz->m_free_chunks.m_data.m_0[thiz->m_free_chunks.m_count - 1] = *l_chunk;
   pool_remove(&thiz->m_allocated_chunk, p_chunk_index);
+};
+
+template <typename TupleType>
+slice_impl<TupleType> heap_chunk_to_slice(heap_impl<TupleType> *thiz,
+                                          uimax p_chunk_index) {
+  heap_chunk *l_chunk =
+      &thiz->m_allocated_chunk.m_elements.m_data.m_0[p_chunk_index];
+  TupleType *l_buffer_tuple = &thiz->m_buffers.m_data;
+
+  slice_impl<TupleType> l_return;
+  tuple_data_at_loop<0>(l_buffer_tuple, l_chunk->m_begin, &l_return.m_data);
+  l_return.m_count = l_chunk->m_size;
+
+  return l_return;
 };
 
 template <typename T0> using heap_1 = heap_impl<tuple<1, T0 *>>;
