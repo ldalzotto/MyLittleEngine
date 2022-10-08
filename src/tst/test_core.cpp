@@ -1,8 +1,33 @@
 
 #include <cor/v2.hpp>
 #include <tst/test_common.hpp>
-
 using namespace v2;
+
+struct tuple_my_data {
+  i32 *m_ints;
+  f32 *m_ffs;
+};
+
+template <> struct tuple_get_count<tuple_my_data> {
+  constexpr i32 operator()() { return 2; }
+};
+
+template <> struct tuple_get_element<tuple_my_data, 0> {
+  i32 **operator()(tuple_my_data *thiz) { return &thiz->m_ints; }
+};
+template <> struct tuple_get_element<tuple_my_data, 1> {
+  f32 **operator()(tuple_my_data *thiz) { return &thiz->m_ffs; }
+};
+
+template <> struct tuple_get_element_type<tuple_my_data, 0> {
+  using Type = i32 *;
+};
+template <> struct tuple_get_element_type<tuple_my_data, 1> {
+  using Type = f32 *;
+};
+
+using slice_my_data = slice_impl<tuple_my_data>;
+using span_my_data = span_impl<tuple_my_data>;
 
 TEST_CASE("core") {
 
@@ -94,6 +119,16 @@ TEST_CASE("core") {
 
     span_free(&l_chunks);
     heap_paged_free(&l_heap_paged);
+  }
+
+  {
+    span_my_data l_custom_span;
+    span_allocate(&l_custom_span, 10);
+    slice_my_data l_custom_slice = span_to_slice(&l_custom_span);
+    slice_sort(&l_custom_slice, [&](tuple_my_data *p_left,
+                                    tuple_my_data *p_right) { return 0; });
+    l_custom_span.m_data.m_ffs[0] = 19;
+    span_free(&l_custom_span);
   }
 }
 
