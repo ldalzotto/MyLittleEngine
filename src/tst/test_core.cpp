@@ -4,8 +4,6 @@
 
 using namespace v2;
 
-container_declare_alias_2(text_data, i32, m_ints, f32, m_flts);
-
 TEST_CASE("core") {
 
   span_1<int> l_span_1;
@@ -60,8 +58,13 @@ TEST_CASE("core") {
   heap_push_new_free_chunk(&l_heap_2, 100);
   uimax l_chunk_index = heap_allocate_chunk(&l_heap_2, 10);
   uimax l_chunk_another_index = heap_allocate_chunk(&l_heap_2, 5);
-  heap_free_chunk(&l_heap_2, l_chunk_index);
-  heap_allocate_chunk(&l_heap_2, 10);
+  uimax l_chunk_index_another = heap_allocate_chunk(&l_heap_2, 10);
+  slice_2<i32, f32> l_slice =
+      heap_chunk_to_slice(&l_heap_2, l_chunk_index_another);
+  slice_1<i32> l_ss = slice_split(&l_slice, split_mask_make<1, 0>());
+  for (uimax i = 0; i < l_ss.m_count; ++i) {
+    l_ss.m_data.m_0[i] = i;
+  }
   heap_free(&l_heap_2);
 }
 

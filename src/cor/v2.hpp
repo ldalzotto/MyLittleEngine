@@ -601,45 +601,6 @@ template <typename T0> using pool_1 = pool_impl<tuple<1, T0 *>>;
 template <typename T0, typename T1>
 using pool_2 = pool_impl<tuple<2, T0 *, T1 *>>;
 
-// TODO -> improve this macro
-#define container_declare_alias_2(p_prefix, type_0, name_0, type_1, name_1)    \
-  struct slice_##p_prefix {                                                    \
-    union {                                                                    \
-      slice_2<type_0, type_1> m_slice;                                         \
-      struct {                                                                 \
-        uimax m_count;                                                         \
-        struct {                                                               \
-          type_0 *name_0;                                                      \
-          type_1 *name_1;                                                      \
-        };                                                                     \
-      };                                                                       \
-    };                                                                         \
-  };                                                                           \
-  struct vector_##p_prefix {                                                   \
-    union {                                                                    \
-      vector_2<type_0, type_1> m_vector;                                       \
-      struct {                                                                 \
-        uimax m_count;                                                         \
-        uimax m_capacity;                                                      \
-        struct {                                                               \
-          type_0 *name_0;                                                      \
-          type_1 *name_1;                                                      \
-        };                                                                     \
-      };                                                                       \
-    };                                                                         \
-  };                                                                           \
-                                                                               \
-  void vector_##p_prefix##_allocate(vector_##p_prefix *thiz, uimax p_count) {  \
-    vector_allocate(&thiz->m_vector, p_count);                                 \
-  };                                                                           \
-                                                                               \
-  void vector_##p_prefix##_free(vector_##p_prefix *thiz) {                     \
-    vector_free(&thiz->m_vector);                                              \
-  };                                                                           \
-  slice_##p_prefix vector_##p_prefix##_to_slice(vector_##p_prefix *thiz) {     \
-    return slice_##p_prefix{.m_slice = vector_to_slice(&thiz->m_vector)};      \
-  };
-
 // region_begin algorithm
 
 template <typename TupleType, typename PredicateFunction>
