@@ -637,11 +637,6 @@ struct heap_chunk {
   uimax m_size;
 };
 
-struct heap_paged_chunk {
-  uimax m_page_index;
-  heap_chunk m_chunk;
-};
-
 static ui8 heap_chunks_find_next_block(slice_1<heap_chunk> *p_chunks,
                                        uimax p_size, uimax p_alignment,
                                        uimax *out_chunk_index,
@@ -790,6 +785,35 @@ uimax heap_allocate_chunk(heap_impl<TupleType> *thiz, uimax p_size) {
 };
 
 template <typename TupleType>
+uimax heap_allocate_chunk_aligned_no_realloc(heap_impl<TupleType> *thiz,
+                                             uimax p_size, uimax p_alignment) {
+  uimax l_free_chunk_index = -1;
+  uimax l_alignment_offset = -1;
+  slice_1<heap_chunk> l_free_chunks_slice =
+      vector_to_slice(&thiz->m_free_chunks);
+  if (!heap_chunks_find_next_block(&l_free_chunks_slice, p_size, p_alignment,
+                                   &l_free_chunk_index, &l_alignment_offset)) {
+    heap_chunks_defragment(&thiz->m_free_chunks);
+    l_free_chunks_slice = vector_to_slice(&thiz->m_free_chunks);
+    heap_chunks_find_next_block(&l_free_chunks_slice, p_size, p_alignment,
+                                &l_free_chunk_index, &l_alignment_offset);
+  }
+
+  if (l_free_chunk_index == -1) {
+    return -1;
+  }
+
+  if (l_alignment_offset > 0) {
+    heap_split_free_chunk(thiz, l_free_chunk_index, l_alignment_offset);
+    l_free_chunk_index += 1;
+  }
+
+  uimax l_chunk_index =
+      heap_push_new_allocated_chunk(thiz, p_size, l_free_chunk_index);
+  return l_chunk_index;
+};
+
+template <typename TupleType>
 void heap_free_chunk(heap_impl<TupleType> *thiz, uimax p_chunk_index) {
   heap_chunk *l_chunk =
       &thiz->m_allocated_chunk.m_elements.m_data.m_0[p_chunk_index];
@@ -812,8 +836,189 @@ slice_impl<TupleType> heap_chunk_to_slice(heap_impl<TupleType> *thiz,
   return l_return;
 };
 
+template <typename TupleType>
+ui8 heap_check_consistency(heap_impl<TupleType> *thiz) {
+
+  ui8 l_is_consistent = 1;
+  vector_1<heap_chunk> l_chunks;
+  vector_allocate(&l_chunks, 0);
+  for (auto i = 0; i < thiz->m_allocated_chunk.m_elements.m_count; ++i) {
+    if (pool_is_element_allocated(&thiz->m_allocated_chunk, i)) {
+      vector_push(&l_chunks, 1);
+      l_chunks.m_data.m_0[l_chunks.m_count - 1] =
+          thiz->m_allocated_chunk.m_elements.m_data.m_0[i];
+    }
+  }
+
+  for (auto i = 0; i < thiz->m_free_chunks.m_count; ++i) {
+    vector_push(&l_chunks, 1);
+    l_chunks.m_data.m_0[l_chunks.m_count - 1] =
+        thiz->m_free_chunks.m_data.m_0[i];
+  }
+
+  // Ensure that there is no overlaps in chunks
+
+  for (auto i = 0; i < l_chunks.m_count; ++i) {
+    heap_chunk *l_left_chunk = &l_chunks.m_data.m_0[i];
+
+    uimax l_left_begin = l_left_chunk->m_begin;
+    uimax l_left_end = l_left_chunk->m_begin + l_left_chunk->m_size;
+
+    for (auto j = i + 1; j < l_chunks.m_count; ++j) {
+      heap_chunk *l_right_chunk = &l_chunks.m_data.m_0[j];
+
+      uimax l_right_begin = l_right_chunk->m_begin;
+      uimax l_right_end = l_right_chunk->m_begin + l_right_chunk->m_size;
+
+      if ((l_right_begin - l_left_begin) > 0 &&
+          (l_right_begin - l_left_end) < 0) {
+        l_is_consistent = 0;
+        goto heap_check_consistency_end;
+      }
+      if ((l_right_end - l_left_begin) > 0 && (l_right_end - l_left_end) < 0) {
+        l_is_consistent = 0;
+        goto heap_check_consistency_end;
+      }
+    }
+  }
+
+  {
+    // Ensure total count
+    uimax l_total_count = 0;
+    for (auto i = 0; i < l_chunks.m_count; ++i) {
+      heap_chunk *l_chunk = &l_chunks.m_data.m_0[i];
+      l_total_count += l_chunk->m_size;
+    }
+
+    if (l_total_count != thiz->m_buffers.m_count) {
+      l_is_consistent = 0;
+      goto heap_check_consistency_end;
+    }
+  }
+
+heap_check_consistency_end:
+  vector_free(&l_chunks);
+  return l_is_consistent;
+};
+
 template <typename T0> using heap_1 = heap_impl<tuple<1, T0 *>>;
 template <typename T0, typename T1>
 using heap_2 = heap_impl<tuple<2, T0 *, T1 *>>;
+
+struct heap_paged_chunk {
+  uimax m_page_index;
+  uimax m_chunk_index;
+};
+
+template <typename TupleType> struct heap_paged_impl {
+  uimax m_single_page_capacity;
+  vector_1<heap_impl<TupleType>> m_pages;
+  pool_1<heap_paged_chunk> m_allocated_chunks;
+};
+
+template <typename TupleType>
+void heap_paged_allocate(heap_paged_impl<TupleType> *thiz,
+                         uimax p_page_capacity) {
+  thiz->m_single_page_capacity = p_page_capacity;
+  vector_allocate(&thiz->m_pages, 0);
+  pool_allocate(&thiz->m_allocated_chunks, 0);
+};
+
+template <typename TupleType>
+void heap_paged_free(heap_paged_impl<TupleType> *thiz) {
+  for (uimax i = 0; i < thiz->m_pages.m_count; ++i) {
+    heap_free(&thiz->m_pages.m_data.m_0[i]);
+  }
+  vector_free(&thiz->m_pages);
+  pool_free(&thiz->m_allocated_chunks);
+};
+
+template <typename TupleType>
+void heap_paged_push_new_page(heap_paged_impl<TupleType> *thiz) {
+  vector_push(&thiz->m_pages, 1);
+  heap_impl<TupleType> *l_page =
+      &thiz->m_pages.m_data.m_0[thiz->m_pages.m_count - 1];
+  heap_allocate(l_page, thiz->m_single_page_capacity);
+};
+
+template <typename TupleType>
+uimax heap_paged_allocate_chunk(heap_paged_impl<TupleType> *thiz, uimax p_count,
+                                uimax p_alignment) {
+
+  uimax l_page_index = -1;
+  uimax l_chunk_index = -1;
+  for (uimax i = 0; i < thiz->m_pages.m_count; ++i) {
+    heap_impl<TupleType> *l_page = &thiz->m_pages.m_data.m_0[i];
+    l_chunk_index =
+        heap_allocate_chunk_aligned_no_realloc(l_page, p_count, p_alignment);
+    if (l_chunk_index != -1) {
+      l_page_index = i;
+      break;
+    }
+  }
+
+  if (l_page_index == -1) {
+    heap_paged_push_new_page(thiz);
+
+    for (uimax i = 0; i < thiz->m_pages.m_count; ++i) {
+      heap_impl<TupleType> *l_page = &thiz->m_pages.m_data.m_0[i];
+      l_chunk_index =
+          heap_allocate_chunk_aligned_no_realloc(l_page, p_count, p_alignment);
+      if (l_chunk_index != -1) {
+        l_page_index = i;
+        break;
+      }
+    }
+  }
+
+  assert_debug(l_page_index != -1);
+  assert_debug(l_chunk_index != -1);
+
+  heap_paged_chunk l_allocated_chunk;
+  l_allocated_chunk.m_page_index = l_page_index;
+  heap_impl<TupleType> *l_page = &thiz->m_pages.m_data.m_0[l_page_index];
+  l_allocated_chunk.m_chunk_index = l_chunk_index;
+
+  uimax l_paged_chunk_index = pool_push(&thiz->m_allocated_chunks);
+  thiz->m_allocated_chunks.m_elements.m_data.m_0[l_paged_chunk_index] =
+      l_allocated_chunk;
+  return l_paged_chunk_index;
+};
+
+template <typename TupleType>
+void heap_paged_free_chunk(heap_paged_impl<TupleType> *thiz, uimax p_index) {
+  assert_debug(pool_is_element_allocated(&thiz->m_allocated_chunks, p_index));
+  heap_paged_chunk *l_paged_chunk =
+      &thiz->m_allocated_chunks.m_elements.m_data.m_0[p_index];
+  heap_impl<TupleType> *l_page =
+      &thiz->m_pages.m_data.m_0[l_paged_chunk->m_page_index];
+  heap_free_chunk(l_page, l_paged_chunk->m_chunk_index);
+};
+
+template <typename TupleType>
+slice_impl<TupleType>
+heap_paged_chunk_to_slice(heap_paged_impl<TupleType> *thiz, uimax p_index) {
+  assert_debug(pool_is_element_allocated(&thiz->m_allocated_chunks, p_index));
+  heap_paged_chunk *l_paged_chunk =
+      &thiz->m_allocated_chunks.m_elements.m_data.m_0[p_index];
+  heap_impl<TupleType> *l_page =
+      &thiz->m_pages.m_data.m_0[l_paged_chunk->m_page_index];
+  return heap_chunk_to_slice(l_page, l_paged_chunk->m_chunk_index);
+};
+
+template <typename TupleType>
+ui8 heap_paged_check_consistency(heap_paged_impl<TupleType> *thiz) {
+  for (auto i = 0; i < thiz->m_pages.m_count; ++i) {
+    heap_impl<TupleType> *l_page = &thiz->m_pages.m_data.m_0[i];
+    if (!heap_check_consistency(l_page)) {
+      return 0;
+    }
+  }
+  return 1;
+};
+
+template <typename T0> using heap_paged_1 = heap_paged_impl<tuple<1, T0 *>>;
+template <typename T0, typename T1>
+using heap_paged_2 = heap_paged_impl<tuple<2, T0 *, T1 *>>;
 
 }; // namespace v2

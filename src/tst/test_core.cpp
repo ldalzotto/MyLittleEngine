@@ -53,19 +53,48 @@ TEST_CASE("core") {
   span_free(&l_span_2);
   vector_free(&l_vector_2);
 
-  heap_2<i32, f32> l_heap_2;
-  heap_allocate(&l_heap_2, 0);
-  heap_push_new_free_chunk(&l_heap_2, 100);
-  uimax l_chunk_index = heap_allocate_chunk(&l_heap_2, 10);
-  uimax l_chunk_another_index = heap_allocate_chunk(&l_heap_2, 5);
-  uimax l_chunk_index_another = heap_allocate_chunk(&l_heap_2, 10);
-  slice_2<i32, f32> l_slice =
-      heap_chunk_to_slice(&l_heap_2, l_chunk_index_another);
-  slice_1<i32> l_ss = slice_split(&l_slice, split_mask_make<1, 0>());
-  for (uimax i = 0; i < l_ss.m_count; ++i) {
-    l_ss.m_data.m_0[i] = i;
+  {
+    heap_2<i32, f32> l_heap_2;
+    heap_allocate(&l_heap_2, 0);
+    heap_push_new_free_chunk(&l_heap_2, 100);
+    uimax l_chunk_index = heap_allocate_chunk(&l_heap_2, 10);
+    uimax l_chunk_another_index = heap_allocate_chunk(&l_heap_2, 5);
+    uimax l_chunk_index_another = heap_allocate_chunk(&l_heap_2, 10);
+    slice_2<i32, f32> l_slice =
+        heap_chunk_to_slice(&l_heap_2, l_chunk_index_another);
+    slice_1<i32> l_ss = slice_split(&l_slice, split_mask_make<1, 0>());
+    for (uimax i = 0; i < l_ss.m_count; ++i) {
+      l_ss.m_data.m_0[i] = i;
+    }
+    heap_free(&l_heap_2);
   }
-  heap_free(&l_heap_2);
+
+  {
+    heap_paged_2<i32, f32> l_heap_paged;
+    heap_paged_allocate(&l_heap_paged, 100);
+
+    span_1<uimax> l_chunks;
+    span_allocate(&l_chunks, 20);
+    for (auto i = 0; i < l_chunks.m_count; ++i) {
+      l_chunks.m_data.m_0[i] = heap_paged_allocate_chunk(&l_heap_paged, 10, 1);
+    }
+
+    uimax l_random_chunk = l_chunks.m_data.m_0[13];
+    slice_2<i32, f32> l_slice =
+        heap_paged_chunk_to_slice(&l_heap_paged, l_random_chunk);
+    for (auto i = 0; i < l_slice.m_count; ++i) {
+      l_slice.m_data.m_1[i] = f32(i);
+    }
+
+    CHECK(heap_paged_check_consistency(&l_heap_paged));
+    for (auto i = 0; i < l_chunks.m_count; ++i) {
+      heap_paged_free_chunk(&l_heap_paged, l_chunks.m_data.m_0[i]);
+      CHECK(heap_paged_check_consistency(&l_heap_paged));
+    }
+
+    span_free(&l_chunks);
+    heap_paged_free(&l_heap_paged);
+  }
 }
 
 #include <sys/sys_impl.hpp>
