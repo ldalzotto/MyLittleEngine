@@ -299,7 +299,7 @@ void tuple_data_cast_loop(TupleType *thiz, TargetTupleType *p_to) {
     T **l_element = tuple_get_element<TupleType, N>{}(thiz);
     Target **l_target_element = tuple_get_element<TargetTupleType, N>{}(p_to);
 
-    *l_target_element = (Target *)*l_target_element;
+    *l_target_element = (Target *)*l_element;
 
     tuple_data_cast_loop<N + 1>(thiz, p_to);
   }
